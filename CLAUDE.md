@@ -8,7 +8,7 @@ Filecoin Pay Console - A dashboard for tracking payments, settlements, and metri
 
 ## Deployed Site
 
-**Live URL:** https://7e589519.pinit.eth.limo/
+**Live URL (use this for all testing):** https://e0b5afaa.pinit.eth.limo/
 
 ## Commands
 
@@ -24,6 +24,9 @@ pinme upload out
 
 # Lint
 npm run lint
+
+# Run Playwright tests
+npx playwright test
 ```
 
 ## Architecture
@@ -43,9 +46,14 @@ npm run lint
 | `components/dashboard/MetricCard.tsx` | Metric card with sparkline support |
 | `components/dashboard/TopPayersTable.tsx` | Top payers data table |
 | `components/layout/Header.tsx` | Navigation header |
+| `lib/graphql/client.ts` | GraphQL client for Goldsky |
+| `lib/graphql/queries.ts` | GraphQL queries and types |
+| `lib/graphql/fetchers.ts` | Data fetching and transformation |
 | `next.config.ts` | Static export configuration |
 
 ## Data Source
+
+**Contract:** `0x23b1e018F08BB982348b15a86ee926eEBf7F4DAa` (Filecoin Mainnet)
 
 Goldsky Subgraph endpoint:
 ```
@@ -60,3 +68,4 @@ The dashboard matches the wireframe spec (00-dashboard.excalidraw):
 - Header: Dashboard, Payer Accounts, Payee Accounts, Connect Wallet
 - Three metric cards: Unique Payers, USDFC Settled, Wallet Terminations
 - Top 10 Payers table: Address, Locked, Settled, Runway, Start
+- Data source indicator at bottom of page
