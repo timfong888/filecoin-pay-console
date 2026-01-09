@@ -28,7 +28,7 @@ Get a working dashboard deployed to PinMe with the three metric cards and top pa
 - Search and date filter UI (not connected)
 
 ### Deployed URL
-https://pinme.eth.limo/#/preview/U2FsdGVkX19LVuFe90LzwzjDUiZa04P_m6XhJu00uyHChjBqi1Ws-nCoxHltOIm-Zqg47542crEK3hAm2xeZFBIX0AYAsFBHkEia1pO_v4plMIl_T9LR23U3RVXxtTVPyFjIgLiLQkvBpP3yVkXziQ
+https://7e589519.pinit.eth.limo/
 
 ---
 
