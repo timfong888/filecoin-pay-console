@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     async function loadData() {
@@ -108,6 +109,8 @@ export default function Dashboard() {
               <input
                 type="text"
                 placeholder="🔍 search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="px-3 py-1.5 text-sm border rounded-md w-48"
               />
               <div className="flex items-center gap-2 text-sm">
@@ -118,7 +121,10 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-          <TopPayersTable payers={mockPayers} />
+          <TopPayersTable payers={mockPayers.filter(p =>
+            p.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (p.ensName && p.ensName.toLowerCase().includes(searchQuery.toLowerCase()))
+          )} />
         </div>
       </div>
     );
@@ -160,6 +166,8 @@ export default function Dashboard() {
               <input
                 type="text"
                 placeholder="🔍 search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="px-3 py-1.5 text-sm border rounded-md w-48"
               />
             </div>
@@ -171,7 +179,10 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <TopPayersTable payers={topPayers.length > 0 ? topPayers : mockPayers} />
+        <TopPayersTable payers={(topPayers.length > 0 ? topPayers : mockPayers).filter(p =>
+          p.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (p.ensName && p.ensName.toLowerCase().includes(searchQuery.toLowerCase()))
+        )} />
       </div>
 
       {/* Data source indicator */}

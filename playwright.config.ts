@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'https://e0b5afaa.pinit.eth.limo',
+    baseURL: 'https://e6da698e.pinit.eth.limo',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
