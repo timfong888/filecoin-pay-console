@@ -34,11 +34,61 @@ interface DashboardData {
   };
 }
 
+// Parse "Nov 15 '24" or "Dec 1 '24" format to Date
+function parseStartDate(dateStr: string): Date | null {
+  const months: Record<string, number> = {
+    'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+    'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+  };
+
+  const match = dateStr.match(/^([A-Za-z]+)\s+(\d+)\s+'(\d+)$/);
+  if (!match) return null;
+
+  const [, monthStr, day, year] = match;
+  const month = months[monthStr];
+  if (month === undefined) return null;
+
+  const fullYear = 2000 + parseInt(year);
+  return new Date(fullYear, month, parseInt(day));
+}
+
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+
+  // Filter payers by search and date range
+  const filterPayers = (payers: typeof mockPayers) => {
+    return payers.filter(p => {
+      // Search filter
+      const matchesSearch =
+        p.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (p.ensName && p.ensName.toLowerCase().includes(searchQuery.toLowerCase()));
+
+      if (!matchesSearch) return false;
+
+      // Date filter
+      if (fromDate || toDate) {
+        const startDate = parseStartDate(p.start);
+        if (!startDate) return true; // Can't parse, include it
+
+        if (fromDate) {
+          const from = new Date(fromDate);
+          if (startDate < from) return false;
+        }
+
+        if (toDate) {
+          const to = new Date(toDate);
+          if (startDate > to) return false;
+        }
+      }
+
+      return true;
+    });
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -115,16 +165,23 @@ export default function Dashboard() {
               />
               <div className="flex items-center gap-2 text-sm">
                 <span>From Date:</span>
-                <input type="date" className="px-2 py-1 border rounded-md text-sm" />
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="px-2 py-1 border rounded-md text-sm"
+                />
                 <span>To Date:</span>
-                <input type="date" className="px-2 py-1 border rounded-md text-sm" />
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="px-2 py-1 border rounded-md text-sm"
+                />
               </div>
             </div>
           </div>
-          <TopPayersTable payers={mockPayers.filter(p =>
-            p.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (p.ensName && p.ensName.toLowerCase().includes(searchQuery.toLowerCase()))
-          )} />
+          <TopPayersTable payers={filterPayers(mockPayers)} />
         </div>
       </div>
     );
@@ -173,16 +230,23 @@ export default function Dashboard() {
             </div>
             <div className="flex items-center gap-2 text-sm">
               <span>From Date:</span>
-              <input type="date" className="px-2 py-1 border rounded-md text-sm" />
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="px-2 py-1 border rounded-md text-sm"
+              />
               <span>To Date:</span>
-              <input type="date" className="px-2 py-1 border rounded-md text-sm" />
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="px-2 py-1 border rounded-md text-sm"
+              />
             </div>
           </div>
         </div>
-        <TopPayersTable payers={(topPayers.length > 0 ? topPayers : mockPayers).filter(p =>
-          p.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (p.ensName && p.ensName.toLowerCase().includes(searchQuery.toLowerCase()))
-        )} />
+        <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} />
       </div>
 
       {/* Data source indicator */}

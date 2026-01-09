@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const BASE_URL = 'https://e6da698e.pinit.eth.limo';
+const BASE_URL = 'https://f2e70c50.pinit.eth.limo';
 
 test.describe('Dashboard', () => {
   test.beforeEach(async ({ page }) => {

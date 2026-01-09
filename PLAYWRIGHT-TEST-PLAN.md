@@ -2,7 +2,7 @@
 
 ## Test URL
 
-**Canonical URL:** https://e6da698e.pinit.eth.limo/
+**Canonical URL:** https://f2e70c50.pinit.eth.limo/
 
 ## Acceptance Criteria
 
@@ -41,7 +41,7 @@
 ### Test 1: Page Load
 ```typescript
 test('dashboard loads successfully', async ({ page }) => {
-  await page.goto('https://e6da698e.pinit.eth.limo/');
+  await page.goto('https://f2e70c50.pinit.eth.limo/');
   await expect(page).toHaveTitle(/Filecoin Pay/i);
   await expect(page.locator('header')).toBeVisible();
 });
@@ -50,7 +50,7 @@ test('dashboard loads successfully', async ({ page }) => {
 ### Test 2: Navigation Elements
 ```typescript
 test('navigation elements are present', async ({ page }) => {
-  await page.goto('https://e6da698e.pinit.eth.limo/');
+  await page.goto('https://f2e70c50.pinit.eth.limo/');
 
   // Check nav links
   await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
@@ -65,7 +65,7 @@ test('navigation elements are present', async ({ page }) => {
 ### Test 3: Metric Cards
 ```typescript
 test('metric cards display data', async ({ page }) => {
-  await page.goto('https://e6da698e.pinit.eth.limo/');
+  await page.goto('https://f2e70c50.pinit.eth.limo/');
 
   // Wait for data to load (no loading skeletons)
   await page.waitForSelector('.animate-pulse', { state: 'hidden', timeout: 15000 }).catch(() => {});
@@ -86,7 +86,7 @@ test('metric cards display data', async ({ page }) => {
 ### Test 4: Top Payers Table
 ```typescript
 test('top payers table displays correctly', async ({ page }) => {
-  await page.goto('https://e6da698e.pinit.eth.limo/');
+  await page.goto('https://f2e70c50.pinit.eth.limo/');
 
   // Wait for data load
   await page.waitForTimeout(3000);
@@ -110,7 +110,7 @@ test('top payers table displays correctly', async ({ page }) => {
 ### Test 5: Data Source Indicator
 ```typescript
 test('data source indicator is present', async ({ page }) => {
-  await page.goto('https://e6da698e.pinit.eth.limo/');
+  await page.goto('https://f2e70c50.pinit.eth.limo/');
   await page.waitForTimeout(3000);
 
   await expect(page.getByText(/Data from Goldsky subgraph/i)).toBeVisible();
@@ -120,7 +120,7 @@ test('data source indicator is present', async ({ page }) => {
 ### Test 6: No Error States
 ```typescript
 test('no error messages displayed', async ({ page }) => {
-  await page.goto('https://e6da698e.pinit.eth.limo/');
+  await page.goto('https://f2e70c50.pinit.eth.limo/');
   await page.waitForTimeout(5000);
 
   // Should NOT see mock data warning
@@ -132,7 +132,7 @@ test('no error messages displayed', async ({ page }) => {
 ```typescript
 test('mobile layout works', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
-  await page.goto('https://e6da698e.pinit.eth.limo/');
+  await page.goto('https://f2e70c50.pinit.eth.limo/');
 
   // Header should be visible
   await expect(page.locator('header')).toBeVisible();
@@ -146,7 +146,7 @@ test('mobile layout works', async ({ page }) => {
 ### Test 8: Values Are Numeric
 ```typescript
 test('metric values are numeric', async ({ page }) => {
-  await page.goto('https://e6da698e.pinit.eth.limo/');
+  await page.goto('https://f2e70c50.pinit.eth.limo/');
   await page.waitForTimeout(5000);
 
   // Get the Unique Payers value and verify it's a number
@@ -161,7 +161,7 @@ test('metric values are numeric', async ({ page }) => {
 ## Test Execution Plan
 
 ### Phase 1: Smoke Tests (Manual)
-1. Open https://e6da698e.pinit.eth.limo/ in browser
+1. Open https://f2e70c50.pinit.eth.limo/ in browser
 2. Verify page loads without errors
 3. Check all three metric cards display values
 4. Verify table has data rows
