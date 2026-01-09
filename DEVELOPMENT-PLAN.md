@@ -32,10 +32,21 @@ https://7e589519.pinit.eth.limo/
 
 ---
 
-## Phase 2: Connect Real Data
+## Phase 2: Connect Real Data ✅ COMPLETE
 
 ### Goal
 Replace mock data with live data from Goldsky subgraph.
+
+### What Was Built
+- GraphQL client for Goldsky subgraph (`lib/graphql/client.ts`)
+- Queries for metrics, top payers, settlements, daily metrics (`lib/graphql/queries.ts`)
+- Data fetchers with wei-to-USDFC conversion (`lib/graphql/fetchers.ts`)
+- Dashboard updated to fetch real data with loading states
+- Graceful fallback to mock data if subgraph fails
+- Playwright test suite for acceptance validation
+
+### Deployed URL
+https://e0b5afaa.pinit.eth.limo/
 
 ### GraphQL Queries Needed
 
