@@ -108,14 +108,10 @@ function HeroMetricCard({
 function FilterControls({
   timeRange,
   setTimeRange,
-  granularity,
-  setGranularity,
   onApply,
 }: {
   timeRange: string;
   setTimeRange: (v: string) => void;
-  granularity: string;
-  setGranularity: (v: string) => void;
   onApply: () => void;
 }) {
   return (
@@ -130,20 +126,6 @@ function FilterControls({
           <option value="30">Last 30 Days</option>
           <option value="90">Last 90 Days</option>
           <option value="ytd">YTD</option>
-          <option value="custom">Custom</option>
-        </select>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-gray-600">Granularity:</label>
-        <select
-          value={granularity}
-          onChange={(e) => setGranularity(e.target.value)}
-          className="border rounded-md px-3 py-1.5 text-sm bg-white"
-        >
-          <option value="daily">Daily</option>
-          <option value="weekly">Weekly</option>
-          <option value="monthly">Monthly</option>
         </select>
       </div>
 
@@ -412,7 +394,6 @@ function PayerListView() {
   const [sortField, setSortField] = useState<"settled" | "locked" | "rails" | "runway" | "start">("settled");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [timeRange, setTimeRange] = useState("30");
-  const [granularity, setGranularity] = useState("daily");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -652,8 +633,6 @@ function PayerListView() {
       <FilterControls
         timeRange={timeRange}
         setTimeRange={setTimeRange}
-        granularity={granularity}
-        setGranularity={setGranularity}
         onApply={handleApplyFilters}
       />
 

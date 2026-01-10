@@ -13,7 +13,7 @@ export const EPOCHS_PER_DAY = (24 * 60 * 60) / EPOCH_DURATION_SECONDS; // 2880 e
 
 // Dashboard deployment metadata (PinMe/IPFS)
 // Updated after each deployment
-export const DASHBOARD_VERSION = '0.7.1';
+export const DASHBOARD_VERSION = '0.7.2';
 export const DASHBOARD_IPFS_CID = 'bafybeieh256s77t2qrd2y4sjjlxpv4hem3e774wdtfk3pbrw3t7hvawvdm';
 export const DASHBOARD_PINME_URL = '02cd13e3.pinit.eth.limo';
 export const DASHBOARD_PAYMENT_WALLET = '0x...'; // TODO: Discover PinMe payment wallet
