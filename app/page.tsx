@@ -7,14 +7,9 @@ import { fetchDashboardData } from "@/lib/graphql/fetchers";
 import { batchResolveENS } from "@/lib/ens";
 import {
   FILECOIN_PAY_CONTRACT,
-  GOLDSKY_ENDPOINT,
   SUBGRAPH_VERSION,
   NETWORK,
   DASHBOARD_VERSION,
-  DASHBOARD_IPFS_CID,
-  DASHBOARD_PINME_URL,
-  DASHBOARD_PAYMENT_WALLET,
-  DASHBOARD_COMMP,
 } from "@/lib/graphql/client";
 
 interface DashboardData {
@@ -46,6 +41,7 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [hostname, setHostname] = useState("");
 
   // Filter payers by search and date range
   const filterPayers = (payers: Payer[]) => {
@@ -93,6 +89,11 @@ export default function Dashboard() {
     }
 
     loadData();
+  }, []);
+
+  // Set hostname on client side
+  useEffect(() => {
+    setHostname(window.location.hostname);
   }, []);
 
   // Resolve ENS names after data loads
@@ -250,48 +251,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex gap-2">
                   <dt className="w-32 flex-shrink-0">Site URL:</dt>
-                  <dd className="font-mono text-xs">
-                    <a
-                      href={`https://${DASHBOARD_PINME_URL}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {DASHBOARD_PINME_URL}
-                    </a>
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-32 flex-shrink-0">IPFS CID:</dt>
-                  <dd className="font-mono text-xs">
-                    <a
-                      href={`https://ipfs.io/ipfs/${DASHBOARD_IPFS_CID}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {DASHBOARD_IPFS_CID}
-                    </a>
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-32 flex-shrink-0">Payment Wallet:</dt>
-                  <dd className="font-mono text-xs">
-                    <a
-                      href={`https://filfox.info/en/address/${DASHBOARD_PAYMENT_WALLET}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {DASHBOARD_PAYMENT_WALLET}
-                    </a>
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-32 flex-shrink-0">commP (Piece CID):</dt>
-                  <dd className="font-mono text-xs truncate" title={DASHBOARD_COMMP}>
-                    {DASHBOARD_COMMP}
-                  </dd>
+                  <dd className="font-mono text-xs">{hostname || 'Loading...'}</dd>
                 </div>
               </dl>
             </div>
@@ -406,48 +366,7 @@ export default function Dashboard() {
               </div>
               <div className="flex gap-2">
                 <dt className="w-32 flex-shrink-0">Site URL:</dt>
-                <dd className="font-mono text-xs">
-                  <a
-                    href={`https://${DASHBOARD_PINME_URL}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
-                    {DASHBOARD_PINME_URL}
-                  </a>
-                </dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="w-32 flex-shrink-0">IPFS CID:</dt>
-                <dd className="font-mono text-xs">
-                  <a
-                    href={`https://ipfs.io/ipfs/${DASHBOARD_IPFS_CID}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
-                    {DASHBOARD_IPFS_CID}
-                  </a>
-                </dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="w-32 flex-shrink-0">Payment Wallet:</dt>
-                <dd className="font-mono text-xs">
-                  <a
-                    href={`https://filfox.info/en/address/${DASHBOARD_PAYMENT_WALLET}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
-                    {DASHBOARD_PAYMENT_WALLET}
-                  </a>
-                </dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="w-32 flex-shrink-0">commP (Piece CID):</dt>
-                <dd className="font-mono text-xs truncate" title={DASHBOARD_COMMP}>
-                  {DASHBOARD_COMMP}
-                </dd>
+                <dd className="font-mono text-xs">{hostname || 'Loading...'}</dd>
               </div>
             </dl>
           </div>
