@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { TopPayersTable, mockPayers, Payer } from "@/components/dashboard/TopPayersTable";
 import { fetchDashboardData } from "@/lib/graphql/fetchers";
+import { batchResolveENS } from "@/lib/ens";
 
 interface DashboardData {
   globalMetrics: {
@@ -82,6 +83,42 @@ export default function Dashboard() {
 
     loadData();
   }, []);
+
+  // Resolve ENS names after data loads
+  useEffect(() => {
+    if (!data || data.topPayers.length === 0) return;
+
+    async function resolveNames() {
+      const addresses = data!.topPayers
+        .filter(p => p.fullAddress && !p.ensName)
+        .map(p => p.fullAddress);
+
+      if (addresses.length === 0) return;
+
+      try {
+        const ensNames = await batchResolveENS(addresses);
+
+        // Update payers with resolved ENS names
+        setData(prevData => {
+          if (!prevData) return prevData;
+
+          const updatedPayers = prevData.topPayers.map(payer => {
+            const ensName = ensNames.get(payer.fullAddress?.toLowerCase());
+            if (ensName && !payer.ensName) {
+              return { ...payer, ensName };
+            }
+            return payer;
+          });
+
+          return { ...prevData, topPayers: updatedPayers };
+        });
+      } catch (err) {
+        console.error('Failed to resolve ENS names:', err);
+      }
+    }
+
+    resolveNames();
+  }, [data?.topPayers.length]);
 
   // Show loading state
   if (loading) {

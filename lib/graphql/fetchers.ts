@@ -124,6 +124,7 @@ export async function fetchTotalSettled() {
 // Transform account to payer display format
 export interface PayerDisplay {
   address: string;
+  fullAddress: string; // Full address for ENS resolution
   ensName?: string;
   locked: string;
   settled: string;
@@ -164,6 +165,7 @@ function transformAccountToPayer(account: Account): PayerDisplay {
 
   return {
     address: formatAddress(account.address),
+    fullAddress: account.address, // Keep full address for ENS resolution
     locked: formatCurrency(weiToUSDC(totalLocked.toString())),
     settled: formatCurrency(weiToUSDC(totalSettled.toString())),
     runway: '-', // Would need payment rate to calculate
