@@ -122,13 +122,14 @@ export async function fetchTotalSettled() {
 }
 
 // Transform account to payer display format
-interface PayerDisplay {
+export interface PayerDisplay {
   address: string;
   ensName?: string;
   locked: string;
   settled: string;
   runway: string;
   start: string;
+  startTimestamp: number; // Unix timestamp in ms for filtering
 }
 
 function transformAccountToPayer(account: Account): PayerDisplay {
@@ -167,6 +168,7 @@ function transformAccountToPayer(account: Account): PayerDisplay {
     settled: formatCurrency(weiToUSDC(totalSettled.toString())),
     runway: '-', // Would need payment rate to calculate
     start,
+    startTimestamp: earliestDate,
   };
 }
 

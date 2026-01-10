@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
-import { TopPayersTable, mockPayers } from "@/components/dashboard/TopPayersTable";
+import { TopPayersTable, mockPayers, Payer } from "@/components/dashboard/TopPayersTable";
 import { fetchDashboardData } from "@/lib/graphql/fetchers";
 
 interface DashboardData {
@@ -18,38 +18,13 @@ interface DashboardData {
     totalFormatted: string;
     last30DaysFormatted: string;
   };
-  topPayers: Array<{
-    address: string;
-    ensName?: string;
-    locked: string;
-    settled: string;
-    runway: string;
-    start: string;
-  }>;
+  topPayers: Payer[];
   dailyMetrics: {
     uniquePayers: number[];
     terminations: number[];
     activeRails: number[];
     dates: string[];
   };
-}
-
-// Parse "Nov 15 '24" or "Dec 1 '24" format to Date
-function parseStartDate(dateStr: string): Date | null {
-  const months: Record<string, number> = {
-    'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-    'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
-  };
-
-  const match = dateStr.match(/^([A-Za-z]+)\s+(\d+)\s+'(\d+)$/);
-  if (!match) return null;
-
-  const [, monthStr, day, year] = match;
-  const month = months[monthStr];
-  if (month === undefined) return null;
-
-  const fullYear = 2000 + parseInt(year);
-  return new Date(fullYear, month, parseInt(day));
 }
 
 export default function Dashboard() {
@@ -61,7 +36,7 @@ export default function Dashboard() {
   const [toDate, setToDate] = useState("");
 
   // Filter payers by search and date range
-  const filterPayers = (payers: typeof mockPayers) => {
+  const filterPayers = (payers: Payer[]) => {
     return payers.filter(p => {
       // Search filter
       const matchesSearch =
@@ -70,19 +45,19 @@ export default function Dashboard() {
 
       if (!matchesSearch) return false;
 
-      // Date filter
+      // Date filter using startTimestamp
       if (fromDate || toDate) {
-        const startDate = parseStartDate(p.start);
-        if (!startDate) return true; // Can't parse, include it
+        const payerStartTime = p.startTimestamp;
 
         if (fromDate) {
-          const from = new Date(fromDate);
-          if (startDate < from) return false;
+          const fromTime = new Date(fromDate).getTime();
+          if (payerStartTime < fromTime) return false;
         }
 
         if (toDate) {
-          const to = new Date(toDate);
-          if (startDate > to) return false;
+          // Add 1 day to toDate to include the entire day
+          const toTime = new Date(toDate).getTime() + 24 * 60 * 60 * 1000;
+          if (payerStartTime > toTime) return false;
         }
       }
 
