@@ -10,6 +10,7 @@ import {
   GOLDSKY_ENDPOINT,
   SUBGRAPH_VERSION,
   NETWORK,
+  DASHBOARD_VERSION,
   DASHBOARD_IPFS_CID,
   DASHBOARD_PINME_URL,
   DASHBOARD_PAYMENT_WALLET,
@@ -244,6 +245,10 @@ export default function Dashboard() {
               <div className="font-medium text-gray-700 mb-2">Dashboard Deployment (PinMe/IPFS)</div>
               <dl className="space-y-1 text-gray-600">
                 <div className="flex gap-2">
+                  <dt className="w-32 flex-shrink-0">Version:</dt>
+                  <dd className="font-mono font-semibold">v{DASHBOARD_VERSION}</dd>
+                </div>
+                <div className="flex gap-2">
                   <dt className="w-32 flex-shrink-0">Site URL:</dt>
                   <dd className="font-mono text-xs">
                     <a
@@ -395,6 +400,10 @@ export default function Dashboard() {
           <div>
             <div className="font-medium text-gray-700 mb-2">Dashboard Deployment (PinMe/IPFS)</div>
             <dl className="space-y-1 text-gray-600">
+              <div className="flex gap-2">
+                <dt className="w-32 flex-shrink-0">Version:</dt>
+                <dd className="font-mono font-semibold">v{DASHBOARD_VERSION}</dd>
+              </div>
               <div className="flex gap-2">
                 <dt className="w-32 flex-shrink-0">Site URL:</dt>
                 <dd className="font-mono text-xs">

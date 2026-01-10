@@ -507,6 +507,10 @@ function transformRailToDisplay(rail: Rail, isPayer: boolean): RailDisplay {
   const createdAtMs = parseInt(rail.createdAt) * 1000;
   const createdDate = new Date(createdAtMs);
 
+  // Convert state to number (GraphQL may return string)
+  const stateNum = typeof rail.state === 'string' ? parseInt(rail.state) : rail.state;
+  const stateLabel = RailState[stateNum as keyof typeof RailState] || 'Unknown';
+
   return {
     id: rail.id,
     counterpartyAddress: counterparty || 'Unknown',
@@ -515,8 +519,8 @@ function transformRailToDisplay(rail: Rail, isPayer: boolean): RailDisplay {
     settledRaw: settledValue,
     rate: rateValue > 0 ? `${formatCurrency(rateValue)}/epoch` : '-',
     rateRaw: rateValue,
-    state: RailState[rail.state as keyof typeof RailState] || 'Unknown',
-    stateCode: rail.state,
+    state: stateLabel,
+    stateCode: stateNum,
     createdAt: createdDate.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
