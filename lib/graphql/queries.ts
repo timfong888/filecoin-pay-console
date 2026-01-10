@@ -69,6 +69,32 @@ export const DAILY_METRICS_QUERY = gql`
   }
 `;
 
+// Top payees query - accounts ordered by total rails received
+export const TOP_PAYEES_QUERY = gql`
+  query TopPayees($first: Int!) {
+    accounts(first: $first, orderBy: totalRails, orderDirection: desc) {
+      id
+      address
+      totalRails
+      userTokens {
+        id
+        funds
+        lockupCurrent
+        payout
+      }
+      payeeRails(first: 10, orderBy: createdAt, orderDirection: desc) {
+        id
+        totalSettledAmount
+        createdAt
+        state
+        payer {
+          address
+        }
+      }
+    }
+  }
+`;
+
 // Single account detail
 export const ACCOUNT_DETAIL_QUERY = gql`
   query AccountDetail($id: ID!) {
@@ -163,6 +189,10 @@ export interface GlobalMetricsResponse {
 }
 
 export interface TopPayersResponse {
+  accounts: Account[];
+}
+
+export interface TopPayeesResponse {
   accounts: Account[];
 }
 

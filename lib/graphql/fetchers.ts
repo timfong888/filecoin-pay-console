@@ -2,10 +2,12 @@ import { graphqlClient } from './client';
 import {
   GLOBAL_METRICS_QUERY,
   TOP_PAYERS_QUERY,
+  TOP_PAYEES_QUERY,
   TOTAL_SETTLED_QUERY,
   DAILY_METRICS_QUERY,
   GlobalMetricsResponse,
   TopPayersResponse,
+  TopPayeesResponse,
   TotalSettledResponse,
   DailyMetricsResponse,
   Account,
@@ -198,6 +200,66 @@ export async function fetchAllPayers(limit: number = 100) {
       .map(transformAccountToPayer);
   } catch (error) {
     console.error('Error fetching all payers:', error);
+    throw error;
+  }
+}
+
+// Transform account to payee display format
+export interface PayeeDisplay {
+  address: string;
+  fullAddress: string;
+  ensName?: string;
+  received: string; // Total received from all rails
+  payers: number; // Number of unique payers
+  start: string;
+  startTimestamp: number;
+}
+
+function transformAccountToPayee(account: Account): PayeeDisplay {
+  // Sum up received from all payee rails
+  let totalReceived = BigInt(0);
+  let earliestDate = Date.now();
+  const uniquePayers = new Set<string>();
+
+  for (const rail of account.payeeRails || []) {
+    totalReceived += BigInt(rail.totalSettledAmount);
+    const createdAt = parseInt(rail.createdAt) * 1000;
+    if (createdAt < earliestDate) {
+      earliestDate = createdAt;
+    }
+    if (rail.payer?.address) {
+      uniquePayers.add(rail.payer.address);
+    }
+  }
+
+  // Format start date
+  const startDate = new Date(earliestDate);
+  const start = startDate.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: '2-digit'
+  }).replace(',', " '");
+
+  return {
+    address: formatAddress(account.address),
+    fullAddress: account.address,
+    received: formatCurrency(weiToUSDC(totalReceived.toString())),
+    payers: uniquePayers.size,
+    start,
+    startTimestamp: earliestDate,
+  };
+}
+
+// Fetch all payees (for payee accounts page)
+export async function fetchAllPayees(limit: number = 100) {
+  try {
+    const data = await graphqlClient.request<TopPayeesResponse>(TOP_PAYEES_QUERY, { first: limit });
+
+    return data.accounts
+      .filter(account => account.payeeRails && account.payeeRails.length > 0)
+      .map(transformAccountToPayee);
+  } catch (error) {
+    console.error('Error fetching all payees:', error);
     throw error;
   }
 }
