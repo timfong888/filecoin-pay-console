@@ -208,69 +208,87 @@ export default function Dashboard() {
 
         {/* Data source indicator */}
         <div className="bg-gray-50 border rounded-lg p-4 space-y-4 text-sm">
-          <div>
-            <div className="font-medium text-gray-700 mb-2">Data Source</div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-600">
-              <div>Network:</div>
-              <div className="font-mono">{NETWORK}</div>
-              <div>Contract:</div>
-              <div className="font-mono text-xs">
-                <a
-                  href={`https://filfox.info/en/address/${FILECOIN_PAY_CONTRACT}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  {FILECOIN_PAY_CONTRACT}
-                </a>
-              </div>
-              <div>Subgraph Version:</div>
-              <div className="font-mono">{SUBGRAPH_VERSION}</div>
-              <div>Last Updated:</div>
-              <div className="font-mono">{new Date().toLocaleString()}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <div className="font-medium text-gray-700 mb-2">Data Source</div>
+              <dl className="space-y-1 text-gray-600">
+                <div className="flex gap-2">
+                  <dt className="w-32 flex-shrink-0">Network:</dt>
+                  <dd className="font-mono">{NETWORK}</dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-32 flex-shrink-0">Contract:</dt>
+                  <dd className="font-mono text-xs">
+                    <a
+                      href={`https://filfox.info/en/address/${FILECOIN_PAY_CONTRACT}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {FILECOIN_PAY_CONTRACT}
+                    </a>
+                  </dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-32 flex-shrink-0">Subgraph Version:</dt>
+                  <dd className="font-mono">{SUBGRAPH_VERSION}</dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-32 flex-shrink-0">Last Updated:</dt>
+                  <dd className="font-mono">{new Date().toLocaleString()}</dd>
+                </div>
+              </dl>
             </div>
-          </div>
 
-          <div className="border-t pt-4">
-            <div className="font-medium text-gray-700 mb-2">Dashboard Deployment (PinMe/IPFS)</div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-600">
-              <div>Site URL:</div>
-              <div className="font-mono text-xs">
-                <a
-                  href={`https://${DASHBOARD_PINME_URL}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  {DASHBOARD_PINME_URL}
-                </a>
-              </div>
-              <div>IPFS CID:</div>
-              <div className="font-mono text-xs">
-                <a
-                  href={`https://ipfs.io/ipfs/${DASHBOARD_IPFS_CID}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  {DASHBOARD_IPFS_CID}
-                </a>
-              </div>
-              <div>Payment Wallet:</div>
-              <div className="font-mono text-xs">
-                <a
-                  href={`https://filfox.info/en/address/${DASHBOARD_PAYMENT_WALLET}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  {DASHBOARD_PAYMENT_WALLET}
-                </a>
-              </div>
-              <div>commP (Piece CID):</div>
-              <div className="font-mono text-xs truncate max-w-xs" title={DASHBOARD_COMMP}>
-                {DASHBOARD_COMMP}
-              </div>
+            <div>
+              <div className="font-medium text-gray-700 mb-2">Dashboard Deployment (PinMe/IPFS)</div>
+              <dl className="space-y-1 text-gray-600">
+                <div className="flex gap-2">
+                  <dt className="w-32 flex-shrink-0">Site URL:</dt>
+                  <dd className="font-mono text-xs">
+                    <a
+                      href={`https://${DASHBOARD_PINME_URL}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {DASHBOARD_PINME_URL}
+                    </a>
+                  </dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-32 flex-shrink-0">IPFS CID:</dt>
+                  <dd className="font-mono text-xs">
+                    <a
+                      href={`https://ipfs.io/ipfs/${DASHBOARD_IPFS_CID}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {DASHBOARD_IPFS_CID}
+                    </a>
+                  </dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-32 flex-shrink-0">Payment Wallet:</dt>
+                  <dd className="font-mono text-xs">
+                    <a
+                      href={`https://filfox.info/en/address/${DASHBOARD_PAYMENT_WALLET}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {DASHBOARD_PAYMENT_WALLET}
+                    </a>
+                  </dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-32 flex-shrink-0">commP (Piece CID):</dt>
+                  <dd className="font-mono text-xs truncate" title={DASHBOARD_COMMP}>
+                    {DASHBOARD_COMMP}
+                  </dd>
+                </div>
+              </dl>
             </div>
           </div>
         </div>
@@ -341,70 +359,88 @@ export default function Dashboard() {
       </div>
 
       {/* Data source indicator */}
-      <div className="bg-gray-50 border rounded-lg p-4 space-y-4 text-sm">
-        <div>
-          <div className="font-medium text-gray-700 mb-2">Data Source</div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-600">
-            <div>Network:</div>
-            <div className="font-mono">{NETWORK}</div>
-            <div>Contract:</div>
-            <div className="font-mono text-xs">
-              <a
-                href={`https://filfox.info/en/address/${FILECOIN_PAY_CONTRACT}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                {FILECOIN_PAY_CONTRACT}
-              </a>
-            </div>
-            <div>Subgraph Version:</div>
-            <div className="font-mono">{SUBGRAPH_VERSION}</div>
-            <div>Last Updated:</div>
-            <div className="font-mono">{new Date().toLocaleString()}</div>
+      <div className="bg-gray-50 border rounded-lg p-4 text-sm">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <div className="font-medium text-gray-700 mb-2">Data Source</div>
+            <dl className="space-y-1 text-gray-600">
+              <div className="flex gap-2">
+                <dt className="w-32 flex-shrink-0">Network:</dt>
+                <dd className="font-mono">{NETWORK}</dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="w-32 flex-shrink-0">Contract:</dt>
+                <dd className="font-mono text-xs">
+                  <a
+                    href={`https://filfox.info/en/address/${FILECOIN_PAY_CONTRACT}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {FILECOIN_PAY_CONTRACT}
+                  </a>
+                </dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="w-32 flex-shrink-0">Subgraph Version:</dt>
+                <dd className="font-mono">{SUBGRAPH_VERSION}</dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="w-32 flex-shrink-0">Last Updated:</dt>
+                <dd className="font-mono">{new Date().toLocaleString()}</dd>
+              </div>
+            </dl>
           </div>
-        </div>
 
-        <div className="border-t pt-4">
-          <div className="font-medium text-gray-700 mb-2">Dashboard Deployment (PinMe/IPFS)</div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-600">
-            <div>Site URL:</div>
-            <div className="font-mono text-xs">
-              <a
-                href={`https://${DASHBOARD_PINME_URL}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                {DASHBOARD_PINME_URL}
-              </a>
-            </div>
-            <div>IPFS CID:</div>
-            <div className="font-mono text-xs">
-              <a
-                href={`https://ipfs.io/ipfs/${DASHBOARD_IPFS_CID}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                {DASHBOARD_IPFS_CID}
-              </a>
-            </div>
-            <div>Payment Wallet:</div>
-            <div className="font-mono text-xs">
-              <a
-                href={`https://filfox.info/en/address/${DASHBOARD_PAYMENT_WALLET}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline"
-              >
-                {DASHBOARD_PAYMENT_WALLET}
-              </a>
-            </div>
-            <div>commP (Piece CID):</div>
-            <div className="font-mono text-xs truncate max-w-xs" title={DASHBOARD_COMMP}>
-              {DASHBOARD_COMMP}
-            </div>
+          <div>
+            <div className="font-medium text-gray-700 mb-2">Dashboard Deployment (PinMe/IPFS)</div>
+            <dl className="space-y-1 text-gray-600">
+              <div className="flex gap-2">
+                <dt className="w-32 flex-shrink-0">Site URL:</dt>
+                <dd className="font-mono text-xs">
+                  <a
+                    href={`https://${DASHBOARD_PINME_URL}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {DASHBOARD_PINME_URL}
+                  </a>
+                </dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="w-32 flex-shrink-0">IPFS CID:</dt>
+                <dd className="font-mono text-xs">
+                  <a
+                    href={`https://ipfs.io/ipfs/${DASHBOARD_IPFS_CID}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {DASHBOARD_IPFS_CID}
+                  </a>
+                </dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="w-32 flex-shrink-0">Payment Wallet:</dt>
+                <dd className="font-mono text-xs">
+                  <a
+                    href={`https://filfox.info/en/address/${DASHBOARD_PAYMENT_WALLET}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {DASHBOARD_PAYMENT_WALLET}
+                  </a>
+                </dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="w-32 flex-shrink-0">commP (Piece CID):</dt>
+                <dd className="font-mono text-xs truncate" title={DASHBOARD_COMMP}>
+                  {DASHBOARD_COMMP}
+                </dd>
+              </div>
+            </dl>
           </div>
         </div>
       </div>

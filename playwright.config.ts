@@ -14,7 +14,7 @@ export default defineConfig({
   workers: isIPFS ? 2 : (process.env.CI ? 1 : undefined),
   reporter: 'html',
   use: {
-    baseURL: 'https://dc6f35f9.pinit.eth.limo',
+    baseURL: 'https://b5ff14b9.pinit.eth.limo',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },

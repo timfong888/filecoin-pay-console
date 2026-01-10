@@ -12,9 +12,9 @@ export const EPOCH_DURATION_SECONDS = 30;
 export const EPOCHS_PER_DAY = (24 * 60 * 60) / EPOCH_DURATION_SECONDS; // 2880 epochs per day
 
 // Dashboard deployment metadata (PinMe/IPFS)
-// Updated after each deployment - v0.5.1 (2026-01-09)
-export const DASHBOARD_IPFS_CID = 'bafybeido2pnsu3cd4ml2gb7gfaebnuejxeuznhl5k6nwyb7mmp6ti4rghm';
-export const DASHBOARD_PINME_URL = 'dc6f35f9.pinit.eth.limo';
+// Updated after each deployment - v0.7.0 (2026-01-09)
+export const DASHBOARD_IPFS_CID = 'bafybeicrptqpee3krij7pgbroal7pyueq5vldmupe277tyle625vut5phu';
+export const DASHBOARD_PINME_URL = 'b5ff14b9.pinit.eth.limo';
 export const DASHBOARD_PAYMENT_WALLET = '0x...'; // TODO: Discover PinMe payment wallet
 export const DASHBOARD_COMMP = 'baga6ea4seaq...'; // TODO: Get commP from Filecoin network
 

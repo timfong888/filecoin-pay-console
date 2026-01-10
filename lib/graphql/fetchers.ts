@@ -207,13 +207,17 @@ function transformAccountToPayer(account: Account): PayerDisplay {
 }
 
 // Fetch top payers
+// Note: We fetch more accounts than needed because some accounts may be payees-only
 export async function fetchTopPayers(limit: number = 10) {
   try {
-    const data = await graphqlClient.request<TopPayersResponse>(TOP_PAYERS_QUERY, { first: limit });
+    // Fetch 5x the limit to ensure we get enough payers after filtering
+    const fetchLimit = Math.max(limit * 5, 50);
+    const data = await graphqlClient.request<TopPayersResponse>(TOP_PAYERS_QUERY, { first: fetchLimit });
 
     return data.accounts
       .filter(account => account.payerRails.length > 0)
-      .map(transformAccountToPayer);
+      .map(transformAccountToPayer)
+      .slice(0, limit);
   } catch (error) {
     console.error('Error fetching top payers:', error);
     throw error;
@@ -297,12 +301,13 @@ export async function fetchAllPayersExtended(limit: number = 100) {
 }
 
 // Fetch payer list page metrics (with WoW calculations)
-export async function fetchPayerListMetrics() {
+// days parameter controls how many days of chart data to return
+export async function fetchPayerListMetrics(days: number = 30) {
   try {
     const [globalMetrics, totalSettled, dailyMetrics] = await Promise.all([
       fetchGlobalMetrics(),
       fetchTotalSettled(),
-      fetchDailyMetrics(60), // Get 60 days for WoW calculation
+      fetchDailyMetrics(Math.max(days, 14)), // At least 14 days for WoW
     ]);
 
     // Calculate WoW change for payers
@@ -322,6 +327,18 @@ export async function fetchPayerListMetrics() {
     // Calculate settled goal progress (Goal: $10M ARR = ~$833K/month)
     const settledGoalProgress = Math.min((totalSettled.total / 833333) * 100, 100);
 
+    // Calculate monthly recurring (current month's settled)
+    // Use last30Days as approximation for monthly
+    const monthlyRecurring = totalSettled.last30Days;
+    const monthlyRecurringFormatted = totalSettled.last30DaysFormatted;
+    // ARR projection = monthly * 12
+    const arrProjection = monthlyRecurring * 12;
+    const arrProjectionFormatted = formatCurrency(arrProjection);
+
+    // Filter chart data to requested days
+    const filteredPayers = dailyMetrics.uniquePayers.slice(-days);
+    const filteredDates = dailyMetrics.dates.slice(-days);
+
     return {
       activePayers: globalMetrics.uniquePayers,
       payersWoWChange,
@@ -331,9 +348,14 @@ export async function fetchPayerListMetrics() {
       settledLast30Days: totalSettled.last30Days,
       settledLast30DaysFormatted: totalSettled.last30DaysFormatted,
       settledGoalProgress,
-      // Daily data for charts
-      dailyPayers: dailyMetrics.uniquePayers,
-      dailyDates: dailyMetrics.dates,
+      // Monthly recurring for ARR context
+      monthlyRecurring,
+      monthlyRecurringFormatted,
+      arrProjection,
+      arrProjectionFormatted,
+      // Daily data for charts (filtered to requested days)
+      dailyPayers: filteredPayers,
+      dailyDates: filteredDates,
     };
   } catch (error) {
     console.error('Error fetching payer list metrics:', error);

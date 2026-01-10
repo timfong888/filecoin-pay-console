@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 // Test against localhost for development, live site for CI
-// Latest deployment: v0.5.1 (2026-01-09) - https://dc6f35f9.pinit.eth.limo
-const BASE_URL = process.env.TEST_URL || 'https://dc6f35f9.pinit.eth.limo';
+// Latest deployment: v0.7.0 (2026-01-09) - https://b5ff14b9.pinit.eth.limo
+const BASE_URL = process.env.TEST_URL || 'https://b5ff14b9.pinit.eth.limo';
 
 // IPFS gateways are slow - use 15s wait for live site, 5s for localhost
 const isIPFS = BASE_URL.includes('.limo') || BASE_URL.includes('.ipfs');

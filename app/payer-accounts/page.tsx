@@ -48,6 +48,10 @@ interface PayerListMetrics {
   settledLast30Days: number;
   settledLast30DaysFormatted: string;
   settledGoalProgress: number;
+  monthlyRecurring: number;
+  monthlyRecurringFormatted: string;
+  arrProjection: number;
+  arrProjectionFormatted: string;
   dailyPayers: number[];
   dailyDates: string[];
 }
@@ -531,9 +535,27 @@ function PayerListView() {
     }
   };
 
-  const handleApplyFilters = () => {
-    // Filter application would reload data with new params
-    console.log("Apply filters:", { timeRange, granularity });
+  const handleApplyFilters = async () => {
+    // Convert timeRange to days
+    let days = 30;
+    if (timeRange === "30") days = 30;
+    else if (timeRange === "90") days = 90;
+    else if (timeRange === "ytd") {
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      days = Math.ceil((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    // Re-fetch metrics with new time range
+    try {
+      setLoading(true);
+      const metricsData = await fetchPayerListMetrics(days);
+      setMetrics(metricsData);
+    } catch (err) {
+      console.error("Failed to apply filters:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) {
@@ -601,7 +623,7 @@ function PayerListView() {
         <h1 className="text-2xl font-bold">Payer Accounts</h1>
       </div>
 
-      {/* Hero Metrics Bar */}
+      {/* Hero Metrics Bar (3 cards) */}
       {metrics && (
         <div className="flex gap-6">
           <HeroMetricCard
@@ -612,10 +634,16 @@ function PayerListView() {
             goalLabel="Goal: 1,000"
           />
           <HeroMetricCard
-            title="Settled USDFC"
+            title="Settled USDFC (Total)"
             value={metrics.settledFormatted}
             goalProgress={metrics.settledGoalProgress}
             goalLabel="Goal: $10M ARR"
+          />
+          <HeroMetricCard
+            title="Monthly Recurring"
+            value={metrics.monthlyRecurringFormatted}
+            goalProgress={(metrics.arrProjection / 10000000) * 100}
+            goalLabel={`ARR: ${metrics.arrProjectionFormatted}`}
           />
         </div>
       )}
@@ -646,7 +674,9 @@ function PayerListView() {
                     dataKey="date"
                     tick={{ fontSize: 12 }}
                     tickFormatter={(value) => {
+                      if (!value) return "";
                       const date = new Date(value);
+                      if (isNaN(date.getTime())) return "";
                       return `${date.getMonth() + 1}/${date.getDate()}`;
                     }}
                   />
@@ -681,7 +711,9 @@ function PayerListView() {
                     dataKey="date"
                     tick={{ fontSize: 12 }}
                     tickFormatter={(value) => {
+                      if (!value) return "";
                       const date = new Date(value);
+                      if (isNaN(date.getTime())) return "";
                       return `${date.getMonth() + 1}/${date.getDate()}`;
                     }}
                   />
