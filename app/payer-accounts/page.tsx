@@ -46,7 +46,14 @@ interface PayerListMetrics {
   settledTotal: number;
   settledFormatted: string;
   settledGoalProgress: number;
-  // Cumulative data for charts
+  // Monthly run rate
+  monthlyRunRate: number;
+  monthlyRunRateFormatted: string;
+  annualizedRunRate: number;
+  annualizedRunRateFormatted: string;
+  runRateGoalProgress: number;
+  activeRailsCount: number;
+  // Cumulative data for charts (total at each point in time)
   cumulativePayers: number[];
   cumulativeSettled: number[];
   chartDates: string[];
@@ -56,15 +63,13 @@ interface PayerListMetrics {
 function HeroMetricCard({
   title,
   value,
+  subtitle,
   wowChange,
-  goalProgress,
-  goalLabel,
 }: {
   title: string;
   value: string | number;
+  subtitle?: string;
   wowChange?: string;
-  goalProgress: number;
-  goalLabel: string;
 }) {
   const isPositiveChange = wowChange && parseFloat(wowChange) >= 0;
 
@@ -84,18 +89,9 @@ function HeroMetricCard({
           </span>
         )}
       </div>
-      <div className="mt-3">
-        <div className="flex justify-between text-xs text-gray-500 mb-1">
-          <span>Goal Progress</span>
-          <span>{goalLabel}</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-blue-600 h-2 rounded-full transition-all"
-            style={{ width: `${Math.min(goalProgress, 100)}%` }}
-          />
-        </div>
-      </div>
+      {subtitle && (
+        <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
+      )}
     </div>
   );
 }
@@ -470,7 +466,7 @@ function PayerListView() {
     resolveNames();
   }, [payers.length]);
 
-  // Prepare chart data with cumulative values
+  // Prepare chart data with cumulative values (total at each point in time)
   const chartData = useMemo(() => {
     if (!metrics) return [];
     return metrics.chartDates.map((date, i) => ({
@@ -575,14 +571,15 @@ function PayerListView() {
           <HeroMetricCard
             title="Payer Wallets"
             value="--"
-            goalProgress={0}
-            goalLabel="Goal: 1,000"
           />
           <HeroMetricCard
             title="Total Settled (USDFC)"
             value="--"
-            goalProgress={0}
-            goalLabel="Goal: $10M"
+          />
+          <HeroMetricCard
+            title="Monthly Run Rate"
+            value="--"
+            subtitle="Projected monthly flow based on active rail payment rates"
           />
         </div>
 
@@ -617,21 +614,22 @@ function PayerListView() {
         <h1 className="text-2xl font-bold">Payer Accounts</h1>
       </div>
 
-      {/* Hero Metrics Bar (2 cards) */}
+      {/* Hero Metrics Bar (3 cards) */}
       {metrics && (
         <div className="flex gap-6">
           <HeroMetricCard
             title="Payer Wallets"
             value={metrics.activePayers.toLocaleString()}
             wowChange={metrics.payersWoWChange}
-            goalProgress={metrics.payersGoalProgress}
-            goalLabel="Goal: 1,000"
           />
           <HeroMetricCard
             title="Total Settled (USDFC)"
             value={metrics.settledFormatted}
-            goalProgress={metrics.settledGoalProgress}
-            goalLabel="Goal: $10M"
+          />
+          <HeroMetricCard
+            title="Monthly Run Rate"
+            value={metrics.monthlyRunRateFormatted}
+            subtitle={`= Σ(rate/sec across ${metrics.activeRailsCount} active rails) × 2.59M sec/mo`}
           />
         </div>
       )}
@@ -648,11 +646,11 @@ function PayerListView() {
       {/* Charts */}
       {chartData.length > 0 && (
         <div className="grid grid-cols-2 gap-6">
-          {/* Chart 1: Cumulative Payer Wallets */}
+          {/* Chart 1: Total Unique Payers */}
           <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-2">Cumulative Payer Wallets</h3>
+            <h3 className="text-lg font-semibold mb-2">Total Unique Payers</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Total unique payer wallets over time
+              Cumulative count of unique payer wallets over time
             </p>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -670,7 +668,7 @@ function PayerListView() {
                   />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip
-                    formatter={(value) => [value ?? 0, "Total Wallets"]}
+                    formatter={(value) => [value ?? 0, "Total Payers"]}
                     labelFormatter={(label) => `Date: ${label}`}
                   />
                   <Line
@@ -685,11 +683,11 @@ function PayerListView() {
             </div>
           </div>
 
-          {/* Chart 2: Cumulative USDFC Settled */}
+          {/* Chart 2: Total USDFC Settled */}
           <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-2">Cumulative USDFC Settled</h3>
+            <h3 className="text-lg font-semibold mb-2">Total USDFC Settled</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Total settled amount over time
+              Cumulative settlement volume over time
             </p>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">

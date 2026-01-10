@@ -54,6 +54,36 @@ export const TOTAL_SETTLED_QUERY = gql`
   }
 `;
 
+// Active rails for run rate calculation
+export const ACTIVE_RAILS_QUERY = gql`
+  query ActiveRails {
+    rails(first: 1000, where: { state: 0 }) {
+      id
+      paymentRate
+      state
+    }
+  }
+`;
+
+// Payer accounts with their first rail creation date (for cumulative chart)
+export const PAYER_FIRST_ACTIVITY_QUERY = gql`
+  query PayerFirstActivity {
+    accounts(first: 1000, where: { payerRails_: { id_not: null } }) {
+      id
+      payerRails(first: 1, orderBy: createdAt, orderDirection: asc) {
+        createdAt
+      }
+    }
+  }
+`;
+
+export interface PayerFirstActivityResponse {
+  accounts: Array<{
+    id: string;
+    payerRails: Array<{ createdAt: string }>;
+  }>;
+}
+
 // Daily metrics for sparklines
 export const DAILY_METRICS_QUERY = gql`
   query DailyMetrics($first: Int!) {
@@ -202,6 +232,10 @@ export interface TopPayeesResponse {
 }
 
 export interface TotalSettledResponse {
+  rails: Rail[];
+}
+
+export interface ActiveRailsResponse {
   rails: Rail[];
 }
 

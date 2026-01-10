@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { MetricCard } from "@/components/dashboard/MetricCard";
+import { useEffect, useState, useMemo } from "react";
 import { TopPayersTable, mockPayers, Payer } from "@/components/dashboard/TopPayersTable";
 import { fetchDashboardData } from "@/lib/graphql/fetchers";
 import { batchResolveENS } from "@/lib/ens";
@@ -11,6 +10,15 @@ import {
   NETWORK,
   DASHBOARD_VERSION,
 } from "@/lib/graphql/client";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
 interface DashboardData {
   globalMetrics: {
@@ -26,12 +34,38 @@ interface DashboardData {
     last30DaysFormatted: string;
   };
   topPayers: Payer[];
-  dailyMetrics: {
-    uniquePayers: number[];
-    terminations: number[];
-    activeRails: number[];
-    dates: string[];
+  runRate: {
+    monthly: number;
+    monthlyFormatted: string;
+    annualized: number;
+    annualizedFormatted: string;
+    activeRailsCount: number;
   };
+  // Cumulative chart data
+  cumulativePayers: number[];
+  cumulativeSettled: number[];
+  chartDates: string[];
+}
+
+// Hero Metric Card Component (no sparklines)
+function HeroMetricCard({
+  title,
+  value,
+  subtitle,
+}: {
+  title: string;
+  value: string | number;
+  subtitle?: string;
+}) {
+  return (
+    <div className="bg-white border rounded-lg p-6 flex-1">
+      <p className="text-sm text-gray-500 font-medium">{title}</p>
+      <p className="text-3xl font-bold mt-1">{value}</p>
+      {subtitle && (
+        <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
+      )}
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -156,25 +190,10 @@ export default function Dashboard() {
             <p className="text-sm">{error}. Displaying sample data instead.</p>
           </div>
         )}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <MetricCard
-            title="Unique Payers"
-            value="120"
-            sparklineData={[85, 90, 88, 95, 100, 105, 120]}
-          />
-          <MetricCard
-            title="USDFC Settled"
-            value="$50.23"
-            subtitle="Total"
-            secondaryValue="$20.19"
-            secondaryLabel="Last 30D"
-            sparklineData={[15, 22, 18, 35, 28, 42, 50]}
-          />
-          <MetricCard
-            title="Wallet Terminations"
-            value="19"
-            sparklineData={[5, 8, 3, 10, 6, 12, 19]}
-          />
+        <div className="flex gap-6">
+          <HeroMetricCard title="Unique Payers" value="--" />
+          <HeroMetricCard title="USDFC Settled" value="--" />
+          <HeroMetricCard title="Monthly Run Rate" value="--" />
         </div>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -262,31 +281,117 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { globalMetrics, totalSettled, topPayers, dailyMetrics } = data;
+  const { globalMetrics, totalSettled, topPayers, runRate, cumulativePayers, cumulativeSettled, chartDates } = data;
+
+  // Prepare chart data with cumulative values
+  const chartData = useMemo(() => {
+    return chartDates.map((date, i) => ({
+      date: date,
+      payers: cumulativePayers[i],
+      settled: cumulativeSettled[i],
+    }));
+  }, [chartDates, cumulativePayers, cumulativeSettled]);
 
   return (
     <div className="space-y-6">
-      {/* Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <MetricCard
+      {/* Hero Metric Cards */}
+      <div className="flex gap-6">
+        <HeroMetricCard
           title="Unique Payers"
-          value={globalMetrics.uniquePayers.toString()}
-          sparklineData={dailyMetrics.uniquePayers.length > 0 ? dailyMetrics.uniquePayers : undefined}
+          value={globalMetrics.uniquePayers.toLocaleString()}
         />
-        <MetricCard
+        <HeroMetricCard
           title="USDFC Settled"
           value={totalSettled.totalFormatted}
-          subtitle="Total"
-          secondaryValue={totalSettled.last30DaysFormatted}
-          secondaryLabel="Last 30D"
-          sparklineData={dailyMetrics.activeRails.length > 0 ? dailyMetrics.activeRails : undefined}
         />
-        <MetricCard
-          title="Wallet Terminations"
-          value={globalMetrics.totalTerminations.toString()}
-          sparklineData={dailyMetrics.terminations.length > 0 ? dailyMetrics.terminations : undefined}
+        <HeroMetricCard
+          title="Monthly Run Rate"
+          value={runRate.monthlyFormatted}
+          subtitle={`= Σ(rate/sec across ${runRate.activeRailsCount} active rails) × 2.59M sec/mo`}
         />
       </div>
+
+      {/* Cumulative Line Charts */}
+      {chartData.length > 0 && (
+        <div className="grid grid-cols-2 gap-6">
+          {/* Chart 1: Total Unique Payers */}
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-lg font-semibold mb-2">Total Unique Payers</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Cumulative count of unique payer wallets over time
+            </p>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => {
+                      if (!value) return "";
+                      const date = new Date(value);
+                      if (isNaN(date.getTime())) return "";
+                      return `${date.getMonth() + 1}/${date.getDate()}`;
+                    }}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value) => [value ?? 0, "Total Payers"]}
+                    labelFormatter={(label) => `Date: ${label}`}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="payers"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Chart 2: Total USDFC Settled */}
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-lg font-semibold mb-2">Total USDFC Settled</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Cumulative settlement volume over time
+            </p>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => {
+                      if (!value) return "";
+                      const date = new Date(value);
+                      if (isNaN(date.getTime())) return "";
+                      return `${date.getMonth() + 1}/${date.getDate()}`;
+                    }}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `$${value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value}`}
+                  />
+                  <Tooltip
+                    formatter={(value) => [`$${(value as number)?.toFixed(2) ?? 0}`, "Total Settled"]}
+                    labelFormatter={(label) => `Date: ${label}`}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="settled"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Top Payers Section */}
       <div className="space-y-4">

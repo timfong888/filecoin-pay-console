@@ -4,12 +4,16 @@ import {
   TOP_PAYERS_QUERY,
   TOP_PAYEES_QUERY,
   TOTAL_SETTLED_QUERY,
+  ACTIVE_RAILS_QUERY,
+  PAYER_FIRST_ACTIVITY_QUERY,
   DAILY_METRICS_QUERY,
   ACCOUNT_DETAIL_QUERY,
   GlobalMetricsResponse,
   TopPayersResponse,
   TopPayeesResponse,
   TotalSettledResponse,
+  ActiveRailsResponse,
+  PayerFirstActivityResponse,
   DailyMetricsResponse,
   AccountDetailResponse,
   Account,
@@ -122,6 +126,46 @@ export async function fetchTotalSettled() {
     };
   } catch (error) {
     console.error('Error fetching total settled:', error);
+    throw error;
+  }
+}
+
+// Fetch monthly run rate from active rails
+// Monthly Run Rate = Σ(activeRails.paymentRate) × seconds/month
+// paymentRate is in wei per second
+const SECONDS_PER_MONTH = 30 * 24 * 60 * 60; // 2,592,000
+
+export async function fetchMonthlyRunRate() {
+  try {
+    const data = await graphqlClient.request<ActiveRailsResponse>(ACTIVE_RAILS_QUERY);
+
+    // Sum all active rails' payment rates (wei per second)
+    let totalPaymentRate = BigInt(0);
+    let activeRailsCount = 0;
+
+    for (const rail of data.rails) {
+      if (rail.paymentRate) {
+        totalPaymentRate += BigInt(rail.paymentRate);
+        activeRailsCount++;
+      }
+    }
+
+    // Calculate monthly run rate: rate/sec × seconds/month
+    const monthlyRunRateWei = totalPaymentRate * BigInt(SECONDS_PER_MONTH);
+    const monthlyRunRate = weiToUSDC(monthlyRunRateWei.toString());
+
+    // Annualized run rate for reference
+    const annualizedRunRate = monthlyRunRate * 12;
+
+    return {
+      monthly: monthlyRunRate,
+      monthlyFormatted: formatCurrency(monthlyRunRate),
+      annualized: annualizedRunRate,
+      annualizedFormatted: formatCurrency(annualizedRunRate),
+      activeRailsCount,
+    };
+  } catch (error) {
+    console.error('Error fetching monthly run rate:', error);
     throw error;
   }
 }
@@ -300,11 +344,65 @@ export async function fetchAllPayersExtended(limit: number = 100) {
   }
 }
 
+// Fetch payer first activity dates bucketed by day
+async function fetchPayersByDate(): Promise<Map<string, number>> {
+  try {
+    const data = await graphqlClient.request<PayerFirstActivityResponse>(PAYER_FIRST_ACTIVITY_QUERY);
+    const payersByDate = new Map<string, number>();
+
+    for (const account of data.accounts) {
+      if (account.payerRails.length > 0) {
+        const createdAtMs = parseInt(account.payerRails[0].createdAt) * 1000;
+        const date = new Date(createdAtMs);
+        const dateKey = date.toISOString().split('T')[0];
+        payersByDate.set(dateKey, (payersByDate.get(dateKey) || 0) + 1);
+      }
+    }
+
+    return payersByDate;
+  } catch (error) {
+    console.error('Error fetching payers by date:', error);
+    return new Map();
+  }
+}
+
+// Fetch settled amounts bucketed by day for cumulative calculations
+async function fetchDailySettled(): Promise<Map<string, number>> {
+  try {
+    const data = await graphqlClient.request<TotalSettledResponse>(TOTAL_SETTLED_QUERY);
+    const dailySettled = new Map<string, number>();
+
+    for (const rail of data.rails) {
+      const createdAtMs = parseInt(rail.createdAt) * 1000;
+      const date = new Date(createdAtMs);
+      const dateKey = date.toISOString().split('T')[0];
+
+      const amount = weiToUSDC(rail.totalSettledAmount);
+      dailySettled.set(dateKey, (dailySettled.get(dateKey) || 0) + amount);
+    }
+
+    return dailySettled;
+  } catch (error) {
+    console.error('Error fetching daily settled:', error);
+    return new Map();
+  }
+}
+
+// Generate date range array
+function generateDateRange(startDate: Date, endDate: Date): string[] {
+  const dates: string[] = [];
+  const current = new Date(startDate);
+  while (current <= endDate) {
+    dates.push(current.toISOString().split('T')[0]);
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
 // Fetch payer list page metrics with cumulative chart data
-// Supports optional date range filtering
+// Shows total at each point in time (running totals)
 export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
   try {
-    // Calculate days for data fetch
     const now = new Date();
     const defaultStart = new Date(now);
     defaultStart.setDate(now.getDate() - 30);
@@ -312,57 +410,60 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
     const effectiveStart = startDate || defaultStart;
     const effectiveEnd = endDate || now;
 
-    // Calculate days between start and end for data fetch
-    const daysDiff = Math.ceil((effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24));
-    const days = Math.max(daysDiff, 14); // At least 14 days for WoW calculation
-
-    const [globalMetrics, totalSettled, dailyMetrics] = await Promise.all([
+    const [globalMetrics, totalSettled, runRate, payersByDate, dailySettledMap] = await Promise.all([
       fetchGlobalMetrics(),
       fetchTotalSettled(),
-      fetchDailyMetrics(Math.max(days + 7, 30)), // Extra days for WoW
+      fetchMonthlyRunRate(),
+      fetchPayersByDate(),
+      fetchDailySettled(),
     ]);
 
-    // Filter daily metrics by date range
-    const filteredIndices: number[] = [];
-    dailyMetrics.dates.forEach((dateStr, i) => {
-      const date = new Date(dateStr);
-      if (date >= effectiveStart && date <= effectiveEnd) {
-        filteredIndices.push(i);
-      }
-    });
+    // Generate continuous date range for chart
+    const chartDates = generateDateRange(effectiveStart, effectiveEnd);
 
     // Calculate cumulative payers over time
-    // Each day shows the total unique payers up to that point
+    // First, get all payers before the start date
+    let priorPayers = 0;
+    for (const [dateKey, count] of payersByDate) {
+      if (dateKey < chartDates[0]) {
+        priorPayers += count;
+      }
+    }
+
+    // Then build cumulative array
     const cumulativePayers: number[] = [];
-    let runningTotalPayers = 0;
-    filteredIndices.forEach((idx) => {
-      runningTotalPayers += dailyMetrics.uniquePayers[idx];
-      cumulativePayers.push(runningTotalPayers);
-    });
+    let runningTotal = priorPayers;
+    for (const date of chartDates) {
+      runningTotal += payersByDate.get(date) || 0;
+      cumulativePayers.push(runningTotal);
+    }
 
-    // For cumulative settled, we need a different approach
-    // Since dailyMetrics doesn't have daily settled, use activeRails as proxy
-    // and calculate based on total settled distributed over time
+    // Calculate cumulative settled over time
+    // First, get all settled before the start date
+    let priorSettled = 0;
+    for (const [dateKey, amount] of dailySettledMap) {
+      if (dateKey < chartDates[0]) {
+        priorSettled += amount;
+      }
+    }
+
+    // Then build cumulative array
     const cumulativeSettled: number[] = [];
-    const dailySettledEstimate = totalSettled.total / Math.max(filteredIndices.length, 1);
-    let runningTotalSettled = 0;
-    filteredIndices.forEach(() => {
-      runningTotalSettled += dailySettledEstimate;
-      cumulativeSettled.push(Math.round(runningTotalSettled * 100) / 100);
-    });
+    let runningSettled = priorSettled;
+    for (const date of chartDates) {
+      runningSettled += dailySettledMap.get(date) || 0;
+      cumulativeSettled.push(Math.round(runningSettled * 100) / 100);
+    }
 
-    // Get filtered dates
-    const chartDates = filteredIndices.map(i => dailyMetrics.dates[i]);
+    // Calculate WoW change (based on new payers in last 7 days vs previous 7)
+    const last7Days = chartDates.slice(-7);
+    const prev7Days = chartDates.slice(-14, -7);
 
-    // Calculate WoW change for payers
-    const recentPayers = dailyMetrics.uniquePayers.slice(-7);
-    const prevWeekPayers = dailyMetrics.uniquePayers.slice(-14, -7);
+    const recentNewPayers = last7Days.reduce((sum, date) => sum + (payersByDate.get(date) || 0), 0);
+    const prevNewPayers = prev7Days.reduce((sum, date) => sum + (payersByDate.get(date) || 0), 0);
 
-    const currentWeekTotal = recentPayers.reduce((a, b) => a + b, 0);
-    const prevWeekTotal = prevWeekPayers.reduce((a, b) => a + b, 0);
-
-    const payersWoWChange = prevWeekTotal > 0
-      ? ((currentWeekTotal - prevWeekTotal) / prevWeekTotal * 100).toFixed(1)
+    const payersWoWChange = prevNewPayers > 0
+      ? ((recentNewPayers - prevNewPayers) / prevNewPayers * 100).toFixed(1)
       : '0';
 
     // Calculate goal progress (Goal: 1000 payers)
@@ -371,6 +472,9 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
     // Calculate settled goal progress (Goal: $10M)
     const settledGoalProgress = Math.min((totalSettled.total / 10000000) * 100, 100);
 
+    // Calculate run rate goal progress (Goal: $10M ARR = ~$833K/month)
+    const runRateGoalProgress = Math.min((runRate.monthly / 833333) * 100, 100);
+
     return {
       activePayers: globalMetrics.uniquePayers,
       payersWoWChange,
@@ -378,6 +482,13 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
       settledTotal: totalSettled.total,
       settledFormatted: totalSettled.totalFormatted,
       settledGoalProgress,
+      // Monthly run rate
+      monthlyRunRate: runRate.monthly,
+      monthlyRunRateFormatted: runRate.monthlyFormatted,
+      annualizedRunRate: runRate.annualized,
+      annualizedRunRateFormatted: runRate.annualizedFormatted,
+      runRateGoalProgress,
+      activeRailsCount: runRate.activeRailsCount,
       // Cumulative data for charts
       cumulativePayers,
       cumulativeSettled,
@@ -469,20 +580,62 @@ export async function fetchDailyMetrics(days: number = 30) {
   }
 }
 
-// Fetch all dashboard data at once
+// Fetch all dashboard data at once (including cumulative chart data)
 export async function fetchDashboardData() {
-  const [globalMetrics, totalSettled, topPayers, dailyMetrics] = await Promise.all([
+  const [globalMetrics, totalSettled, topPayers, runRate, payersByDate, dailySettledMap] = await Promise.all([
     fetchGlobalMetrics(),
     fetchTotalSettled(),
     fetchTopPayers(10),
-    fetchDailyMetrics(30),
+    fetchMonthlyRunRate(),
+    fetchPayersByDate(),
+    fetchDailySettled(),
   ]);
+
+  // Generate chart dates (last 30 days)
+  const now = new Date();
+  const defaultStart = new Date(now);
+  defaultStart.setDate(now.getDate() - 30);
+  const chartDates = generateDateRange(defaultStart, now);
+
+  // Calculate cumulative payers over time
+  let priorPayers = 0;
+  for (const [dateKey, count] of payersByDate) {
+    if (dateKey < chartDates[0]) {
+      priorPayers += count;
+    }
+  }
+
+  const cumulativePayers: number[] = [];
+  let runningTotal = priorPayers;
+  for (const date of chartDates) {
+    runningTotal += payersByDate.get(date) || 0;
+    cumulativePayers.push(runningTotal);
+  }
+
+  // Calculate cumulative settled over time
+  let priorSettled = 0;
+  for (const [dateKey, amount] of dailySettledMap) {
+    if (dateKey < chartDates[0]) {
+      priorSettled += amount;
+    }
+  }
+
+  const cumulativeSettled: number[] = [];
+  let runningSettled = priorSettled;
+  for (const date of chartDates) {
+    runningSettled += dailySettledMap.get(date) || 0;
+    cumulativeSettled.push(Math.round(runningSettled * 100) / 100);
+  }
 
   return {
     globalMetrics,
     totalSettled,
     topPayers,
-    dailyMetrics,
+    runRate,
+    // Cumulative chart data
+    cumulativePayers,
+    cumulativeSettled,
+    chartDates,
   };
 }
 

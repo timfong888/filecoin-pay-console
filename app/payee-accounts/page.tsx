@@ -124,13 +124,31 @@ function PayeeDetailView({ address }: { address: string }) {
 
   // Calculate totals from payee rails
   let totalReceived = 0;
+  let totalPaymentRate = 0;
+  let activeRailsCount = 0;
   const uniquePayers = new Set<string>();
   for (const rail of account.payeeRails) {
     totalReceived += rail.settledRaw;
     if (rail.counterpartyAddress) {
       uniquePayers.add(rail.counterpartyAddress.toLowerCase());
     }
+    // Sum payment rates from active rails for run rate
+    if (rail.stateCode === 0 && rail.rateRaw > 0) {
+      totalPaymentRate += rail.rateRaw;
+      activeRailsCount++;
+    }
   }
+
+  // Calculate monthly run rate: rate/epoch × epochs/day × 30 days
+  // Rate is per epoch (30 seconds), so multiply by 2880 epochs/day × 30 days
+  const SECONDS_PER_MONTH = 30 * 24 * 60 * 60; // 2,592,000
+  const EPOCH_DURATION = 30; // seconds
+  const monthlyRunRate = totalPaymentRate * (SECONDS_PER_MONTH / EPOCH_DURATION);
+  const formatCurrency = (value: number) => {
+    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
+    if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`;
+    return `$${value.toFixed(2)}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -162,7 +180,7 @@ function PayeeDetailView({ address }: { address: string }) {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
           <p className="text-sm text-purple-600">Claimable Now</p>
           <p className="text-2xl font-bold text-purple-900">{account.totalPayout}</p>
@@ -174,6 +192,13 @@ function PayeeDetailView({ address }: { address: string }) {
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
           <p className="text-sm text-purple-600">Unique Payers</p>
           <p className="text-2xl font-bold text-purple-900">{uniquePayers.size}</p>
+        </div>
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+          <p className="text-sm text-purple-600">Monthly Run Rate</p>
+          <p className="text-2xl font-bold text-purple-900">{formatCurrency(monthlyRunRate)}</p>
+          <p className="text-xs text-purple-500 mt-1">
+            = Σ(rate/epoch across {activeRailsCount} rail{activeRailsCount !== 1 ? 's' : ''}) × 86,400 epochs/mo
+          </p>
         </div>
       </div>
 
