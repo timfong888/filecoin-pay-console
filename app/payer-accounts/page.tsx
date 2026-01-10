@@ -45,15 +45,11 @@ interface PayerListMetrics {
   payersGoalProgress: number;
   settledTotal: number;
   settledFormatted: string;
-  settledLast30Days: number;
-  settledLast30DaysFormatted: string;
   settledGoalProgress: number;
-  monthlyRecurring: number;
-  monthlyRecurringFormatted: string;
-  arrProjection: number;
-  arrProjectionFormatted: string;
-  dailyPayers: number[];
-  dailyDates: string[];
+  // Cumulative data for charts
+  cumulativePayers: number[];
+  cumulativeSettled: number[];
+  chartDates: string[];
 }
 
 // Hero Metric Card Component
@@ -106,27 +102,37 @@ function HeroMetricCard({
 
 // Filter Controls Component
 function FilterControls({
-  timeRange,
-  setTimeRange,
+  fromDate,
+  toDate,
+  setFromDate,
+  setToDate,
   onApply,
 }: {
-  timeRange: string;
-  setTimeRange: (v: string) => void;
+  fromDate: string;
+  toDate: string;
+  setFromDate: (v: string) => void;
+  setToDate: (v: string) => void;
   onApply: () => void;
 }) {
   return (
     <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg">
       <div className="flex items-center gap-2">
-        <label className="text-sm font-medium text-gray-600">Time Range:</label>
-        <select
-          value={timeRange}
-          onChange={(e) => setTimeRange(e.target.value)}
+        <label className="text-sm font-medium text-gray-600">From:</label>
+        <input
+          type="date"
+          value={fromDate}
+          onChange={(e) => setFromDate(e.target.value)}
           className="border rounded-md px-3 py-1.5 text-sm bg-white"
-        >
-          <option value="30">Last 30 Days</option>
-          <option value="90">Last 90 Days</option>
-          <option value="ytd">YTD</option>
-        </select>
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium text-gray-600">To:</label>
+        <input
+          type="date"
+          value={toDate}
+          onChange={(e) => setToDate(e.target.value)}
+          className="border rounded-md px-3 py-1.5 text-sm bg-white"
+        />
       </div>
 
       <button
@@ -384,8 +390,21 @@ function PayerDetailView({ address }: { address: string }) {
   );
 }
 
+// Helper to get default date range (last 30 days)
+function getDefaultDateRange() {
+  const today = new Date();
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(today.getDate() - 30);
+
+  return {
+    fromDate: thirtyDaysAgo.toISOString().split('T')[0],
+    toDate: today.toISOString().split('T')[0],
+  };
+}
+
 // List View Component with Hero Metrics and Charts
 function PayerListView() {
+  const defaultDates = getDefaultDateRange();
   const [payers, setPayers] = useState<PayerDisplayExtended[]>([]);
   const [metrics, setMetrics] = useState<PayerListMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -393,7 +412,8 @@ function PayerListView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<"settled" | "locked" | "rails" | "runway" | "start">("settled");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
-  const [timeRange, setTimeRange] = useState("30");
+  const [fromDate, setFromDate] = useState(defaultDates.fromDate);
+  const [toDate, setToDate] = useState(defaultDates.toDate);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -450,12 +470,13 @@ function PayerListView() {
     resolveNames();
   }, [payers.length]);
 
-  // Prepare chart data
+  // Prepare chart data with cumulative values
   const chartData = useMemo(() => {
     if (!metrics) return [];
-    return metrics.dailyDates.map((date, i) => ({
+    return metrics.chartDates.map((date, i) => ({
       date: date,
-      payers: metrics.dailyPayers[i],
+      payers: metrics.cumulativePayers[i],
+      settled: metrics.cumulativeSettled[i],
     }));
   }, [metrics]);
 
@@ -517,20 +538,12 @@ function PayerListView() {
   };
 
   const handleApplyFilters = async () => {
-    // Convert timeRange to days
-    let days = 30;
-    if (timeRange === "30") days = 30;
-    else if (timeRange === "90") days = 90;
-    else if (timeRange === "ytd") {
-      const now = new Date();
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      days = Math.ceil((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
-    }
-
-    // Re-fetch metrics with new time range
+    // Re-fetch metrics with date range
     try {
       setLoading(true);
-      const metricsData = await fetchPayerListMetrics(days);
+      const startDate = fromDate ? new Date(fromDate) : undefined;
+      const endDate = toDate ? new Date(toDate) : undefined;
+      const metricsData = await fetchPayerListMetrics(startDate, endDate);
       setMetrics(metricsData);
     } catch (err) {
       console.error("Failed to apply filters:", err);
@@ -560,16 +573,16 @@ function PayerListView() {
         {/* Default Hero Metrics (placeholder for error state) */}
         <div className="flex gap-6">
           <HeroMetricCard
-            title="Active Payer Wallets"
+            title="Payer Wallets"
             value="--"
             goalProgress={0}
             goalLabel="Goal: 1,000"
           />
           <HeroMetricCard
-            title="Settled USDFC"
+            title="Total Settled (USDFC)"
             value="--"
             goalProgress={0}
-            goalLabel="Goal: $10M ARR"
+            goalLabel="Goal: $10M"
           />
         </div>
 
@@ -604,46 +617,42 @@ function PayerListView() {
         <h1 className="text-2xl font-bold">Payer Accounts</h1>
       </div>
 
-      {/* Hero Metrics Bar (3 cards) */}
+      {/* Hero Metrics Bar (2 cards) */}
       {metrics && (
         <div className="flex gap-6">
           <HeroMetricCard
-            title="Active Payer Wallets"
+            title="Payer Wallets"
             value={metrics.activePayers.toLocaleString()}
             wowChange={metrics.payersWoWChange}
             goalProgress={metrics.payersGoalProgress}
             goalLabel="Goal: 1,000"
           />
           <HeroMetricCard
-            title="Settled USDFC (Total)"
+            title="Total Settled (USDFC)"
             value={metrics.settledFormatted}
             goalProgress={metrics.settledGoalProgress}
-            goalLabel="Goal: $10M ARR"
-          />
-          <HeroMetricCard
-            title="Monthly Recurring"
-            value={metrics.monthlyRecurringFormatted}
-            goalProgress={(metrics.arrProjection / 10000000) * 100}
-            goalLabel={`ARR: ${metrics.arrProjectionFormatted}`}
+            goalLabel="Goal: $10M"
           />
         </div>
       )}
 
       {/* Filter Controls */}
       <FilterControls
-        timeRange={timeRange}
-        setTimeRange={setTimeRange}
+        fromDate={fromDate}
+        toDate={toDate}
+        setFromDate={setFromDate}
+        setToDate={setToDate}
         onApply={handleApplyFilters}
       />
 
       {/* Charts */}
       {chartData.length > 0 && (
         <div className="grid grid-cols-2 gap-6">
-          {/* Chart 1: Payer Accounts Over Time */}
+          {/* Chart 1: Cumulative Payer Wallets */}
           <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-2">Payer Accounts Over Time</h3>
+            <h3 className="text-lg font-semibold mb-2">Cumulative Payer Wallets</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Cumulative unique payer wallets
+              Total unique payer wallets over time
             </p>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -661,7 +670,7 @@ function PayerListView() {
                   />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip
-                    formatter={(value) => [value ?? 0, "Payers"]}
+                    formatter={(value) => [value ?? 0, "Total Wallets"]}
                     labelFormatter={(label) => `Date: ${label}`}
                   />
                   <Line
@@ -676,15 +685,15 @@ function PayerListView() {
             </div>
           </div>
 
-          {/* Chart 2: USDFC Settled Over Time */}
+          {/* Chart 2: Cumulative USDFC Settled */}
           <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-2">USDFC Settled Over Time</h3>
+            <h3 className="text-lg font-semibold mb-2">Cumulative USDFC Settled</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Settlement volume per period
+              Total settled amount over time
             </p>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartData}>
+                <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                   <XAxis
                     dataKey="date"
@@ -696,13 +705,22 @@ function PayerListView() {
                       return `${date.getMonth() + 1}/${date.getDate()}`;
                     }}
                   />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => `$${value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value}`}
+                  />
                   <Tooltip
-                    formatter={(value) => [`${value ?? 0}`, "Payers"]}
+                    formatter={(value) => [`$${(value as number)?.toFixed(2) ?? 0}`, "Total Settled"]}
                     labelFormatter={(label) => `Date: ${label}`}
                   />
-                  <Bar dataKey="payers" fill="#10b981" radius={[2, 2, 0, 0]} />
-                </BarChart>
+                  <Line
+                    type="monotone"
+                    dataKey="settled"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>

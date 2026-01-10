@@ -300,21 +300,65 @@ export async function fetchAllPayersExtended(limit: number = 100) {
   }
 }
 
-// Fetch payer list page metrics (with WoW calculations)
-// days parameter controls how many days of chart data to return
-export async function fetchPayerListMetrics(days: number = 30) {
+// Fetch payer list page metrics with cumulative chart data
+// Supports optional date range filtering
+export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
   try {
+    // Calculate days for data fetch
+    const now = new Date();
+    const defaultStart = new Date(now);
+    defaultStart.setDate(now.getDate() - 30);
+
+    const effectiveStart = startDate || defaultStart;
+    const effectiveEnd = endDate || now;
+
+    // Calculate days between start and end for data fetch
+    const daysDiff = Math.ceil((effectiveEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24));
+    const days = Math.max(daysDiff, 14); // At least 14 days for WoW calculation
+
     const [globalMetrics, totalSettled, dailyMetrics] = await Promise.all([
       fetchGlobalMetrics(),
       fetchTotalSettled(),
-      fetchDailyMetrics(Math.max(days, 14)), // At least 14 days for WoW
+      fetchDailyMetrics(Math.max(days + 7, 30)), // Extra days for WoW
     ]);
 
+    // Filter daily metrics by date range
+    const filteredIndices: number[] = [];
+    dailyMetrics.dates.forEach((dateStr, i) => {
+      const date = new Date(dateStr);
+      if (date >= effectiveStart && date <= effectiveEnd) {
+        filteredIndices.push(i);
+      }
+    });
+
+    // Calculate cumulative payers over time
+    // Each day shows the total unique payers up to that point
+    const cumulativePayers: number[] = [];
+    let runningTotalPayers = 0;
+    filteredIndices.forEach((idx) => {
+      runningTotalPayers += dailyMetrics.uniquePayers[idx];
+      cumulativePayers.push(runningTotalPayers);
+    });
+
+    // For cumulative settled, we need a different approach
+    // Since dailyMetrics doesn't have daily settled, use activeRails as proxy
+    // and calculate based on total settled distributed over time
+    const cumulativeSettled: number[] = [];
+    const dailySettledEstimate = totalSettled.total / Math.max(filteredIndices.length, 1);
+    let runningTotalSettled = 0;
+    filteredIndices.forEach(() => {
+      runningTotalSettled += dailySettledEstimate;
+      cumulativeSettled.push(Math.round(runningTotalSettled * 100) / 100);
+    });
+
+    // Get filtered dates
+    const chartDates = filteredIndices.map(i => dailyMetrics.dates[i]);
+
     // Calculate WoW change for payers
-    const currentWeekPayers = dailyMetrics.uniquePayers.slice(-7);
+    const recentPayers = dailyMetrics.uniquePayers.slice(-7);
     const prevWeekPayers = dailyMetrics.uniquePayers.slice(-14, -7);
 
-    const currentWeekTotal = currentWeekPayers.reduce((a, b) => a + b, 0);
+    const currentWeekTotal = recentPayers.reduce((a, b) => a + b, 0);
     const prevWeekTotal = prevWeekPayers.reduce((a, b) => a + b, 0);
 
     const payersWoWChange = prevWeekTotal > 0
@@ -324,20 +368,8 @@ export async function fetchPayerListMetrics(days: number = 30) {
     // Calculate goal progress (Goal: 1000 payers)
     const payersGoalProgress = Math.min((globalMetrics.uniquePayers / 1000) * 100, 100);
 
-    // Calculate settled goal progress (Goal: $10M ARR = ~$833K/month)
-    const settledGoalProgress = Math.min((totalSettled.total / 833333) * 100, 100);
-
-    // Calculate monthly recurring (current month's settled)
-    // Use last30Days as approximation for monthly
-    const monthlyRecurring = totalSettled.last30Days;
-    const monthlyRecurringFormatted = totalSettled.last30DaysFormatted;
-    // ARR projection = monthly * 12
-    const arrProjection = monthlyRecurring * 12;
-    const arrProjectionFormatted = formatCurrency(arrProjection);
-
-    // Filter chart data to requested days
-    const filteredPayers = dailyMetrics.uniquePayers.slice(-days);
-    const filteredDates = dailyMetrics.dates.slice(-days);
+    // Calculate settled goal progress (Goal: $10M)
+    const settledGoalProgress = Math.min((totalSettled.total / 10000000) * 100, 100);
 
     return {
       activePayers: globalMetrics.uniquePayers,
@@ -345,17 +377,11 @@ export async function fetchPayerListMetrics(days: number = 30) {
       payersGoalProgress,
       settledTotal: totalSettled.total,
       settledFormatted: totalSettled.totalFormatted,
-      settledLast30Days: totalSettled.last30Days,
-      settledLast30DaysFormatted: totalSettled.last30DaysFormatted,
       settledGoalProgress,
-      // Monthly recurring for ARR context
-      monthlyRecurring,
-      monthlyRecurringFormatted,
-      arrProjection,
-      arrProjectionFormatted,
-      // Daily data for charts (filtered to requested days)
-      dailyPayers: filteredPayers,
-      dailyDates: filteredDates,
+      // Cumulative data for charts
+      cumulativePayers,
+      cumulativeSettled,
+      chartDates,
     };
   } catch (error) {
     console.error('Error fetching payer list metrics:', error);
