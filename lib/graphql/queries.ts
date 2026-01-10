@@ -27,6 +27,7 @@ export const TOP_PAYERS_QUERY = gql`
         id
         funds
         lockupCurrent
+        lockupRate
         payout
       }
       payerRails(first: 10, orderBy: createdAt, orderDirection: desc) {
@@ -153,6 +154,9 @@ export interface UserToken {
   funds: string;
   lockupCurrent: string;
   payout: string;
+  lockupRate?: string;
+  fundsCollected?: string;
+  token?: { id: string };
 }
 
 export interface Rail {
@@ -160,6 +164,7 @@ export interface Rail {
   totalSettledAmount: string;
   createdAt: string;
   state: number;
+  paymentRate?: string;
   payee?: { address: string };
   payer?: { address: string };
 }
@@ -202,4 +207,8 @@ export interface TotalSettledResponse {
 
 export interface DailyMetricsResponse {
   dailyMetrics: DailyMetric[];
+}
+
+export interface AccountDetailResponse {
+  account: Account | null;
 }

@@ -1,9 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { Payer } from "@/components/dashboard/TopPayersTable";
-import { fetchAllPayers } from "@/lib/graphql/fetchers";
-import { batchResolveENS } from "@/lib/ens";
+import {
+  fetchAllPayersExtended,
+  fetchAccountDetail,
+  fetchPayerListMetrics,
+  AccountDetail,
+  PayerDisplayExtended,
+} from "@/lib/graphql/fetchers";
+import {
+  FILECOIN_PAY_CONTRACT,
+  GOLDSKY_ENDPOINT,
+  SUBGRAPH_VERSION,
+  NETWORK,
+} from "@/lib/graphql/client";
+import { batchResolveENS, resolveENS } from "@/lib/ens";
 import {
   Table,
   TableBody,
@@ -12,21 +26,402 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
-export default function PayerAccountsPage() {
-  const [payers, setPayers] = useState<Payer[]>([]);
+// Types
+interface PayerListMetrics {
+  activePayers: number;
+  payersWoWChange: string;
+  payersGoalProgress: number;
+  settledTotal: number;
+  settledFormatted: string;
+  settledLast30Days: number;
+  settledLast30DaysFormatted: string;
+  settledGoalProgress: number;
+  dailyPayers: number[];
+  dailyDates: string[];
+}
+
+// Hero Metric Card Component
+function HeroMetricCard({
+  title,
+  value,
+  wowChange,
+  goalProgress,
+  goalLabel,
+}: {
+  title: string;
+  value: string | number;
+  wowChange?: string;
+  goalProgress: number;
+  goalLabel: string;
+}) {
+  const isPositiveChange = wowChange && parseFloat(wowChange) >= 0;
+
+  return (
+    <div className="bg-white border rounded-lg p-6 flex-1">
+      <p className="text-sm text-gray-500 font-medium">{title}</p>
+      <div className="flex items-baseline gap-3 mt-1">
+        <p className="text-3xl font-bold">{value}</p>
+        {wowChange && (
+          <span
+            className={`text-sm font-medium ${
+              isPositiveChange ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {isPositiveChange ? "+" : ""}
+            {wowChange}% WoW
+          </span>
+        )}
+      </div>
+      <div className="mt-3">
+        <div className="flex justify-between text-xs text-gray-500 mb-1">
+          <span>Goal Progress</span>
+          <span>{goalLabel}</span>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2">
+          <div
+            className="bg-blue-600 h-2 rounded-full transition-all"
+            style={{ width: `${Math.min(goalProgress, 100)}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Filter Controls Component
+function FilterControls({
+  timeRange,
+  setTimeRange,
+  granularity,
+  setGranularity,
+  onApply,
+}: {
+  timeRange: string;
+  setTimeRange: (v: string) => void;
+  granularity: string;
+  setGranularity: (v: string) => void;
+  onApply: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg">
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium text-gray-600">Time Range:</label>
+        <select
+          value={timeRange}
+          onChange={(e) => setTimeRange(e.target.value)}
+          className="border rounded-md px-3 py-1.5 text-sm bg-white"
+        >
+          <option value="30">Last 30 Days</option>
+          <option value="90">Last 90 Days</option>
+          <option value="ytd">YTD</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <label className="text-sm font-medium text-gray-600">Granularity:</label>
+        <select
+          value={granularity}
+          onChange={(e) => setGranularity(e.target.value)}
+          className="border rounded-md px-3 py-1.5 text-sm bg-white"
+        >
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="monthly">Monthly</option>
+        </select>
+      </div>
+
+      <button
+        onClick={onApply}
+        className="bg-blue-600 text-white px-4 py-1.5 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+      >
+        Apply
+      </button>
+    </div>
+  );
+}
+
+// Detail View Component
+function PayerDetailView({ address }: { address: string }) {
+  const [account, setAccount] = useState<AccountDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [ensName, setEnsName] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      if (!address) return;
+
+      try {
+        setLoading(true);
+        const data = await fetchAccountDetail(address);
+
+        if (!data) {
+          setError("Account not found");
+          return;
+        }
+
+        setAccount(data);
+        setError(null);
+      } catch (err) {
+        console.error("Failed to fetch account:", err);
+        setError("Failed to load account from subgraph");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadData();
+  }, [address]);
+
+  // Resolve ENS name
+  useEffect(() => {
+    if (!address) return;
+
+    async function resolveAccountENS() {
+      try {
+        const name = await resolveENS(address);
+        if (name) {
+          setEnsName(name);
+        }
+      } catch (err) {
+        console.error("Failed to resolve ENS:", err);
+      }
+    }
+
+    resolveAccountENS();
+  }, [address]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Link href="/payer-accounts" className="text-blue-600 hover:underline">
+            ← Back to Payers
+          </Link>
+        </div>
+        <h1 className="text-2xl font-bold">Payer Details</h1>
+        <div className="h-96 bg-gray-100 rounded-lg animate-pulse" />
+      </div>
+    );
+  }
+
+  if (error || !account) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Link href="/payer-accounts" className="text-blue-600 hover:underline">
+            ← Back to Payers
+          </Link>
+        </div>
+        <h1 className="text-2xl font-bold">Payer Details</h1>
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
+          <p className="font-medium">Error loading data</p>
+          <p className="text-sm">{error || "Account not found"}</p>
+          <p className="text-xs mt-2 font-mono">{address}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Navigation */}
+      <div className="flex items-center gap-2">
+        <Link href="/payer-accounts" className="text-blue-600 hover:underline">
+          ← Back to Payers
+        </Link>
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Payer Details</h1>
+          <div className="flex items-center gap-2 mt-1">
+            {ensName ? (
+              <>
+                <span className="text-blue-600 font-medium text-lg">{ensName}</span>
+                <span className="text-gray-400 text-sm font-mono">({account.address})</span>
+              </>
+            ) : (
+              <span className="font-mono text-lg">{account.address}</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-white border rounded-lg p-4">
+          <p className="text-sm text-gray-500">Total Funds</p>
+          <p className="text-2xl font-bold">{account.totalFunds}</p>
+        </div>
+        <div className="bg-white border rounded-lg p-4">
+          <p className="text-sm text-gray-500">Locked</p>
+          <p className="text-2xl font-bold">{account.totalLocked}</p>
+        </div>
+        <div className="bg-white border rounded-lg p-4">
+          <p className="text-sm text-gray-500">Total Settled</p>
+          <p className="text-2xl font-bold">{account.totalSettled}</p>
+        </div>
+        <div className="bg-white border rounded-lg p-4">
+          <p className="text-sm text-gray-500">Payment Rails</p>
+          <p className="text-2xl font-bold">{account.payerRails.length}</p>
+        </div>
+      </div>
+
+      {/* Payment Rails (as Payer) */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Payment Rails (Paying To)</h2>
+        {account.payerRails.length === 0 ? (
+          <div className="bg-gray-50 border rounded-lg p-8 text-center text-gray-500">
+            No payment rails found
+          </div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="font-medium">Payee</TableHead>
+                  <TableHead className="font-medium">Settled</TableHead>
+                  <TableHead className="font-medium">Rate</TableHead>
+                  <TableHead className="font-medium">Status</TableHead>
+                  <TableHead className="font-medium">Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {account.payerRails.map((rail, index) => (
+                  <TableRow
+                    key={rail.id}
+                    className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  >
+                    <TableCell>
+                      <Link
+                        href={`/payee-accounts?address=${rail.counterpartyAddress}`}
+                        className="font-mono text-sm text-blue-600 hover:underline"
+                      >
+                        {rail.counterpartyFormatted}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{rail.settled}</TableCell>
+                    <TableCell>{rail.rate}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          rail.stateCode === 0
+                            ? "bg-green-100 text-green-800"
+                            : rail.stateCode === 1
+                            ? "bg-gray-100 text-gray-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {rail.state}
+                      </span>
+                    </TableCell>
+                    <TableCell>{rail.createdAt}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+
+      {/* Incoming Rails (as Payee) */}
+      {account.payeeRails.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Incoming Rails (Receiving From)</h2>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="font-medium">Payer</TableHead>
+                  <TableHead className="font-medium">Received</TableHead>
+                  <TableHead className="font-medium">Status</TableHead>
+                  <TableHead className="font-medium">Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {account.payeeRails.map((rail, index) => (
+                  <TableRow
+                    key={rail.id}
+                    className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  >
+                    <TableCell>
+                      <Link
+                        href={`/payer-accounts?address=${rail.counterpartyAddress}`}
+                        className="font-mono text-sm text-blue-600 hover:underline"
+                      >
+                        {rail.counterpartyFormatted}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{rail.settled}</TableCell>
+                    <TableCell>
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          rail.stateCode === 0
+                            ? "bg-green-100 text-green-800"
+                            : rail.stateCode === 1
+                            ? "bg-gray-100 text-gray-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {rail.state}
+                      </span>
+                    </TableCell>
+                    <TableCell>{rail.createdAt}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+
+      {/* Data source indicator */}
+      <div className="text-xs text-gray-400 text-right">
+        Data from Goldsky subgraph
+      </div>
+    </div>
+  );
+}
+
+// List View Component with Hero Metrics and Charts
+function PayerListView() {
+  const [payers, setPayers] = useState<PayerDisplayExtended[]>([]);
+  const [metrics, setMetrics] = useState<PayerListMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortField, setSortField] = useState<"settled" | "locked" | "start">("settled");
+  const [sortField, setSortField] = useState<"settled" | "locked" | "rails" | "runway" | "start">("settled");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [timeRange, setTimeRange] = useState("30");
+  const [granularity, setGranularity] = useState("daily");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
-        const data = await fetchAllPayers();
-        setPayers(data);
+        const [payersData, metricsData] = await Promise.all([
+          fetchAllPayersExtended(),
+          fetchPayerListMetrics(),
+        ]);
+        setPayers(payersData);
+        setMetrics(metricsData);
         setError(null);
       } catch (err) {
         console.error("Failed to fetch payers:", err);
@@ -70,6 +465,15 @@ export default function PayerAccountsPage() {
     resolveNames();
   }, [payers.length]);
 
+  // Prepare chart data
+  const chartData = useMemo(() => {
+    if (!metrics) return [];
+    return metrics.dailyDates.map((date, i) => ({
+      date: date,
+      payers: metrics.dailyPayers[i],
+    }));
+  }, [metrics]);
+
   // Filter payers by search
   const filteredPayers = payers.filter((p) => {
     const matchesSearch =
@@ -85,12 +489,20 @@ export default function PayerAccountsPage() {
 
     switch (sortField) {
       case "settled":
-        aVal = parseFloat(a.settled.replace(/[$,K]/g, "")) || 0;
-        bVal = parseFloat(b.settled.replace(/[$,K]/g, "")) || 0;
+        aVal = a.settledRaw || 0;
+        bVal = b.settledRaw || 0;
         break;
       case "locked":
-        aVal = parseFloat(a.locked.replace(/[$,K]/g, "")) || 0;
-        bVal = parseFloat(b.locked.replace(/[$,K]/g, "")) || 0;
+        aVal = a.lockedRaw || 0;
+        bVal = b.lockedRaw || 0;
+        break;
+      case "rails":
+        aVal = a.railsCount;
+        bVal = b.railsCount;
+        break;
+      case "runway":
+        aVal = a.runwayDays;
+        bVal = b.runwayDays;
         break;
       case "start":
         aVal = a.startTimestamp;
@@ -103,13 +515,25 @@ export default function PayerAccountsPage() {
     return sortDirection === "desc" ? bVal - aVal : aVal - bVal;
   });
 
-  const handleSort = (field: "settled" | "locked" | "start") => {
+  // Pagination
+  const totalPages = Math.ceil(sortedPayers.length / itemsPerPage);
+  const paginatedPayers = sortedPayers.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handleSort = (field: "settled" | "locked" | "rails" | "runway" | "start") => {
     if (sortField === field) {
       setSortDirection(sortDirection === "desc" ? "asc" : "desc");
     } else {
       setSortField(field);
       setSortDirection("desc");
     }
+  };
+
+  const handleApplyFilters = () => {
+    // Filter application would reload data with new params
+    console.log("Apply filters:", { timeRange, granularity });
   };
 
   if (loading) {
@@ -129,6 +553,44 @@ export default function PayerAccountsPage() {
           <p className="font-medium">Error loading data</p>
           <p className="text-sm">{error}</p>
         </div>
+
+        {/* Default Hero Metrics (placeholder for error state) */}
+        <div className="flex gap-6">
+          <HeroMetricCard
+            title="Active Payer Wallets"
+            value="--"
+            goalProgress={0}
+            goalLabel="Goal: 1,000"
+          />
+          <HeroMetricCard
+            title="Settled USDFC"
+            value="--"
+            goalProgress={0}
+            goalLabel="Goal: $10M ARR"
+          />
+        </div>
+
+        {/* Data source indicator */}
+        <div className="bg-gray-50 border rounded-lg p-4 space-y-2 text-sm">
+          <div className="font-medium text-gray-700">Data Source</div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-600">
+            <div>Network:</div>
+            <div className="font-mono">{NETWORK}</div>
+            <div>Contract:</div>
+            <div className="font-mono text-xs">
+              <a
+                href={`https://filfox.info/en/address/${FILECOIN_PAY_CONTRACT}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline"
+              >
+                {FILECOIN_PAY_CONTRACT}
+              </a>
+            </div>
+            <div>Subgraph Version:</div>
+            <div className="font-mono">{SUBGRAPH_VERSION}</div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -137,21 +599,125 @@ export default function PayerAccountsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Payer Accounts</h1>
-        <p className="text-sm text-gray-500">{payers.length} total payers</p>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex items-center gap-4">
-        <input
-          type="text"
-          placeholder="Search by address or ENS name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="px-4 py-2 border rounded-md w-96"
-        />
-        <span className="text-sm text-gray-500">
-          Showing {sortedPayers.length} of {payers.length} payers
-        </span>
+      {/* Hero Metrics Bar */}
+      {metrics && (
+        <div className="flex gap-6">
+          <HeroMetricCard
+            title="Active Payer Wallets"
+            value={metrics.activePayers.toLocaleString()}
+            wowChange={metrics.payersWoWChange}
+            goalProgress={metrics.payersGoalProgress}
+            goalLabel="Goal: 1,000"
+          />
+          <HeroMetricCard
+            title="Settled USDFC"
+            value={metrics.settledFormatted}
+            goalProgress={metrics.settledGoalProgress}
+            goalLabel="Goal: $10M ARR"
+          />
+        </div>
+      )}
+
+      {/* Filter Controls */}
+      <FilterControls
+        timeRange={timeRange}
+        setTimeRange={setTimeRange}
+        granularity={granularity}
+        setGranularity={setGranularity}
+        onApply={handleApplyFilters}
+      />
+
+      {/* Charts */}
+      {chartData.length > 0 && (
+        <div className="grid grid-cols-2 gap-6">
+          {/* Chart 1: Payer Accounts Over Time */}
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-lg font-semibold mb-2">Payer Accounts Over Time</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Cumulative unique payer wallets
+            </p>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return `${date.getMonth() + 1}/${date.getDate()}`;
+                    }}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value) => [value ?? 0, "Payers"]}
+                    labelFormatter={(label) => `Date: ${label}`}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="payers"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Chart 2: USDFC Settled Over Time */}
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-lg font-semibold mb-2">USDFC Settled Over Time</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Settlement volume per period
+            </p>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value) => {
+                      const date = new Date(value);
+                      return `${date.getMonth() + 1}/${date.getDate()}`;
+                    }}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value) => [`${value ?? 0}`, "Payers"]}
+                    labelFormatter={(label) => `Date: ${label}`}
+                  />
+                  <Bar dataKey="payers" fill="#10b981" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Search and Register Button */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <input
+            type="text"
+            placeholder="Search by address or ENS name..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="px-4 py-2 border rounded-md w-96"
+          />
+          <span className="text-sm text-gray-500">
+            Showing {paginatedPayers.length} of {sortedPayers.length} payers
+          </span>
+        </div>
+        <button className="border border-blue-600 text-blue-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-50 transition-colors">
+          Register filpay.eth name
+        </button>
       </div>
 
       {/* Payers Table */}
@@ -162,9 +728,9 @@ export default function PayerAccountsPage() {
               <TableHead className="font-medium">Address</TableHead>
               <TableHead
                 className="font-medium cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort("locked")}
+                onClick={() => handleSort("rails")}
               >
-                Locked {sortField === "locked" && (sortDirection === "desc" ? "↓" : "↑")}
+                Rails {sortField === "rails" && (sortDirection === "desc" ? "↓" : "↑")}
               </TableHead>
               <TableHead
                 className="font-medium cursor-pointer hover:bg-gray-100"
@@ -172,37 +738,54 @@ export default function PayerAccountsPage() {
               >
                 Settled {sortField === "settled" && (sortDirection === "desc" ? "↓" : "↑")}
               </TableHead>
-              <TableHead className="font-medium">Runway</TableHead>
+              <TableHead
+                className="font-medium cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("locked")}
+              >
+                Locked {sortField === "locked" && (sortDirection === "desc" ? "↓" : "↑")}
+              </TableHead>
+              <TableHead
+                className="font-medium cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("runway")}
+              >
+                Runway {sortField === "runway" && (sortDirection === "desc" ? "↓" : "↑")}
+              </TableHead>
               <TableHead
                 className="font-medium cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort("start")}
               >
-                Start {sortField === "start" && (sortDirection === "desc" ? "↓" : "↑")}
+                First Active {sortField === "start" && (sortDirection === "desc" ? "↓" : "↑")}
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sortedPayers.length === 0 ? (
+            {paginatedPayers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                   No payers found
                 </TableCell>
               </TableRow>
             ) : (
-              sortedPayers.map((payer, index) => (
+              paginatedPayers.map((payer, index) => (
                 <TableRow
                   key={payer.fullAddress || index}
                   className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
                 >
                   <TableCell>
-                    {payer.ensName ? (
-                      <span className="text-blue-600 font-medium">{payer.ensName}</span>
-                    ) : (
-                      <span className="font-mono text-sm">{payer.address}</span>
-                    )}
+                    <Link
+                      href={`/payer-accounts?address=${payer.fullAddress}`}
+                      className="hover:underline"
+                    >
+                      {payer.ensName ? (
+                        <span className="text-blue-600 font-medium">{payer.ensName}</span>
+                      ) : (
+                        <span className="font-mono text-sm text-blue-600">{payer.address}</span>
+                      )}
+                    </Link>
                   </TableCell>
-                  <TableCell>{payer.locked}</TableCell>
+                  <TableCell>{payer.railsCount}</TableCell>
                   <TableCell>{payer.settled}</TableCell>
+                  <TableCell>{payer.locked}</TableCell>
                   <TableCell>{payer.runway}</TableCell>
                   <TableCell>{payer.start}</TableCell>
                 </TableRow>
@@ -212,10 +795,114 @@ export default function PayerAccountsPage() {
         </Table>
       </div>
 
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-500">
+            Page {currentPage} of {totalPages}
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Previous
+            </button>
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum: number;
+              if (totalPages <= 5) {
+                pageNum = i + 1;
+              } else if (currentPage <= 3) {
+                pageNum = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i;
+              } else {
+                pageNum = currentPage - 2 + i;
+              }
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`px-3 py-1 border rounded-md text-sm ${
+                    currentPage === pageNum
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "hover:bg-gray-50"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 border rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Data source indicator */}
-      <div className="text-xs text-gray-400 text-right">
-        Data from Goldsky subgraph
+      <div className="bg-gray-50 border rounded-lg p-4 space-y-2 text-sm">
+        <div className="font-medium text-gray-700">Data Source</div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-600">
+          <div>Network:</div>
+          <div className="font-mono">{NETWORK}</div>
+          <div>Contract:</div>
+          <div className="font-mono text-xs">
+            <a
+              href={`https://filfox.info/en/address/${FILECOIN_PAY_CONTRACT}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              {FILECOIN_PAY_CONTRACT}
+            </a>
+          </div>
+          <div>Subgraph Version:</div>
+          <div className="font-mono">{SUBGRAPH_VERSION}</div>
+          <div>Subgraph URL:</div>
+          <div className="font-mono text-xs truncate max-w-md">
+            <a
+              href={GOLDSKY_ENDPOINT}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              {GOLDSKY_ENDPOINT.replace('https://api.goldsky.com/api/public/', '...')}
+            </a>
+          </div>
+        </div>
       </div>
     </div>
+  );
+}
+
+// Inner component that uses useSearchParams
+function PayerAccountsContent() {
+  const searchParams = useSearchParams();
+  const address = searchParams.get("address");
+
+  if (address) {
+    return <PayerDetailView address={address} />;
+  }
+
+  return <PayerListView />;
+}
+
+// Main Page Component - wrapped in Suspense for useSearchParams
+export default function PayerAccountsPage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold">Loading...</h1>
+        <div className="h-96 bg-gray-100 rounded-lg animate-pulse" />
+      </div>
+    }>
+      <PayerAccountsContent />
+    </Suspense>
   );
 }

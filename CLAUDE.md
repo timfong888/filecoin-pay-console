@@ -8,7 +8,7 @@ Filecoin Pay Console - A dashboard for tracking payments, settlements, and metri
 
 ## Deployed Site
 
-**Live URL (use this for all testing):** https://3ae62f46.pinit.eth.limo/
+**Live URL (use this for all testing):** https://f59ac2fb.pinit.eth.limo/
 
 ## Commands
 

@@ -1,16 +1,19 @@
-import { graphqlClient } from './client';
+import { graphqlClient, EPOCHS_PER_DAY } from './client';
 import {
   GLOBAL_METRICS_QUERY,
   TOP_PAYERS_QUERY,
   TOP_PAYEES_QUERY,
   TOTAL_SETTLED_QUERY,
   DAILY_METRICS_QUERY,
+  ACCOUNT_DETAIL_QUERY,
   GlobalMetricsResponse,
   TopPayersResponse,
   TopPayeesResponse,
   TotalSettledResponse,
   DailyMetricsResponse,
+  AccountDetailResponse,
   Account,
+  Rail,
 } from './queries';
 
 // Convert wei (18 decimals) to human readable number
@@ -139,10 +142,14 @@ function transformAccountToPayer(account: Account): PayerDisplay {
   // Sum up funds from all userTokens
   let totalFunds = BigInt(0);
   let totalLocked = BigInt(0);
+  let totalLockupRate = BigInt(0);
 
   for (const token of account.userTokens) {
     totalFunds += BigInt(token.funds);
     totalLocked += BigInt(token.lockupCurrent);
+    if (token.lockupRate) {
+      totalLockupRate += BigInt(token.lockupRate);
+    }
   }
 
   // Sum up settled from all rails
@@ -165,12 +172,35 @@ function transformAccountToPayer(account: Account): PayerDisplay {
     year: '2-digit'
   }).replace(',', " '");
 
+  // Calculate runway in days based on available funds and lockup rate
+  // Rate is per epoch (30 seconds on Filecoin)
+  // Days = funds / (rate * epochs_per_day)
+  let runway = '-';
+  let runwayDays = -1;
+
+  if (totalLockupRate > BigInt(0) && totalFunds > BigInt(0)) {
+    const epochsPerDayBigInt = BigInt(Math.floor(EPOCHS_PER_DAY));
+    const dailyBurn = totalLockupRate * epochsPerDayBigInt;
+
+    if (dailyBurn > BigInt(0)) {
+      const days = Number(totalFunds / dailyBurn);
+      runwayDays = days;
+      if (days > 365) {
+        runway = `${Math.floor(days / 365)}y ${days % 365}d`;
+      } else if (days > 0) {
+        runway = `${days} days`;
+      } else {
+        runway = '< 1 day';
+      }
+    }
+  }
+
   return {
     address: formatAddress(account.address),
     fullAddress: account.address, // Keep full address for ENS resolution
     locked: formatCurrency(weiToUSDC(totalLocked.toString())),
     settled: formatCurrency(weiToUSDC(totalSettled.toString())),
-    runway: '-', // Would need payment rate to calculate
+    runway,
     start,
     startTimestamp: earliestDate,
   };
@@ -200,6 +230,113 @@ export async function fetchAllPayers(limit: number = 100) {
       .map(transformAccountToPayer);
   } catch (error) {
     console.error('Error fetching all payers:', error);
+    throw error;
+  }
+}
+
+// Extended payer display with rails count
+export interface PayerDisplayExtended extends PayerDisplay {
+  railsCount: number;
+  settledRaw: number;
+  lockedRaw: number;
+  runwayDays: number;
+}
+
+function transformAccountToPayerExtended(account: Account): PayerDisplayExtended {
+  const base = transformAccountToPayer(account);
+
+  // Get raw values for sorting/filtering
+  let totalSettled = BigInt(0);
+  let totalLocked = BigInt(0);
+  let totalFunds = BigInt(0);
+  let totalLockupRate = BigInt(0);
+
+  for (const token of account.userTokens) {
+    totalFunds += BigInt(token.funds);
+    totalLocked += BigInt(token.lockupCurrent);
+    if (token.lockupRate) {
+      totalLockupRate += BigInt(token.lockupRate);
+    }
+  }
+
+  for (const rail of account.payerRails) {
+    totalSettled += BigInt(rail.totalSettledAmount);
+  }
+
+  // Calculate runway days for sorting
+  let runwayDays = -1;
+  if (totalLockupRate > BigInt(0) && totalFunds > BigInt(0)) {
+    const epochsPerDayBigInt = BigInt(Math.floor(EPOCHS_PER_DAY));
+    const dailyBurn = totalLockupRate * epochsPerDayBigInt;
+    if (dailyBurn > BigInt(0)) {
+      runwayDays = Number(totalFunds / dailyBurn);
+    }
+  }
+
+  return {
+    ...base,
+    railsCount: account.payerRails.length,
+    settledRaw: weiToUSDC(totalSettled.toString()),
+    lockedRaw: weiToUSDC(totalLocked.toString()),
+    runwayDays,
+  };
+}
+
+// Fetch all payers with extended data (for payer accounts page)
+export async function fetchAllPayersExtended(limit: number = 100) {
+  try {
+    const data = await graphqlClient.request<TopPayersResponse>(TOP_PAYERS_QUERY, { first: limit });
+
+    return data.accounts
+      .filter(account => account.payerRails.length > 0)
+      .map(transformAccountToPayerExtended);
+  } catch (error) {
+    console.error('Error fetching all payers:', error);
+    throw error;
+  }
+}
+
+// Fetch payer list page metrics (with WoW calculations)
+export async function fetchPayerListMetrics() {
+  try {
+    const [globalMetrics, totalSettled, dailyMetrics] = await Promise.all([
+      fetchGlobalMetrics(),
+      fetchTotalSettled(),
+      fetchDailyMetrics(60), // Get 60 days for WoW calculation
+    ]);
+
+    // Calculate WoW change for payers
+    const currentWeekPayers = dailyMetrics.uniquePayers.slice(-7);
+    const prevWeekPayers = dailyMetrics.uniquePayers.slice(-14, -7);
+
+    const currentWeekTotal = currentWeekPayers.reduce((a, b) => a + b, 0);
+    const prevWeekTotal = prevWeekPayers.reduce((a, b) => a + b, 0);
+
+    const payersWoWChange = prevWeekTotal > 0
+      ? ((currentWeekTotal - prevWeekTotal) / prevWeekTotal * 100).toFixed(1)
+      : '0';
+
+    // Calculate goal progress (Goal: 1000 payers)
+    const payersGoalProgress = Math.min((globalMetrics.uniquePayers / 1000) * 100, 100);
+
+    // Calculate settled goal progress (Goal: $10M ARR = ~$833K/month)
+    const settledGoalProgress = Math.min((totalSettled.total / 833333) * 100, 100);
+
+    return {
+      activePayers: globalMetrics.uniquePayers,
+      payersWoWChange,
+      payersGoalProgress,
+      settledTotal: totalSettled.total,
+      settledFormatted: totalSettled.totalFormatted,
+      settledLast30Days: totalSettled.last30Days,
+      settledLast30DaysFormatted: totalSettled.last30DaysFormatted,
+      settledGoalProgress,
+      // Daily data for charts
+      dailyPayers: dailyMetrics.uniquePayers,
+      dailyDates: dailyMetrics.dates,
+    };
+  } catch (error) {
+    console.error('Error fetching payer list metrics:', error);
     throw error;
   }
 }
@@ -299,4 +436,125 @@ export async function fetchDashboardData() {
     topPayers,
     dailyMetrics,
   };
+}
+
+// Rail state enum
+export const RailState = {
+  0: 'Active',
+  1: 'Terminated',
+  2: 'Pending',
+} as const;
+
+// Rail display format for detail pages
+export interface RailDisplay {
+  id: string;
+  counterpartyAddress: string;
+  counterpartyFormatted: string;
+  counterpartyEnsName?: string;
+  settled: string;
+  settledRaw: number;
+  rate: string;
+  rateRaw: number;
+  state: string;
+  stateCode: number;
+  createdAt: string;
+  createdAtTimestamp: number;
+}
+
+// Account detail display format
+export interface AccountDetail {
+  address: string;
+  ensName?: string;
+  totalRails: number;
+  totalFunds: string;
+  totalFundsRaw: number;
+  totalLocked: string;
+  totalLockedRaw: number;
+  totalSettled: string;
+  totalSettledRaw: number;
+  totalPayout: string;
+  totalPayoutRaw: number;
+  payerRails: RailDisplay[];
+  payeeRails: RailDisplay[];
+}
+
+function transformRailToDisplay(rail: Rail, isPayer: boolean): RailDisplay {
+  const counterparty = isPayer ? rail.payee?.address : rail.payer?.address;
+  const settledValue = weiToUSDC(rail.totalSettledAmount);
+  const rateValue = rail.paymentRate ? weiToUSDC(rail.paymentRate) : 0;
+  const createdAtMs = parseInt(rail.createdAt) * 1000;
+  const createdDate = new Date(createdAtMs);
+
+  return {
+    id: rail.id,
+    counterpartyAddress: counterparty || 'Unknown',
+    counterpartyFormatted: counterparty ? formatAddress(counterparty) : 'Unknown',
+    settled: formatCurrency(settledValue),
+    settledRaw: settledValue,
+    rate: rateValue > 0 ? `${formatCurrency(rateValue)}/epoch` : '-',
+    rateRaw: rateValue,
+    state: RailState[rail.state as keyof typeof RailState] || 'Unknown',
+    stateCode: rail.state,
+    createdAt: createdDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: '2-digit'
+    }).replace(',', " '"),
+    createdAtTimestamp: createdAtMs,
+  };
+}
+
+// Fetch individual account details
+export async function fetchAccountDetail(address: string): Promise<AccountDetail | null> {
+  try {
+    // The subgraph uses lowercase address as the ID
+    const id = address.toLowerCase();
+    const data = await graphqlClient.request<AccountDetailResponse>(ACCOUNT_DETAIL_QUERY, { id });
+
+    if (!data.account) {
+      return null;
+    }
+
+    const account = data.account;
+
+    // Sum up funds from all userTokens
+    let totalFunds = BigInt(0);
+    let totalLocked = BigInt(0);
+    let totalPayout = BigInt(0);
+
+    for (const token of account.userTokens) {
+      totalFunds += BigInt(token.funds);
+      totalLocked += BigInt(token.lockupCurrent);
+      totalPayout += BigInt(token.payout);
+    }
+
+    // Sum up settled from payer rails
+    let totalSettled = BigInt(0);
+    for (const rail of account.payerRails) {
+      totalSettled += BigInt(rail.totalSettledAmount);
+    }
+
+    const totalFundsValue = weiToUSDC(totalFunds.toString());
+    const totalLockedValue = weiToUSDC(totalLocked.toString());
+    const totalSettledValue = weiToUSDC(totalSettled.toString());
+    const totalPayoutValue = weiToUSDC(totalPayout.toString());
+
+    return {
+      address: account.address,
+      totalRails: parseInt(account.totalRails),
+      totalFunds: formatCurrency(totalFundsValue),
+      totalFundsRaw: totalFundsValue,
+      totalLocked: formatCurrency(totalLockedValue),
+      totalLockedRaw: totalLockedValue,
+      totalSettled: formatCurrency(totalSettledValue),
+      totalSettledRaw: totalSettledValue,
+      totalPayout: formatCurrency(totalPayoutValue),
+      totalPayoutRaw: totalPayoutValue,
+      payerRails: account.payerRails.map(rail => transformRailToDisplay(rail, true)),
+      payeeRails: (account.payeeRails || []).map(rail => transformRailToDisplay(rail, false)),
+    };
+  } catch (error) {
+    console.error('Error fetching account detail:', error);
+    throw error;
+  }
 }

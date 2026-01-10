@@ -122,10 +122,13 @@ query TotalSettled {
 - ENS resolution for addresses
 - Route: `/payee-accounts`
 
+### Deployed URL
+https://3ae62f46.pinit.eth.limo/
+
 ### Remaining Phase 3 Tasks
-3. **Payer Account Detail** - Individual payer view
-4. **Payee Account Detail** - Individual payee view
-5. **Connect Wallet** - Web3 wallet connection
+1. **Payer Account Detail** - Individual payer view with all rails
+2. **Payee Account Detail** - Individual payee view with payment history
+3. **Connect Wallet** - Web3 wallet connection
 
 ---
 
