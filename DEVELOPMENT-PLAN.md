@@ -106,9 +106,16 @@ query TotalSettled {
 
 ---
 
-## Phase 3: Additional Pages (Future)
+## Phase 3: Additional Pages
 
-1. **Payer Accounts List** - Browse/search payers
+### Payer Accounts List ✅ COMPLETE
+- Browse all payer accounts from subgraph
+- Search by address or ENS name
+- Sortable columns (Locked, Settled, Start date)
+- ENS resolution for addresses
+- Route: `/payer-accounts`
+
+### Remaining Phase 3 Tasks
 2. **Payee Accounts List** - Browse/search payees
 3. **Payer Account Detail** - Individual payer view
 4. **Payee Account Detail** - Individual payee view

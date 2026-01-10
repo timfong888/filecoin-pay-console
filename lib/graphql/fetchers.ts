@@ -188,6 +188,20 @@ export async function fetchTopPayers(limit: number = 10) {
   }
 }
 
+// Fetch all payers (for payer accounts page)
+export async function fetchAllPayers(limit: number = 100) {
+  try {
+    const data = await graphqlClient.request<TopPayersResponse>(TOP_PAYERS_QUERY, { first: limit });
+
+    return data.accounts
+      .filter(account => account.payerRails.length > 0)
+      .map(transformAccountToPayer);
+  } catch (error) {
+    console.error('Error fetching all payers:', error);
+    throw error;
+  }
+}
+
 // Fetch daily metrics for sparklines
 export async function fetchDailyMetrics(days: number = 30) {
   try {
