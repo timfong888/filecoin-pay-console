@@ -1,13 +1,89 @@
 import { test, expect } from '@playwright/test';
 
 // Test against localhost for development, live site for CI
-// Latest deployment: v0.7.0 (2026-01-09) - https://b5ff14b9.pinit.eth.limo
-const BASE_URL = process.env.TEST_URL || 'https://b5ff14b9.pinit.eth.limo';
+// Latest deployment: v0.7.7 (2026-01-11) - https://52c482b4.pinit.eth.limo
+const BASE_URL = process.env.TEST_URL || 'https://52c482b4.pinit.eth.limo';
 
 // IPFS gateways are slow - use 15s wait for live site, 5s for localhost
 const isIPFS = BASE_URL.includes('.limo') || BASE_URL.includes('.ipfs');
 const LOAD_WAIT = isIPFS ? 15000 : 5000;
 const NAV_WAIT = isIPFS ? 5000 : 2000;
+
+// =============================================================================
+// CRITICAL - Data Integrity Tests (P0)
+// These tests must pass to ensure the app is using real subgraph data
+// Issue #2: https://github.com/timfong888/filecoin-pay-console/issues/2
+// =============================================================================
+test.describe('Critical - No Mock Data Fallback', () => {
+  // AT-MOCK-01: Dashboard should not display mock data
+  test('AT-MOCK-01: Dashboard loads real data (no mock fallback)', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('console', msg => {
+      if (msg.type() === 'error') errors.push(msg.text());
+    });
+
+    await page.goto(BASE_URL);
+    await page.waitForTimeout(LOAD_WAIT);
+
+    // Check for mock data warning text - this is the primary check
+    const mockDataWarning = page.getByText(/sample data|mock data|failed to load/i);
+    await expect(mockDataWarning).not.toBeVisible();
+
+    // Verify no subgraph-specific errors (exclude CORS errors from ENS/RPC providers)
+    const subgraphErrors = errors.filter(e =>
+      (e.toLowerCase().includes('graphql') || e.toLowerCase().includes('goldsky')) &&
+      !e.includes('llamarpc.com') &&
+      !e.includes('CORS')
+    );
+    expect(subgraphErrors).toHaveLength(0);
+  });
+
+  // AT-MOCK-02: Payer Accounts should not display mock data
+  test('AT-MOCK-02: Payer Accounts loads real data (no mock fallback)', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('console', msg => {
+      if (msg.type() === 'error') errors.push(msg.text());
+    });
+
+    await page.goto(`${BASE_URL}/payer-accounts`);
+    await page.waitForTimeout(LOAD_WAIT);
+
+    // Check for mock data warning text - this is the primary check
+    const mockDataWarning = page.getByText(/sample data|mock data|failed to load/i);
+    await expect(mockDataWarning).not.toBeVisible();
+
+    // Verify no subgraph-specific errors (exclude CORS errors from ENS/RPC providers)
+    const subgraphErrors = errors.filter(e =>
+      (e.toLowerCase().includes('graphql') || e.toLowerCase().includes('goldsky')) &&
+      !e.includes('llamarpc.com') &&
+      !e.includes('CORS')
+    );
+    expect(subgraphErrors).toHaveLength(0);
+  });
+
+  // AT-MOCK-03: Payee Accounts should not display mock data
+  test('AT-MOCK-03: Payee Accounts loads real data (no mock fallback)', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('console', msg => {
+      if (msg.type() === 'error') errors.push(msg.text());
+    });
+
+    await page.goto(`${BASE_URL}/payee-accounts`);
+    await page.waitForTimeout(LOAD_WAIT);
+
+    // Check for mock data warning text - this is the primary check
+    const mockDataWarning = page.getByText(/sample data|mock data|failed to load/i);
+    await expect(mockDataWarning).not.toBeVisible();
+
+    // Verify no subgraph-specific errors (exclude CORS errors from ENS/RPC providers)
+    const subgraphErrors = errors.filter(e =>
+      (e.toLowerCase().includes('graphql') || e.toLowerCase().includes('goldsky')) &&
+      !e.includes('llamarpc.com') &&
+      !e.includes('CORS')
+    );
+    expect(subgraphErrors).toHaveLength(0);
+  });
+});
 
 test.describe('Dashboard - Acceptance Tests', () => {
   test.beforeEach(async ({ page }) => {
