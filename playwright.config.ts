@@ -14,7 +14,7 @@ export default defineConfig({
   workers: 1,  // Single worker to avoid overwhelming the subgraph
   reporter: 'html',
   use: {
-    baseURL: 'https://b5ff14b9.pinit.eth.limo',
+    baseURL: 'https://6c91c42c.pinit.eth.limo',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
