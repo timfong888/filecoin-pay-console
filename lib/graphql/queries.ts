@@ -55,9 +55,10 @@ export const TOTAL_SETTLED_QUERY = gql`
 `;
 
 // Active rails for run rate calculation
+// Note: Subgraph uses numeric enum: 0=Active, 1=Terminated, 2=Pending
 export const ACTIVE_RAILS_QUERY = gql`
   query ActiveRails {
-    rails(first: 1000, where: { state: ACTIVE }) {
+    rails(first: 1000, where: { state: 0 }) {
       id
       paymentRate
       state
