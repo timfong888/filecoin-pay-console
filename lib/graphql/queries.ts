@@ -57,7 +57,7 @@ export const TOTAL_SETTLED_QUERY = gql`
 // Active rails for run rate calculation
 export const ACTIVE_RAILS_QUERY = gql`
   query ActiveRails {
-    rails(first: 1000, where: { state: 0 }) {
+    rails(first: 1000, where: { state: ACTIVE }) {
       id
       paymentRate
       state
