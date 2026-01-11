@@ -2,8 +2,6 @@
 
 ## Test URL
 
-**Canonical URL:** https://3ae62f46.pinit.eth.limo/
-
 ## Acceptance Criteria
 
 ### AC1: Page Load & Navigation
