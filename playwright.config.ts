@@ -7,11 +7,11 @@ const isIPFS = (process.env.TEST_URL || '').includes('.limo') ||
 
 export default defineConfig({
   testDir: './tests',
-  // IPFS gateways are slow and flaky - limit parallelism and add retries
-  fullyParallel: !isIPFS,
+  // Subgraph can be rate-limited - limit parallelism to avoid failures
+  fullyParallel: false,  // Run tests sequentially to avoid subgraph rate limiting
   forbidOnly: !!process.env.CI,
-  retries: isIPFS ? 2 : (process.env.CI ? 2 : 0),
-  workers: isIPFS ? 2 : (process.env.CI ? 1 : undefined),
+  retries: process.env.CI ? 2 : 1,  // Single retry for local, 2 for CI
+  workers: 1,  // Single worker to avoid overwhelming the subgraph
   reporter: 'html',
   use: {
     baseURL: 'https://b5ff14b9.pinit.eth.limo',
@@ -32,9 +32,9 @@ export default defineConfig({
       use: { ...devices['iPhone 13'] },
     },
   ],
-  // IPFS needs longer timeouts - detail pages have multiple navigations
-  timeout: isIPFS ? 120000 : 30000,
+  // Subgraph queries can be slow - use longer timeouts for all environments
+  timeout: isIPFS ? 120000 : 60000,  // Increased localhost timeout for subgraph queries
   expect: {
-    timeout: isIPFS ? 30000 : 10000,
+    timeout: isIPFS ? 45000 : 30000,  // Increased expect timeout for content loading
   },
 });

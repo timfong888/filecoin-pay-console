@@ -130,6 +130,17 @@ export default function Dashboard() {
     setHostname(window.location.hostname);
   }, []);
 
+  // Prepare chart data with cumulative values - MUST be before any early returns (Rules of Hooks)
+  const chartData = useMemo(() => {
+    if (!data) return [];
+    const { chartDates, cumulativePayers, cumulativeSettled } = data;
+    return chartDates.map((date, i) => ({
+      date: date,
+      payers: cumulativePayers[i],
+      settled: cumulativeSettled[i],
+    }));
+  }, [data]);
+
   // Resolve ENS names after data loads
   useEffect(() => {
     if (!data || data.topPayers.length === 0) return;
@@ -281,16 +292,7 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { globalMetrics, totalSettled, topPayers, runRate, cumulativePayers, cumulativeSettled, chartDates } = data;
-
-  // Prepare chart data with cumulative values
-  const chartData = useMemo(() => {
-    return chartDates.map((date, i) => ({
-      date: date,
-      payers: cumulativePayers[i],
-      settled: cumulativeSettled[i],
-    }));
-  }, [chartDates, cumulativePayers, cumulativeSettled]);
+  const { globalMetrics, totalSettled, topPayers, runRate } = data;
 
   return (
     <div className="space-y-6">

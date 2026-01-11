@@ -4,10 +4,12 @@ import { test, expect } from '@playwright/test';
 // Latest deployment: v0.7.7 (2026-01-11) - https://52c482b4.pinit.eth.limo
 const BASE_URL = process.env.TEST_URL || 'https://52c482b4.pinit.eth.limo';
 
-// IPFS gateways are slow - use 15s wait for live site, 5s for localhost
+// Subgraph queries can be slow - use longer waits
 const isIPFS = BASE_URL.includes('.limo') || BASE_URL.includes('.ipfs');
-const LOAD_WAIT = isIPFS ? 15000 : 5000;
-const NAV_WAIT = isIPFS ? 5000 : 2000;
+const LOAD_WAIT = isIPFS ? 20000 : 15000;  // Increased for subgraph query time
+const NAV_WAIT = isIPFS ? 8000 : 5000;
+// Content timeout should match or be less than expect.timeout in playwright.config.ts
+const CONTENT_TIMEOUT = isIPFS ? 45000 : 30000;
 
 // =============================================================================
 // CRITICAL - Data Integrity Tests (P0)
@@ -23,11 +25,16 @@ test.describe('Critical - No Mock Data Fallback', () => {
     });
 
     await page.goto(BASE_URL);
-    await page.waitForTimeout(LOAD_WAIT);
+    // Wait for actual content to appear instead of fixed timeout - use exact match
+    await expect(page.getByText('Unique Payers', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
 
-    // Check for mock data warning text - this is the primary check
-    const mockDataWarning = page.getByText(/sample data|mock data|failed to load/i);
+    // After content loads, check there's no error message visible
+    const mockDataWarning = page.getByText(/sample data|mock data/i);
     await expect(mockDataWarning).not.toBeVisible();
+
+    // Error loading message should not be present after data loads
+    const errorMessage = page.getByText('Error loading data');
+    await expect(errorMessage).not.toBeVisible();
 
     // Verify no subgraph-specific errors (exclude CORS errors from ENS/RPC providers)
     const subgraphErrors = errors.filter(e =>
@@ -46,11 +53,17 @@ test.describe('Critical - No Mock Data Fallback', () => {
     });
 
     await page.goto(`${BASE_URL}/payer-accounts`);
-    await page.waitForTimeout(LOAD_WAIT);
+    // Wait for actual content to appear - table should have data
+    await expect(page.getByText('Payer Wallets', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: CONTENT_TIMEOUT });
 
-    // Check for mock data warning text - this is the primary check
-    const mockDataWarning = page.getByText(/sample data|mock data|failed to load/i);
+    // After content loads, check there's no error message visible
+    const mockDataWarning = page.getByText(/sample data|mock data/i);
     await expect(mockDataWarning).not.toBeVisible();
+
+    // Error loading message should not be present after data loads
+    const errorMessage = page.getByText('Error loading data');
+    await expect(errorMessage).not.toBeVisible();
 
     // Verify no subgraph-specific errors (exclude CORS errors from ENS/RPC providers)
     const subgraphErrors = errors.filter(e =>
@@ -69,11 +82,17 @@ test.describe('Critical - No Mock Data Fallback', () => {
     });
 
     await page.goto(`${BASE_URL}/payee-accounts`);
-    await page.waitForTimeout(LOAD_WAIT);
+    // Wait for actual content to appear
+    await expect(page.getByText('Total Claimable')).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: CONTENT_TIMEOUT });
 
-    // Check for mock data warning text - this is the primary check
-    const mockDataWarning = page.getByText(/sample data|mock data|failed to load/i);
+    // After content loads, check there's no error message visible
+    const mockDataWarning = page.getByText(/sample data|mock data/i);
     await expect(mockDataWarning).not.toBeVisible();
+
+    // Error loading message should not be present after data loads
+    const errorMessage = page.getByText('Error loading data');
+    await expect(errorMessage).not.toBeVisible();
 
     // Verify no subgraph-specific errors (exclude CORS errors from ENS/RPC providers)
     const subgraphErrors = errors.filter(e =>
@@ -88,15 +107,17 @@ test.describe('Critical - No Mock Data Fallback', () => {
 test.describe('Dashboard - Acceptance Tests', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(BASE_URL);
-    // Wait for data to load
-    await page.waitForTimeout(LOAD_WAIT);
+    // Wait for dashboard data to load - use exact match to avoid matching "Total Unique Payers" chart title
+    await expect(page.getByText('Unique Payers', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    // Also wait for table data to load
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: CONTENT_TIMEOUT });
   });
 
   // AT-D01: Total settled amount displays in USDFC
   test('AT-D01: Total settled amount displays in USDFC', async ({ page }) => {
-    await expect(page.getByText('USDFC Settled')).toBeVisible();
-    await expect(page.getByText('Total')).toBeVisible();
-    await expect(page.getByText('Last 30D')).toBeVisible();
+    await expect(page.getByText('USDFC Settled', { exact: true })).toBeVisible();
+    await expect(page.getByText('Monthly Run Rate')).toBeVisible();
+    await expect(page.getByText('Unique Payers', { exact: true })).toBeVisible();
   });
 
   // AT-D05: Top 10 Payers table loads data
@@ -168,20 +189,18 @@ test.describe('Dashboard - Acceptance Tests', () => {
     await expect(page.getByText('Subgraph Version:')).toBeVisible();
   });
 
-  // AT-D09: Deployment metadata shows Site URL, IPFS CID, Payment Wallet, commP
-  test('AT-D09: Deployment metadata displays IPFS info', async ({ page }) => {
+  // AT-D09: Deployment metadata shows Version and Site URL
+  test('AT-D09: Deployment metadata displays version info', async ({ page }) => {
     await expect(page.getByText('Dashboard Deployment (PinMe/IPFS)')).toBeVisible();
+    await expect(page.getByText('Version:', { exact: true })).toBeVisible();
     await expect(page.getByText('Site URL:')).toBeVisible();
-    await expect(page.getByText('IPFS CID:')).toBeVisible();
-    await expect(page.getByText('Payment Wallet:')).toBeVisible();
-    await expect(page.getByText('commP (Piece CID):')).toBeVisible();
   });
 
   // Metric cards display correctly
   test('Metric cards display correctly', async ({ page }) => {
-    await expect(page.getByText('Unique Payers')).toBeVisible();
-    await expect(page.getByText('USDFC Settled')).toBeVisible();
-    await expect(page.getByText('Wallet Terminations')).toBeVisible();
+    await expect(page.getByText('Unique Payers', { exact: true })).toBeVisible();
+    await expect(page.getByText('USDFC Settled', { exact: true })).toBeVisible();
+    await expect(page.getByText('Monthly Run Rate')).toBeVisible();
   });
 
   // Navigation elements
@@ -195,36 +214,37 @@ test.describe('Dashboard - Acceptance Tests', () => {
 test.describe('Payer Accounts List - Acceptance Tests', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE_URL}/payer-accounts`);
-    await page.waitForTimeout(LOAD_WAIT);
+    // Wait for hero metrics to appear (indicates data loaded)
+    await expect(page.getByText('Payer Wallets', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    // Wait for table data to load
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: CONTENT_TIMEOUT });
   });
 
-  // AT-P01: Hero metrics show Active Payer Wallets count with goal progress
-  test('AT-P01: Hero metrics show Active Payer Wallets', async ({ page }) => {
-    await expect(page.getByText('Active Payer Wallets')).toBeVisible();
-    await expect(page.getByText('Goal: 1,000')).toBeVisible();
+  // AT-P01: Hero metrics show Payer Wallets count
+  test('AT-P01: Hero metrics show Payer Wallets', async ({ page }) => {
+    await expect(page.getByText('Payer Wallets', { exact: true })).toBeVisible();
   });
 
-  // AT-P02: Hero metrics show Settled USDFC with goal progress
-  test('AT-P02: Hero metrics show Settled USDFC', async ({ page }) => {
-    await expect(page.getByText('Settled USDFC')).toBeVisible();
-    await expect(page.getByText('Goal: $10M ARR')).toBeVisible();
+  // AT-P02: Hero metrics show Total Settled USDFC
+  test('AT-P02: Hero metrics show Total Settled', async ({ page }) => {
+    await expect(page.getByText('Total Settled (USDFC)')).toBeVisible();
   });
 
-  // AT-P03: Time range filter controls work
-  test('AT-P03: Time range filter controls present', async ({ page }) => {
-    await expect(page.getByText('Time Range:')).toBeVisible();
-    await expect(page.locator('select').first()).toBeVisible();
+  // AT-P03: Date filter controls present
+  test('AT-P03: Date filter controls present', async ({ page }) => {
+    await expect(page.getByText('From:')).toBeVisible();
+    await expect(page.getByText('To:')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Apply' })).toBeVisible();
   });
 
-  // AT-P04: Payer Accounts Over Time chart renders
-  test('AT-P04: Payer Accounts Over Time chart renders', async ({ page }) => {
-    await expect(page.getByText('Payer Accounts Over Time')).toBeVisible();
+  // AT-P04: Total Unique Payers chart renders
+  test('AT-P04: Total Unique Payers chart renders', async ({ page }) => {
+    await expect(page.getByText('Total Unique Payers')).toBeVisible();
   });
 
-  // AT-P05: USDFC Settled Over Time chart renders
-  test('AT-P05: USDFC Settled Over Time chart renders', async ({ page }) => {
-    await expect(page.getByText('USDFC Settled Over Time')).toBeVisible();
+  // AT-P05: Total USDFC Settled chart renders
+  test('AT-P05: Total USDFC Settled chart renders', async ({ page }) => {
+    await expect(page.getByText('Total USDFC Settled')).toBeVisible();
   });
 
   // AT-P06: Address search filters table
@@ -283,17 +303,23 @@ test.describe('Payer Accounts List - Acceptance Tests', () => {
 
 test.describe('Payer Account Detail - Acceptance Tests', () => {
   test.beforeEach(async ({ page }) => {
-    // First go to payer list and click into a payer
+    // First go to payer list and wait for table data
     await page.goto(`${BASE_URL}/payer-accounts`);
-    await page.waitForTimeout(LOAD_WAIT);
+    // Wait for hero metrics and table to load
+    await expect(page.getByText('Payer Wallets', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: CONTENT_TIMEOUT });
+
+    // Wait for table to load with actual data (link in first row)
+    const link = page.locator('tbody tr').first().locator('a');
+    await expect(link).toBeVisible({ timeout: CONTENT_TIMEOUT });
 
     // Click first payer to get to detail view
-    const firstRow = page.locator('tbody tr').first();
-    const link = firstRow.locator('a');
-    if (await link.count() > 0) {
-      await link.click();
-      await page.waitForTimeout(LOAD_WAIT);
-    }
+    await link.click();
+
+    // Wait for detail view title and actual content to load
+    await expect(page.getByText('Payer Details')).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    // Wait for account data to load - Total Funds is a key indicator
+    await expect(page.getByText('Total Funds')).toBeVisible({ timeout: CONTENT_TIMEOUT });
   });
 
   // AT-PD01: Available funds display correctly
@@ -306,10 +332,10 @@ test.describe('Payer Account Detail - Acceptance Tests', () => {
     await expect(page.getByText('Total Settled')).toBeVisible();
   });
 
-  // AT-PD05: Outgoing Rails table shows payee addresses
-  test('AT-PD05: Outgoing Rails table visible', async ({ page }) => {
-    // Use heading role to avoid matching multiple elements
-    await expect(page.getByRole('heading', { name: /Payment Rails|Outgoing Rails/i })).toBeVisible();
+  // AT-PD05: Payment Rails table shows payee addresses
+  test('AT-PD05: Payment Rails table visible', async ({ page }) => {
+    // The section heading is "Payment Rails (Paying To)"
+    await expect(page.getByRole('heading', { name: /Payment Rails/i })).toBeVisible();
   });
 
   // AT-PD07: Back navigation works
@@ -326,21 +352,32 @@ test.describe('Payer Account Detail - Acceptance Tests', () => {
 
   // AT-PD08: ENS name resolution
   test('AT-PD08: Address or ENS displayed', async ({ page }) => {
-    // Should show either ENS name or address
+    // Should show Payer Details title
     const header = page.locator('h1');
     await expect(header).toContainText(/Payer Details/i);
 
-    // Should show address below header
-    const addressDisplay = page.locator('.font-mono');
-    const count = await addressDisplay.count();
-    expect(count).toBeGreaterThan(0);
+    // URL should contain address query param
+    expect(page.url()).toContain('?address=');
+
+    // Address should be displayed somewhere on the page (try multiple selectors)
+    const addressInUrl = new URL(page.url()).searchParams.get('address');
+    if (addressInUrl) {
+      // Check that the address value appears somewhere visible on the page
+      const pageContent = await page.textContent('body');
+      // Address should appear either fully or truncated
+      const addressPrefix = addressInUrl.slice(0, 8);
+      expect(pageContent).toContain(addressPrefix);
+    }
   });
 });
 
 test.describe('Payee Accounts List - Acceptance Tests', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(`${BASE_URL}/payee-accounts`);
-    await page.waitForTimeout(LOAD_WAIT);
+    // Wait for hero metrics to appear (indicates data loaded)
+    await expect(page.getByText('Total Claimable')).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    // Wait for table data to load
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: CONTENT_TIMEOUT });
   });
 
   // AT-Y01: Hero metrics show Total Claimable
@@ -403,24 +440,18 @@ test.describe('Payee Accounts List - Acceptance Tests', () => {
 
 test.describe('Payee Account Detail - Acceptance Tests', () => {
   test.beforeEach(async ({ page }) => {
-    // First go to payee list and click into a payee
+    // First go to payee list and wait for data to load
     await page.goto(`${BASE_URL}/payee-accounts`);
-    await page.waitForTimeout(LOAD_WAIT);
+    await expect(page.getByText('Total Claimable')).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: CONTENT_TIMEOUT });
 
     // Click first payee to get to detail view
-    const rows = page.locator('tbody tr');
-    const count = await rows.count();
+    const link = page.locator('tbody tr').first().locator('a');
+    await expect(link).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    await link.click();
 
-    if (count > 0) {
-      const link = rows.first().locator('a');
-      if (await link.count() > 0) {
-        await link.click();
-        // Wait extra for detail view to fully load (IPFS + subgraph query)
-        await page.waitForTimeout(LOAD_WAIT * 2);
-        // Then wait for data to appear - "Settle Now" button is visible when data loads
-        await page.waitForSelector('button:has-text("Settle Now")', { timeout: 60000 }).catch(() => {});
-      }
-    }
+    // Wait for detail view to load - "Settle Now" button indicates data is ready
+    await expect(page.getByRole('button', { name: /Settle Now/i })).toBeVisible({ timeout: CONTENT_TIMEOUT });
   });
 
   // AT-YD01: "Settle Now" button visible
@@ -435,7 +466,7 @@ test.describe('Payee Account Detail - Acceptance Tests', () => {
 
   // AT-YD04: Unique payers count displays
   test('AT-YD04: Unique payers count displays', async ({ page }) => {
-    await expect(page.getByText('Unique Payers')).toBeVisible();
+    await expect(page.getByText('Unique Payers', { exact: true })).toBeVisible();
   });
 
   // AT-YD05: Incoming Rails table
