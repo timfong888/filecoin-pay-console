@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 // Test against localhost for development, live site for CI
-// Latest deployment: v0.7.7 (2026-01-11) - https://52c482b4.pinit.eth.limo
-const BASE_URL = process.env.TEST_URL || 'https://52c482b4.pinit.eth.limo';
+// Latest deployment: v0.7.8 (2026-01-11) - https://6c91c42c.pinit.eth.limo
+const BASE_URL = process.env.TEST_URL || 'https://6c91c42c.pinit.eth.limo';
 
 // Subgraph queries can be slow - use longer waits
 const isIPFS = BASE_URL.includes('.limo') || BASE_URL.includes('.ipfs');
