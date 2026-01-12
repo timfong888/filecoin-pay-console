@@ -1,5 +1,27 @@
 # Deployment History
 
+## v0.11.0 - 2026-01-12
+
+**Changes:**
+- Add ENS name resolution for counterparties in detail view rail tables - fixes [#10](https://github.com/timfong888/filecoin-pay-console/issues/10)
+- Add Active Payers criteria: requires at least 1 ACTIVE rail AND lockup rate > 0 - fixes [#12](https://github.com/timfong888/filecoin-pay-console/issues/12)
+- Fix: use hasFaults instead of non-existent isProven property in PDP enrichment
+
+**Deployment:**
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX18elPI6Y7gyt98khrJlRgPdPSus53RWaStqQ_NZd4a2sZZKWOVdXGO75Paqvfi6ho3fbac24iH0Rk0sfCITKygojPhtsV65rTWRrTqB
+- IPFS CID: `bafybeigyeeb5irx74hh3v2nbebudsvs736mg7pvhltwle66l6rdamvhlxa`
+- Git Tag: [v0.11.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.11.0)
+- Commit: [7c39e85](https://github.com/timfong888/filecoin-pay-console/commit/7c39e85)
+
+**PRs Included:**
+- [#24](https://github.com/timfong888/filecoin-pay-console/pull/24) - feat: add ENS resolution for counterparties in detail views
+
+**Direct Commits:**
+- [ae31e61](https://github.com/timfong888/filecoin-pay-console/commit/ae31e61) - feat: add Active Payers criteria (closes #12)
+- [7c39e85](https://github.com/timfong888/filecoin-pay-console/commit/7c39e85) - fix: use hasFaults instead of non-existent isProven property
+
+---
+
 ## v0.10.0 - 2026-01-12
 
 **Changes:**
