@@ -52,13 +52,35 @@ type Account {
 ```graphql
 type Rail {
   id: ID!
-  totalSettledAmount: String!  # Wei (18 decimals)
-  paymentRate: String          # Wei per second
-  state: RailState!            # ACTIVE, TERMINATED, FINALIZED, ZERORATE
-  createdAt: String!           # Unix timestamp
+  totalSettledAmount: String!     # Gross settlement (wei, 18 decimals)
+  totalNetPayeeAmount: String!    # Net to payee after fees (wei)
+  totalCommission: String!        # Operator commission (wei)
+  paymentRate: String             # Wei per epoch (30 seconds)
+  state: RailState!               # ACTIVE, TERMINATED, FINALIZED, ZERORATE
+  createdAt: String!              # Unix timestamp
   payer: Account!
   payee: Account!
 }
+```
+
+### Settlement Data on Rails
+
+The **Rail** entity is the authoritative source for settlement amounts. Use these fields for accurate payment tracking:
+
+| Field | Description | Use Case |
+|-------|-------------|----------|
+| `totalSettledAmount` | Gross amount settled (payer pays this) | Total value transferred |
+| `totalNetPayeeAmount` | Net amount to payee after fees | **Payee balance calculations** |
+| `totalCommission` | Operator commission taken | Fee tracking |
+
+**Important:** `UserToken.funds` is only populated for accounts that have deposited. Payees who receive payments without depositing will have null/zero `UserToken` balances. Always use `rail.totalNetPayeeAmount` summed across `payeeRails` for accurate payee totals.
+
+**Example: Calculate Payee Total Received**
+```typescript
+const totalReceived = account.payeeRails.reduce(
+  (sum, rail) => sum + BigInt(rail.totalNetPayeeAmount || '0'),
+  BigInt(0)
+);
 ```
 
 **UserToken**
