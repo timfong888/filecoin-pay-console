@@ -5,6 +5,7 @@ import {
   DailyTokenMetric,
   PaymentsMetric,
   WeeklyMetric,
+  WeeklyTokenMetric,
 } from "../../../generated/schema";
 import { getPaymentsMetricEntityId } from "../keys";
 import { DateHelpers, ZERO_BIG_INT } from "./constants";
@@ -93,6 +94,30 @@ export class MetricsEntityManager {
       metric.activeRailsCount = ZERO_BIG_INT;
       metric.uniqueHolders = ZERO_BIG_INT;
       metric.totalLocked = ZERO_BIG_INT;
+    }
+
+    return metric;
+  }
+
+  static loadOrCreateWeeklyTokenMetric(tokenAddress: Address, timestamp: GraphBN): WeeklyTokenMetric {
+    const weekStart = DateHelpers.getWeekStartTimestamp(timestamp.toI64());
+    const id = tokenAddress.concat(Bytes.fromByteArray(Bytes.fromI64(weekStart)));
+
+    let metric = WeeklyTokenMetric.load(Bytes.fromByteArray(id));
+
+    if (!metric) {
+      metric = new WeeklyTokenMetric(Bytes.fromByteArray(id));
+      metric.token = tokenAddress;
+      metric.timestamp = GraphBN.fromI64(weekStart);
+      metric.week = DateHelpers.getWeek(weekStart);
+
+      metric.volume = ZERO_BIG_INT;
+      metric.deposit = ZERO_BIG_INT;
+      metric.withdrawal = ZERO_BIG_INT;
+      metric.settledAmount = ZERO_BIG_INT;
+      metric.commissionPaid = ZERO_BIG_INT;
+      metric.activeRailsCount = ZERO_BIG_INT;
+      metric.uniqueHolders = ZERO_BIG_INT;
     }
 
     return metric;
