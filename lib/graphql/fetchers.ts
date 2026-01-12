@@ -472,10 +472,10 @@ export async function enrichPayersWithPDP(payers: PayerDisplayExtended[]): Promi
       if (pdp && pdp.isStorageProvider) {
         hasAnyPDP = true;
         totalDataSizeGB += pdp.datasetSizeGB;
-        if (!pdp.isProven) {
+        // Use hasFaults to determine proof status
+        // If provider has faults, they're not fully proven
+        if (pdp.hasFaults) {
           allProven = false;
-        }
-        if (pdp.proofStatus === 'stale') {
           hasAnyStale = true;
         }
       }
