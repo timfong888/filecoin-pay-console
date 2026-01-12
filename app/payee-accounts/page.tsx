@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { PayeeDisplay, fetchAllPayees, fetchAccountDetail, AccountDetail, formatDataSize } from "@/lib/graphql/fetchers";
+import { PayeeDisplay, fetchAllPayees, fetchAccountDetail, AccountDetail, formatDataSize, fetchTotalSettled } from "@/lib/graphql/fetchers";
 import { batchResolveENS, resolveENS } from "@/lib/ens";
 import {
   FILECOIN_PAY_CONTRACT,
@@ -325,6 +325,7 @@ function PayeeDetailView({ address }: { address: string }) {
 // List View Component
 function PayeeListView() {
   const [payees, setPayees] = useState<PayeeDisplay[]>([]);
+  const [totalSettled, setTotalSettled] = useState<{ total: number; totalFormatted: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -337,8 +338,12 @@ function PayeeListView() {
     async function loadData() {
       try {
         setLoading(true);
-        const data = await fetchAllPayees();
-        setPayees(data);
+        const [payeesData, settledData] = await Promise.all([
+          fetchAllPayees(),
+          fetchTotalSettled(),
+        ]);
+        setPayees(payeesData);
+        setTotalSettled(settledData);
         setError(null);
       } catch (err) {
         console.error("Failed to fetch payees:", err);
@@ -384,11 +389,6 @@ function PayeeListView() {
 
   // Calculate hero metrics
   const uniquePayeesCount = payees.length;
-  const totalReceived = payees.reduce((sum, p) => {
-    const val = parseFloat(p.received.replace(/[$,KM]/g, "")) || 0;
-    const multiplier = p.received.includes("M") ? 1000000 : p.received.includes("K") ? 1000 : 1;
-    return sum + val * multiplier;
-  }, 0);
 
   // Calculate total data stored from PDP data
   const totalDataStoredGB = payees.reduce((sum, p) => sum + (p.pdp?.datasetSizeGB || 0), 0);
@@ -468,9 +468,9 @@ function PayeeListView() {
         {/* Default Hero Metrics (placeholder for error state) */}
         <div className="flex gap-6">
           <HeroMetricCard
-            title="Total Received (Net)"
+            title="Total Settled (USDFC)"
             value="--"
-            subtitle="Sum of payeeRails.totalNetPayeeAmount"
+            subtitle="Sum of all rail settlements"
           />
           <HeroMetricCard
             title="Unique Payees"
@@ -524,9 +524,9 @@ function PayeeListView() {
       {/* Hero Metrics */}
       <div className="flex gap-6">
         <HeroMetricCard
-          title="Total Received (Net)"
-          value={formatCurrency(totalReceived)}
-          subtitle="Sum of payeeRails.totalNetPayeeAmount"
+          title="Total Settled (USDFC)"
+          value={totalSettled?.totalFormatted || "--"}
+          subtitle="Sum of all rail settlements"
         />
         <HeroMetricCard
           title="Unique Payees"
