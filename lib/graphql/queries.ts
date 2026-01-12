@@ -257,3 +257,43 @@ export interface DailyMetricsResponse {
 export interface AccountDetailResponse {
   account: Account | null;
 }
+
+// Recent settlements query (for Settled 7d metric)
+export const RECENT_SETTLEMENTS_QUERY = gql`
+  query RecentSettlements($since: BigInt!) {
+    settlements(
+      first: 1000
+      where: { timestamp_gte: $since }
+      orderBy: timestamp
+      orderDirection: desc
+    ) {
+      id
+      totalSettledAmount
+      timestamp
+      rail {
+        id
+        payer {
+          address
+        }
+        payee {
+          address
+        }
+      }
+    }
+  }
+`;
+
+export interface Settlement {
+  id: string;
+  totalSettledAmount: string;
+  timestamp: string;
+  rail: {
+    id: string;
+    payer: { address: string };
+    payee: { address: string };
+  };
+}
+
+export interface RecentSettlementsResponse {
+  settlements: Settlement[];
+}
