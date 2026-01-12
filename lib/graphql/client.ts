@@ -1,9 +1,9 @@
 import { GraphQLClient } from 'graphql-request';
 
 // Data source configuration - Filecoin Mainnet
-export const GOLDSKY_ENDPOINT = 'https://api.goldsky.com/api/public/project_cmb9tuo8r1xdw01ykb8uidk7h/subgraphs/filecoin-pay-mainnet/1.0.0/gn';
+export const GOLDSKY_ENDPOINT = 'https://api.goldsky.com/api/public/project_cmj7soo5uf4no01xw0tij21a1/subgraphs/filecoin-pay-mainnet/1.1.0/gn';
 export const FILECOIN_PAY_CONTRACT = '0x23b1e018F08BB982348b15a86ee926eEBf7F4DAa';
-export const SUBGRAPH_VERSION = '1.0.0';
+export const SUBGRAPH_VERSION = '1.1.0';
 export const NETWORK = 'Filecoin Mainnet';
 
 // Filecoin epoch constants
