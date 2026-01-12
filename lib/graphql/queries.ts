@@ -17,6 +17,7 @@ export const GLOBAL_METRICS_QUERY = gql`
 `;
 
 // Top payers query - accounts ordered by total rails
+// Fetches all payer rails (not just first 10) to determine Active status
 export const TOP_PAYERS_QUERY = gql`
   query TopPayers($first: Int!) {
     accounts(first: $first, orderBy: totalRails, orderDirection: desc) {
@@ -30,11 +31,12 @@ export const TOP_PAYERS_QUERY = gql`
         lockupRate
         payout
       }
-      payerRails(first: 10, orderBy: createdAt, orderDirection: desc) {
+      payerRails(first: 100, orderBy: createdAt, orderDirection: desc) {
         id
         totalSettledAmount
         createdAt
         state
+        paymentRate
         payee {
           address
         }

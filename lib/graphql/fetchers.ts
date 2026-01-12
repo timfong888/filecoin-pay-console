@@ -321,12 +321,23 @@ export async function fetchAllPayers(limit: number = 100) {
   }
 }
 
-// Extended payer display with rails count
+// Extended payer display with rails count and PDP enrichment
 export interface PayerDisplayExtended extends PayerDisplay {
   railsCount: number;
   settledRaw: number;
   lockedRaw: number;
   runwayDays: number;
+  settled7d: number;           // Settled in last 7 days
+  settled7dFormatted: string;
+  // Active status (state=ACTIVE for at least one Rail AND lockupRate > 0)
+  isActive: boolean;
+  hasActiveRail: boolean;      // At least one rail with state=ACTIVE
+  hasPositiveLockupRate: boolean;  // lockupRate > 0
+  // PDP data (aggregated from payees)
+  totalDataSizeGB: number;     // Sum of data size across all payees
+  totalDataSizeFormatted: string;
+  proofStatus: 'proven' | 'stale' | 'none';  // 'proven' if ALL payees are proven
+  payeeAddresses: string[];    // List of payee addresses for PDP lookup
 }
 
 function transformAccountToPayerExtended(account: Account): PayerDisplayExtended {
@@ -337,6 +348,7 @@ function transformAccountToPayerExtended(account: Account): PayerDisplayExtended
   let totalLocked = BigInt(0);
   let totalFunds = BigInt(0);
   let totalLockupRate = BigInt(0);
+  const payeeAddresses: string[] = [];
 
   for (const token of account.userTokens) {
     totalFunds += BigInt(token.funds);
@@ -346,9 +358,27 @@ function transformAccountToPayerExtended(account: Account): PayerDisplayExtended
     }
   }
 
+  // Check for Active status criteria
+  // Criteria: state = ACTIVE for at least one Rail AND lockupRate > 0
+  let hasActiveRail = false;
   for (const rail of account.payerRails) {
     totalSettled += BigInt(rail.totalSettledAmount);
+    // Collect payee addresses for PDP lookup
+    if (rail.payee?.address) {
+      payeeAddresses.push(rail.payee.address);
+    }
+    // Check if rail is ACTIVE (state can be string 'ACTIVE' or number 0)
+    const isRailActive = rail.state === 'ACTIVE' || rail.state === 0;
+    if (isRailActive) {
+      hasActiveRail = true;
+    }
   }
+
+  // Check if lockupRate > 0 (from any userToken)
+  const hasPositiveLockupRate = totalLockupRate > BigInt(0);
+
+  // Active = has at least one ACTIVE rail AND lockupRate > 0
+  const isActive = hasActiveRail && hasPositiveLockupRate;
 
   // Calculate runway days for sorting
   let runwayDays = -1;
@@ -366,6 +396,18 @@ function transformAccountToPayerExtended(account: Account): PayerDisplayExtended
     settledRaw: weiToUSDC(totalSettled.toString()),
     lockedRaw: weiToUSDC(totalLocked.toString()),
     runwayDays,
+    // Active status
+    isActive,
+    hasActiveRail,
+    hasPositiveLockupRate,
+    // Settled 7d will be populated separately
+    settled7d: 0,
+    settled7dFormatted: '-',
+    // PDP data will be populated via enrichment
+    totalDataSizeGB: 0,
+    totalDataSizeFormatted: '-',
+    proofStatus: 'none',
+    payeeAddresses: [...new Set(payeeAddresses)], // Deduplicate
   };
 }
 
@@ -380,6 +422,111 @@ export async function fetchAllPayersExtended(limit: number = 100) {
   } catch (error) {
     console.error('Error fetching all payers:', error);
     throw error;
+  }
+}
+
+// Count active payers (at least one ACTIVE rail AND lockupRate > 0)
+export async function fetchActivePayersCount(): Promise<{ activeCount: number; totalCount: number }> {
+  try {
+    const data = await graphqlClient.request<TopPayersResponse>(TOP_PAYERS_QUERY, { first: 1000 });
+
+    const payers = data.accounts.filter(account => account.payerRails.length > 0);
+    const activePayers = payers.map(transformAccountToPayerExtended).filter(p => p.isActive);
+
+    return {
+      activeCount: activePayers.length,
+      totalCount: payers.length,
+    };
+  } catch (error) {
+    console.error('Error fetching active payers count:', error);
+    return { activeCount: 0, totalCount: 0 };
+  }
+}
+
+// Enrich payers with PDP data from their payees
+export async function enrichPayersWithPDP(payers: PayerDisplayExtended[]): Promise<PayerDisplayExtended[]> {
+  // Collect all unique payee addresses across all payers
+  const allPayeeAddresses = new Set<string>();
+  for (const payer of payers) {
+    for (const addr of payer.payeeAddresses) {
+      allPayeeAddresses.add(addr);
+    }
+  }
+
+  if (allPayeeAddresses.size === 0) {
+    return payers;
+  }
+
+  // Batch fetch PDP data for all payees
+  const pdpDataMap = await batchFetchPDPData([...allPayeeAddresses]);
+
+  // Enrich each payer with aggregated PDP data from their payees
+  return payers.map(payer => {
+    let totalDataSizeGB = 0;
+    let hasAnyPDP = false;
+    let allProven = true;
+    let hasAnyStale = false;
+
+    for (const payeeAddr of payer.payeeAddresses) {
+      const pdp = pdpDataMap.get(payeeAddr.toLowerCase());
+      if (pdp && pdp.isStorageProvider) {
+        hasAnyPDP = true;
+        totalDataSizeGB += pdp.datasetSizeGB;
+        if (!pdp.isProven) {
+          allProven = false;
+        }
+        if (pdp.proofStatus === 'stale') {
+          hasAnyStale = true;
+        }
+      }
+    }
+
+    // Determine overall proof status
+    let proofStatus: 'proven' | 'stale' | 'none' = 'none';
+    if (hasAnyPDP) {
+      proofStatus = allProven ? 'proven' : (hasAnyStale ? 'stale' : 'none');
+    }
+
+    return {
+      ...payer,
+      totalDataSizeGB,
+      totalDataSizeFormatted: totalDataSizeGB > 0 ? formatDataSize(totalDataSizeGB) : '-',
+      proofStatus,
+    };
+  });
+}
+
+// Enrich payers with settled 7d data
+export async function enrichPayersWithSettled7d(payers: PayerDisplayExtended[]): Promise<PayerDisplayExtended[]> {
+  try {
+    // Fetch recent settlements
+    const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+    const data = await graphqlClient.request<RecentSettlementsResponse>(
+      RECENT_SETTLEMENTS_QUERY,
+      { since: sevenDaysAgo.toString() }
+    );
+
+    // Group settlements by payer address
+    const settledByPayer = new Map<string, bigint>();
+    for (const settlement of data.settlements) {
+      const payerAddr = settlement.rail.payer.address.toLowerCase();
+      const current = settledByPayer.get(payerAddr) || BigInt(0);
+      settledByPayer.set(payerAddr, current + BigInt(settlement.totalSettledAmount));
+    }
+
+    // Enrich each payer with their 7d settled amount
+    return payers.map(payer => {
+      const settled7dWei = settledByPayer.get(payer.fullAddress.toLowerCase()) || BigInt(0);
+      const settled7d = weiToUSDC(settled7dWei.toString());
+      return {
+        ...payer,
+        settled7d,
+        settled7dFormatted: formatCurrency(settled7d),
+      };
+    });
+  } catch (error) {
+    console.error('Error enriching payers with settled7d:', error);
+    return payers;
   }
 }
 
@@ -449,12 +596,14 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
     const effectiveStart = startDate || defaultStart;
     const effectiveEnd = endDate || now;
 
-    const [globalMetrics, totalSettled, runRate, payersByDate, dailySettledMap] = await Promise.all([
+    const [globalMetrics, totalSettled, settled7d, runRate, payersByDate, dailySettledMap, activePayersData] = await Promise.all([
       fetchGlobalMetrics(),
       fetchTotalSettled(),
+      fetchSettled7d(),
       fetchMonthlyRunRate(),
       fetchPayersByDate(),
       fetchDailySettled(),
+      fetchActivePayersCount(),
     ]);
 
     // Generate continuous date range for chart
@@ -515,13 +664,18 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
     const runRateGoalProgress = Math.min((runRate.monthly / 833333) * 100, 100);
 
     return {
-      activePayers: globalMetrics.uniquePayers,
+      // Active Payers: at least one ACTIVE rail AND lockupRate > 0
+      activePayers: activePayersData.activeCount,
+      totalPayers: activePayersData.totalCount,
       payersWoWChange,
       payersGoalProgress,
       settledTotal: totalSettled.total,
       settledFormatted: totalSettled.totalFormatted,
       settledGoalProgress,
-      // Monthly run rate
+      // Settled in last 7 days
+      settled7d: settled7d.total,
+      settled7dFormatted: settled7d.formatted,
+      // Monthly run rate (kept for reference but not displayed in hero)
       monthlyRunRate: runRate.monthly,
       monthlyRunRateFormatted: runRate.monthlyFormatted,
       annualizedRunRate: runRate.annualized,
@@ -682,9 +836,10 @@ export async function fetchDailyMetrics(days: number = 30) {
 
 // Fetch all dashboard data at once (including cumulative chart data)
 export async function fetchDashboardData() {
-  const [globalMetrics, totalSettled, topPayers, runRate, payersByDate, dailySettledMap] = await Promise.all([
+  const [globalMetrics, totalSettled, settled7d, topPayers, runRate, payersByDate, dailySettledMap] = await Promise.all([
     fetchGlobalMetrics(),
     fetchTotalSettled(),
+    fetchSettled7d(),
     fetchTopPayers(10),
     fetchMonthlyRunRate(),
     fetchPayersByDate(),
@@ -730,6 +885,7 @@ export async function fetchDashboardData() {
   return {
     globalMetrics,
     totalSettled,
+    settled7d,
     topPayers,
     runRate,
     // Cumulative chart data

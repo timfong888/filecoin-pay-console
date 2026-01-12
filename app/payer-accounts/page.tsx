@@ -8,6 +8,8 @@ import {
   fetchAllPayersExtended,
   fetchAccountDetail,
   fetchPayerListMetrics,
+  enrichPayersWithPDP,
+  enrichPayersWithSettled7d,
   AccountDetail,
   PayerDisplayExtended,
 } from "@/lib/graphql/fetchers";
@@ -40,13 +42,17 @@ import {
 
 // Types
 interface PayerListMetrics {
-  activePayers: number;
+  activePayers: number;  // Payers with ACTIVE rail AND lockupRate > 0
+  totalPayers: number;   // All payers (for reference)
   payersWoWChange: string;
   payersGoalProgress: number;
   settledTotal: number;
   settledFormatted: string;
   settledGoalProgress: number;
-  // Monthly run rate
+  // Settled in last 7 days
+  settled7d: number;
+  settled7dFormatted: string;
+  // Monthly run rate (kept for reference but not displayed in hero)
   monthlyRunRate: number;
   monthlyRunRateFormatted: string;
   annualizedRunRate: number;
@@ -406,8 +412,9 @@ function PayerListView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortField, setSortField] = useState<"settled" | "locked" | "rails" | "runway" | "start">("settled");
+  const [sortField, setSortField] = useState<"settled" | "settled7d" | "dataSize" | "locked" | "rails" | "runway" | "start">("settled");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [pdpLoading, setPdpLoading] = useState(false);
   const [fromDate, setFromDate] = useState(defaultDates.fromDate);
   const [toDate, setToDate] = useState(defaultDates.toDate);
   const [currentPage, setCurrentPage] = useState(1);
@@ -424,6 +431,28 @@ function PayerListView() {
         setPayers(payersData);
         setMetrics(metricsData);
         setError(null);
+
+        // Progressively load PDP and settled7d data
+        setPdpLoading(true);
+        try {
+          const [enrichedWithPDP, enrichedWithSettled7d] = await Promise.all([
+            enrichPayersWithPDP(payersData),
+            enrichPayersWithSettled7d(payersData),
+          ]);
+
+          // Merge enrichments
+          const mergedPayers = payersData.map((payer, i) => ({
+            ...payer,
+            ...enrichedWithPDP[i],
+            settled7d: enrichedWithSettled7d[i].settled7d,
+            settled7dFormatted: enrichedWithSettled7d[i].settled7dFormatted,
+          }));
+          setPayers(mergedPayers);
+        } catch (err) {
+          console.error("Failed to enrich payers:", err);
+        } finally {
+          setPdpLoading(false);
+        }
       } catch (err) {
         console.error("Failed to fetch payers:", err);
         setError("Failed to load payers from subgraph");
@@ -494,6 +523,14 @@ function PayerListView() {
         aVal = a.settledRaw || 0;
         bVal = b.settledRaw || 0;
         break;
+      case "settled7d":
+        aVal = a.settled7d || 0;
+        bVal = b.settled7d || 0;
+        break;
+      case "dataSize":
+        aVal = a.totalDataSizeGB || 0;
+        bVal = b.totalDataSizeGB || 0;
+        break;
       case "locked":
         aVal = a.lockedRaw || 0;
         bVal = b.lockedRaw || 0;
@@ -524,7 +561,7 @@ function PayerListView() {
     currentPage * itemsPerPage
   );
 
-  const handleSort = (field: "settled" | "locked" | "rails" | "runway" | "start") => {
+  const handleSort = (field: "settled" | "settled7d" | "dataSize" | "locked" | "rails" | "runway" | "start") => {
     if (sortField === field) {
       setSortDirection(sortDirection === "desc" ? "asc" : "desc");
     } else {
@@ -569,17 +606,18 @@ function PayerListView() {
         {/* Default Hero Metrics (placeholder for error state) */}
         <div className="flex gap-6">
           <HeroMetricCard
-            title="Payer Wallets"
+            title="Active Payers"
             value="--"
+            subtitle="At least 1 ACTIVE rail AND lockup rate > 0"
           />
           <HeroMetricCard
             title="Total Settled (USDFC)"
             value="--"
           />
           <HeroMetricCard
-            title="Monthly Run Rate"
+            title="Settled (7d)"
             value="--"
-            subtitle="Projected monthly flow based on active rail payment rates"
+            subtitle="USDFC settled in the last 7 days"
           />
         </div>
 
@@ -618,8 +656,9 @@ function PayerListView() {
       {metrics && (
         <div className="flex gap-6">
           <HeroMetricCard
-            title="Payer Wallets"
+            title="Active Payers"
             value={metrics.activePayers.toLocaleString()}
+            subtitle="At least 1 ACTIVE rail AND lockup rate > 0"
             wowChange={metrics.payersWoWChange}
           />
           <HeroMetricCard
@@ -627,9 +666,9 @@ function PayerListView() {
             value={metrics.settledFormatted}
           />
           <HeroMetricCard
-            title="Monthly Run Rate"
-            value={metrics.monthlyRunRateFormatted}
-            subtitle={`= Σ(rate/sec across ${metrics.activeRailsCount} active rails) × 2.59M sec/mo`}
+            title="Settled (7d)"
+            value={metrics.settled7dFormatted}
+            subtitle="USDFC settled in the last 7 days"
           />
         </div>
       )}
@@ -753,6 +792,9 @@ function PayerListView() {
           <TableHeader>
             <TableRow className="bg-gray-50">
               <TableHead className="font-medium">Address</TableHead>
+              <TableHead className="font-medium" title="ACTIVE rail AND lockup rate > 0">
+                Active
+              </TableHead>
               <TableHead
                 className="font-medium cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort("rails")}
@@ -761,9 +803,26 @@ function PayerListView() {
               </TableHead>
               <TableHead
                 className="font-medium cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("dataSize")}
+              >
+                Data Size {sortField === "dataSize" && (sortDirection === "desc" ? "↓" : "↑")}
+                {pdpLoading && <span className="ml-1 text-xs text-gray-400">...</span>}
+              </TableHead>
+              <TableHead className="font-medium">
+                Proven
+                {pdpLoading && <span className="ml-1 text-xs text-gray-400">...</span>}
+              </TableHead>
+              <TableHead
+                className="font-medium cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort("settled")}
               >
-                Settled {sortField === "settled" && (sortDirection === "desc" ? "↓" : "↑")}
+                Total Settled {sortField === "settled" && (sortDirection === "desc" ? "↓" : "↑")}
+              </TableHead>
+              <TableHead
+                className="font-medium cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("settled7d")}
+              >
+                Settled (7d) {sortField === "settled7d" && (sortDirection === "desc" ? "↓" : "↑")}
               </TableHead>
               <TableHead
                 className="font-medium cursor-pointer hover:bg-gray-100"
@@ -788,7 +847,7 @@ function PayerListView() {
           <TableBody>
             {paginatedPayers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                   No payers found
                 </TableCell>
               </TableRow>
@@ -810,8 +869,38 @@ function PayerListView() {
                       )}
                     </Link>
                   </TableCell>
+                  <TableCell>
+                    {payer.isActive ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800" title="ACTIVE rail AND lockup rate > 0">
+                        Yes
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600" title={`ACTIVE rail: ${payer.hasActiveRail ? 'Yes' : 'No'}, Lockup rate > 0: ${payer.hasPositiveLockupRate ? 'Yes' : 'No'}`}>
+                        No
+                      </span>
+                    )}
+                  </TableCell>
                   <TableCell>{payer.railsCount}</TableCell>
+                  <TableCell>
+                    {pdpLoading ? (
+                      <span className="text-gray-400">...</span>
+                    ) : (
+                      payer.totalDataSizeFormatted || "-"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {pdpLoading ? (
+                      <span className="text-gray-400">...</span>
+                    ) : payer.proofStatus === "proven" ? (
+                      <span className="text-green-600" title="Proofs submitted within 24h">Yes</span>
+                    ) : payer.proofStatus === "stale" ? (
+                      <span className="text-yellow-600" title="Proofs older than 24h">Stale</span>
+                    ) : (
+                      <span className="text-gray-400" title="No PDP data">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>{payer.settled}</TableCell>
+                  <TableCell>{payer.settled7dFormatted || "-"}</TableCell>
                   <TableCell>{payer.locked}</TableCell>
                   <TableCell>{payer.runway}</TableCell>
                   <TableCell>{payer.start}</TableCell>
