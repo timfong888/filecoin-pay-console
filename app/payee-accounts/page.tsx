@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { PayeeDisplay, fetchAllPayees, fetchAccountDetail, AccountDetail } from "@/lib/graphql/fetchers";
+import { PayeeDisplay, fetchAllPayees, fetchAccountDetail, AccountDetail, formatDataSize } from "@/lib/graphql/fetchers";
 import { batchResolveENS, resolveENS } from "@/lib/ens";
 import {
   FILECOIN_PAY_CONTRACT,
@@ -293,7 +293,7 @@ function PayeeListView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortField, setSortField] = useState<"received" | "payers" | "start">("received");
+  const [sortField, setSortField] = useState<"received" | "payers" | "start" | "dataSize">("received");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -355,6 +355,10 @@ function PayeeListView() {
     return sum + val * multiplier;
   }, 0);
 
+  // Calculate total data stored from PDP data
+  const totalDataStoredGB = payees.reduce((sum, p) => sum + (p.pdp?.datasetSizeGB || 0), 0);
+  const storageProviderCount = payees.filter(p => p.isStorageProvider).length;
+
   // Filter payees by search
   const filteredPayees = payees.filter((p) => {
     const matchesSearch =
@@ -381,6 +385,10 @@ function PayeeListView() {
         aVal = a.startTimestamp;
         bVal = b.startTimestamp;
         break;
+      case "dataSize":
+        aVal = a.pdp?.datasetSizeGB || 0;
+        bVal = b.pdp?.datasetSizeGB || 0;
+        break;
       default:
         return 0;
     }
@@ -395,7 +403,7 @@ function PayeeListView() {
     currentPage * itemsPerPage
   );
 
-  const handleSort = (field: "received" | "payers" | "start") => {
+  const handleSort = (field: "received" | "payers" | "start" | "dataSize") => {
     if (sortField === field) {
       setSortDirection(sortDirection === "desc" ? "asc" : "desc");
     } else {
@@ -433,6 +441,11 @@ function PayeeListView() {
             title="Unique Payees"
             value="--"
             subtitle="Storage providers"
+          />
+          <HeroMetricCard
+            title="Total Data Stored"
+            value="--"
+            subtitle="From PDP Explorer"
           />
         </div>
 
@@ -485,6 +498,11 @@ function PayeeListView() {
           value={uniquePayeesCount.toLocaleString()}
           subtitle="Storage providers"
         />
+        <HeroMetricCard
+          title="Total Data Stored"
+          value={formatDataSize(totalDataStoredGB)}
+          subtitle={`From ${storageProviderCount} storage providers`}
+        />
       </div>
 
       {/* Search and Filters */}
@@ -518,6 +536,12 @@ function PayeeListView() {
               </TableHead>
               <TableHead
                 className="font-medium text-purple-800 cursor-pointer hover:bg-purple-100"
+                onClick={() => handleSort("dataSize")}
+              >
+                Data Stored {sortField === "dataSize" && (sortDirection === "desc" ? "↓" : "↑")}
+              </TableHead>
+              <TableHead
+                className="font-medium text-purple-800 cursor-pointer hover:bg-purple-100"
                 onClick={() => handleSort("payers")}
               >
                 Unique Payers {sortField === "payers" && (sortDirection === "desc" ? "↓" : "↑")}
@@ -533,7 +557,7 @@ function PayeeListView() {
           <TableBody>
             {paginatedPayees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-purple-500">
+                <TableCell colSpan={5} className="text-center py-8 text-purple-500">
                   No payees found
                 </TableCell>
               </TableRow>
@@ -544,18 +568,26 @@ function PayeeListView() {
                   className={index % 2 === 0 ? "bg-white" : "bg-purple-50/50"}
                 >
                   <TableCell>
-                    <Link
-                      href={`/payee-accounts?address=${payee.fullAddress}`}
-                      className="hover:underline"
-                    >
-                      {payee.ensName ? (
-                        <span className="text-purple-600 font-medium">{payee.ensName}</span>
-                      ) : (
-                        <span className="font-mono text-sm text-purple-600">{payee.address}</span>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/payee-accounts?address=${payee.fullAddress}`}
+                        className="hover:underline"
+                      >
+                        {payee.ensName ? (
+                          <span className="text-purple-600 font-medium">{payee.ensName}</span>
+                        ) : (
+                          <span className="font-mono text-sm text-purple-600">{payee.address}</span>
+                        )}
+                      </Link>
+                      {payee.isStorageProvider && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                          SP
+                        </span>
                       )}
-                    </Link>
+                    </div>
                   </TableCell>
                   <TableCell>{payee.received}</TableCell>
+                  <TableCell>{payee.dataSize}</TableCell>
                   <TableCell>{payee.payers}</TableCell>
                   <TableCell>{payee.start}</TableCell>
                 </TableRow>
@@ -617,7 +649,7 @@ function PayeeListView() {
 
       {/* Data source indicator */}
       <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 space-y-2 text-sm">
-        <div className="font-medium text-purple-700">Data Source</div>
+        <div className="font-medium text-purple-700">Data Sources</div>
         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-purple-600">
           <div>Network:</div>
           <div className="font-mono">{NETWORK}</div>
@@ -632,8 +664,19 @@ function PayeeListView() {
               {FILECOIN_PAY_CONTRACT}
             </a>
           </div>
-          <div>Subgraph Version:</div>
+          <div>Filecoin Pay Subgraph:</div>
           <div className="font-mono">{SUBGRAPH_VERSION}</div>
+          <div>PDP Explorer:</div>
+          <div className="font-mono text-xs">
+            <a
+              href="https://pdp.vxb.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-purple-600 hover:underline"
+            >
+              pdp-explorer/mainnet311
+            </a>
+          </div>
         </div>
       </div>
     </div>
