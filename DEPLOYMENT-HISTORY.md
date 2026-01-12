@@ -1,5 +1,22 @@
 # Deployment History
 
+## v0.12.0 - 2026-01-12
+
+**Changes:**
+- Fix "Showing Mock Data" error by switching from broken Settlement.timestamp query to DailyTokenMetric - fixes [#26](https://github.com/timfong888/filecoin-pay-console/issues/26)
+
+**Deployment:**
+- PinMe ENS URL: https://6eb08716.pinit.eth.limo
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX1_ynL2x0zsfGxronJfeGE4PulxPIgOTR7epWJwtmVpvPlVEOAe-hPKW4aTEZG24t4PWGqw6ZvK2Pqx7KtlKD4FsEZpY76AWLRcio79p
+- IPFS CID: `bafybeiaj3xdrgcy6nkq4vrouuaraf45mcii2fkt7ge42vrfzqmuo6wo47i`
+- Git Tag: [v0.12.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.12.0)
+- Commit: [66970de](https://github.com/timfong888/filecoin-pay-console/commit/66970de)
+
+**Direct Commits:**
+- [66970de](https://github.com/timfong888/filecoin-pay-console/commit/66970de) - fix: use DailyTokenMetric for 7d settled to fix subgraph schema error
+
+---
+
 ## v0.11.0 - 2026-01-12
 
 **Changes:**
