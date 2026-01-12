@@ -117,6 +117,7 @@ export class RailCreationCollector extends BaseMetricsCollector {
   }
 
   private updateTokenMetrics(): void {
+    // Daily token metrics
     const tokenMetric = MetricsEntityManager.loadOrCreateTokenMetric(
       Address.fromBytes(this.rail.token),
       this.timestamp,
@@ -125,6 +126,16 @@ export class RailCreationCollector extends BaseMetricsCollector {
     tokenMetric.activeRailsCount = tokenMetric.activeRailsCount.plus(ONE_BIG_INT);
 
     tokenMetric.save();
+
+    // Weekly token metrics
+    const weeklyTokenMetric = MetricsEntityManager.loadOrCreateWeeklyTokenMetric(
+      Address.fromBytes(this.rail.token),
+      this.timestamp,
+    );
+
+    weeklyTokenMetric.activeRailsCount = weeklyTokenMetric.activeRailsCount.plus(ONE_BIG_INT);
+
+    weeklyTokenMetric.save();
   }
 
   private updateOperatorMetrics(): void {
@@ -218,6 +229,7 @@ export class SettlementCollector extends BaseMetricsCollector {
   }
 
   private updateTokenMetrics(): void {
+    // Daily token metrics
     const tokenMetric = MetricsEntityManager.loadOrCreateTokenMetric(
       Address.fromBytes(this.rail.token),
       this.timestamp,
@@ -228,6 +240,18 @@ export class SettlementCollector extends BaseMetricsCollector {
     tokenMetric.commissionPaid = tokenMetric.commissionPaid.plus(this.operatorCommission);
 
     tokenMetric.save();
+
+    // Weekly token metrics
+    const weeklyTokenMetric = MetricsEntityManager.loadOrCreateWeeklyTokenMetric(
+      Address.fromBytes(this.rail.token),
+      this.timestamp,
+    );
+
+    weeklyTokenMetric.volume = weeklyTokenMetric.volume.plus(this.totalSettledAmount);
+    weeklyTokenMetric.settledAmount = weeklyTokenMetric.settledAmount.plus(this.totalNetPayeeAmount);
+    weeklyTokenMetric.commissionPaid = weeklyTokenMetric.commissionPaid.plus(this.operatorCommission);
+
+    weeklyTokenMetric.save();
   }
 
   private updateNetworkMetrics(): void {
@@ -335,6 +359,7 @@ export class TokenActivityCollector extends BaseMetricsCollector {
   }
 
   private updateTokenMetrics(): void {
+    // Daily token metrics
     const tokenMetric = MetricsEntityManager.loadOrCreateTokenMetric(this.tokenAddress, this.timestamp);
     tokenMetric.volume = tokenMetric.volume.plus(this.amount);
 
@@ -349,6 +374,22 @@ export class TokenActivityCollector extends BaseMetricsCollector {
     }
 
     tokenMetric.save();
+
+    // Weekly token metrics
+    const weeklyTokenMetric = MetricsEntityManager.loadOrCreateWeeklyTokenMetric(this.tokenAddress, this.timestamp);
+    weeklyTokenMetric.volume = weeklyTokenMetric.volume.plus(this.amount);
+
+    if (this.isDeposit) {
+      weeklyTokenMetric.deposit = weeklyTokenMetric.deposit.plus(this.amount);
+    } else {
+      weeklyTokenMetric.withdrawal = weeklyTokenMetric.withdrawal.plus(this.amount);
+    }
+
+    if (this.isNewAccount) {
+      weeklyTokenMetric.uniqueHolders = weeklyTokenMetric.uniqueHolders.plus(ONE_BIG_INT);
+    }
+
+    weeklyTokenMetric.save();
   }
 
   private updateNetworkMetrics(): void {
