@@ -8,6 +8,7 @@ import {
   PAYER_FIRST_ACTIVITY_QUERY,
   DAILY_METRICS_QUERY,
   ACCOUNT_DETAIL_QUERY,
+  RECENT_SETTLEMENTS_QUERY,
   GlobalMetricsResponse,
   TopPayersResponse,
   TopPayeesResponse,
@@ -16,6 +17,7 @@ import {
   PayerFirstActivityResponse,
   DailyMetricsResponse,
   AccountDetailResponse,
+  RecentSettlementsResponse,
   Account,
   Rail,
 } from './queries';
@@ -130,16 +132,47 @@ export async function fetchTotalSettled() {
   }
 }
 
+// Fetch settled amount from the last 7 days (actual settlement events)
+export async function fetchSettled7d() {
+  try {
+    // Calculate timestamp for 7 days ago (in seconds for BigInt)
+    const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+
+    const data = await graphqlClient.request<RecentSettlementsResponse>(
+      RECENT_SETTLEMENTS_QUERY,
+      { since: sevenDaysAgo.toString() }
+    );
+
+    let totalSettled7d = BigInt(0);
+
+    for (const settlement of data.settlements) {
+      totalSettled7d += BigInt(settlement.totalSettledAmount);
+    }
+
+    const settled7dValue = weiToUSDC(totalSettled7d.toString());
+
+    return {
+      total: settled7dValue,
+      formatted: formatCurrency(settled7dValue),
+      settlementCount: data.settlements.length,
+    };
+  } catch (error) {
+    console.error('Error fetching settled 7d:', error);
+    throw error;
+  }
+}
+
 // Fetch monthly run rate from active rails
-// Monthly Run Rate = Σ(activeRails.paymentRate) × seconds/month
-// paymentRate is in wei per second
-const SECONDS_PER_MONTH = 30 * 24 * 60 * 60; // 2,592,000
+// Monthly Run Rate = Σ(activeRails.paymentRate) × epochs/month
+// paymentRate is in wei per EPOCH (not per second!)
+// Filecoin epoch = ~30 seconds, so epochs/day = 2880
+const EPOCHS_PER_MONTH = 30 * 2880; // 86,400 epochs/month
 
 export async function fetchMonthlyRunRate() {
   try {
     const data = await graphqlClient.request<ActiveRailsResponse>(ACTIVE_RAILS_QUERY);
 
-    // Sum all active rails' payment rates (wei per second)
+    // Sum all active rails' payment rates (wei per epoch)
     let totalPaymentRate = BigInt(0);
     let activeRailsCount = 0;
 
@@ -150,8 +183,8 @@ export async function fetchMonthlyRunRate() {
       }
     }
 
-    // Calculate monthly run rate: rate/sec × seconds/month
-    const monthlyRunRateWei = totalPaymentRate * BigInt(SECONDS_PER_MONTH);
+    // Calculate monthly run rate: rate/epoch × epochs/month
+    const monthlyRunRateWei = totalPaymentRate * BigInt(EPOCHS_PER_MONTH);
     const monthlyRunRate = weiToUSDC(monthlyRunRateWei.toString());
 
     // Annualized run rate for reference
