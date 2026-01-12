@@ -8,7 +8,7 @@ import {
   PAYER_FIRST_ACTIVITY_QUERY,
   DAILY_METRICS_QUERY,
   ACCOUNT_DETAIL_QUERY,
-  RECENT_SETTLEMENTS_QUERY,
+  DAILY_TOKEN_METRICS_QUERY,
   GlobalMetricsResponse,
   TopPayersResponse,
   TopPayeesResponse,
@@ -17,7 +17,7 @@ import {
   PayerFirstActivityResponse,
   DailyMetricsResponse,
   AccountDetailResponse,
-  RecentSettlementsResponse,
+  DailyTokenMetricsResponse,
   Account,
   Rail,
 } from './queries';
@@ -138,21 +138,21 @@ export async function fetchTotalSettled() {
   }
 }
 
-// Fetch settled amount from the last 7 days (actual settlement events)
+// Fetch settled amount from the last 7 days using DailyTokenMetric
 export async function fetchSettled7d() {
   try {
     // Calculate timestamp for 7 days ago (in seconds for BigInt)
     const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
 
-    const data = await graphqlClient.request<RecentSettlementsResponse>(
-      RECENT_SETTLEMENTS_QUERY,
-      { since: sevenDaysAgo.toString() }
+    const data = await graphqlClient.request<DailyTokenMetricsResponse>(
+      DAILY_TOKEN_METRICS_QUERY,
+      { first: 14, since: sevenDaysAgo.toString() }
     );
 
     let totalSettled7d = BigInt(0);
 
-    for (const settlement of data.settlements) {
-      totalSettled7d += BigInt(settlement.totalSettledAmount);
+    for (const metric of data.dailyTokenMetrics) {
+      totalSettled7d += BigInt(metric.settledAmount);
     }
 
     const settled7dValue = weiToUSDC(totalSettled7d.toString());
@@ -160,7 +160,7 @@ export async function fetchSettled7d() {
     return {
       total: settled7dValue,
       formatted: formatCurrency(settled7dValue),
-      settlementCount: data.settlements.length,
+      settlementCount: data.dailyTokenMetrics.length,
     };
   } catch (error) {
     console.error('Error fetching settled 7d:', error);
@@ -497,37 +497,14 @@ export async function enrichPayersWithPDP(payers: PayerDisplayExtended[]): Promi
 }
 
 // Enrich payers with settled 7d data
+// Note: Per-payer 7d breakdown is not available in the current subgraph schema
+// The Settlement type lacks a timestamp field for time-based filtering
+// For now, we return payers unchanged - the hero metric uses DailyTokenMetric for total 7d
 export async function enrichPayersWithSettled7d(payers: PayerDisplayExtended[]): Promise<PayerDisplayExtended[]> {
-  try {
-    // Fetch recent settlements
-    const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
-    const data = await graphqlClient.request<RecentSettlementsResponse>(
-      RECENT_SETTLEMENTS_QUERY,
-      { since: sevenDaysAgo.toString() }
-    );
-
-    // Group settlements by payer address
-    const settledByPayer = new Map<string, bigint>();
-    for (const settlement of data.settlements) {
-      const payerAddr = settlement.rail.payer.address.toLowerCase();
-      const current = settledByPayer.get(payerAddr) || BigInt(0);
-      settledByPayer.set(payerAddr, current + BigInt(settlement.totalSettledAmount));
-    }
-
-    // Enrich each payer with their 7d settled amount
-    return payers.map(payer => {
-      const settled7dWei = settledByPayer.get(payer.fullAddress.toLowerCase()) || BigInt(0);
-      const settled7d = weiToUSDC(settled7dWei.toString());
-      return {
-        ...payer,
-        settled7d,
-        settled7dFormatted: formatCurrency(settled7d),
-      };
-    });
-  } catch (error) {
-    console.error('Error enriching payers with settled7d:', error);
-    return payers;
-  }
+  // Per-payer 7d data would require a timestamp field on Settlement type
+  // which is not currently available in the subgraph schema
+  // Return payers unchanged - they already have settled7d: 0 from initial transform
+  return payers;
 }
 
 // Fetch payer first activity dates bucketed by day

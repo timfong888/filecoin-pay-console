@@ -260,42 +260,37 @@ export interface AccountDetailResponse {
   account: Account | null;
 }
 
-// Recent settlements query (for Settled 7d metric)
-export const RECENT_SETTLEMENTS_QUERY = gql`
-  query RecentSettlements($since: BigInt!) {
-    settlements(
-      first: 1000
-      where: { timestamp_gte: $since }
+// Daily token metrics query (for Settled 7d metric)
+// Uses DailyTokenMetric which has settledAmount and timestamp fields
+export const DAILY_TOKEN_METRICS_QUERY = gql`
+  query DailyTokenMetrics($first: Int!, $since: BigInt!) {
+    dailyTokenMetrics(
+      first: $first
+      where: { timestamp_gte: $since, token_: { symbol: "USDFC" } }
       orderBy: timestamp
       orderDirection: desc
     ) {
       id
-      totalSettledAmount
+      date
       timestamp
-      rail {
-        id
-        payer {
-          address
-        }
-        payee {
-          address
-        }
+      settledAmount
+      token {
+        symbol
       }
     }
   }
 `;
 
-export interface Settlement {
+export interface DailyTokenMetric {
   id: string;
-  totalSettledAmount: string;
+  date: string;
   timestamp: string;
-  rail: {
-    id: string;
-    payer: { address: string };
-    payee: { address: string };
+  settledAmount: string;
+  token: {
+    symbol: string;
   };
 }
 
-export interface RecentSettlementsResponse {
-  settlements: Settlement[];
+export interface DailyTokenMetricsResponse {
+  dailyTokenMetrics: DailyTokenMetric[];
 }
