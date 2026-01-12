@@ -45,6 +45,7 @@ function PayeeDetailView({ address }: { address: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ensName, setEnsName] = useState<string | null>(null);
+  const [counterpartyEnsNames, setCounterpartyEnsNames] = useState<Map<string, string | null>>(new Map());
 
   useEffect(() => {
     async function loadData() {
@@ -89,6 +90,32 @@ function PayeeDetailView({ address }: { address: string }) {
 
     resolveAccountENS();
   }, [address]);
+
+  // Resolve ENS names for counterparties in rail tables
+  useEffect(() => {
+    if (!account) return;
+
+    // Collect all unique counterparty addresses from payee rails
+    const addresses = new Set<string>();
+    for (const rail of account.payeeRails) {
+      if (rail.counterpartyAddress) {
+        addresses.add(rail.counterpartyAddress);
+      }
+    }
+
+    if (addresses.size === 0) return;
+
+    async function resolveCounterpartyNames(addressList: string[]) {
+      try {
+        const ensNames = await batchResolveENS(addressList);
+        setCounterpartyEnsNames(ensNames);
+      } catch (err) {
+        console.error("Failed to resolve counterparty ENS names:", err);
+      }
+    }
+
+    resolveCounterpartyNames(Array.from(addresses));
+  }, [account]);
 
   if (loading) {
     return (
@@ -234,9 +261,17 @@ function PayeeDetailView({ address }: { address: string }) {
                     <TableCell>
                       <Link
                         href={`/payer-accounts?address=${rail.counterpartyAddress}`}
-                        className="font-mono text-sm text-purple-600 hover:underline"
+                        className="hover:underline"
                       >
-                        {rail.counterpartyFormatted}
+                        {counterpartyEnsNames.get(rail.counterpartyAddress?.toLowerCase()) ? (
+                          <span className="text-purple-600 font-medium">
+                            {counterpartyEnsNames.get(rail.counterpartyAddress?.toLowerCase())}
+                          </span>
+                        ) : (
+                          <span className="font-mono text-sm text-purple-600">
+                            {rail.counterpartyFormatted}
+                          </span>
+                        )}
                       </Link>
                     </TableCell>
                     <TableCell>{rail.netPayeeAmount}</TableCell>
