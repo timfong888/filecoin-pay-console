@@ -1,0 +1,11 @@
+# Dependencies
+node_modules/
+
+# Build output
+build/
+generated/
+
+# Lock files (use main repo's package manager)
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
