@@ -97,32 +97,101 @@ type UserToken {
 ```
 
 **PaymentsMetric**
+
+Global cumulative statistics across all time. Updated incrementally as events occur.
+
 ```graphql
 type PaymentsMetric {
   id: ID!
+
+  # Count of all rails ever created
+  # Formula: Incremented by 1 for each RailCreated event
+  # Code: networkMetric.totalRails = networkMetric.totalRails.plus(ONE_BIG_INT)
   totalRails: String!
+
+  # Count of unique wallet addresses (both payers and payees)
+  # Formula: Incremented when a new account is first seen in a rail or deposit
+  # Code: networkMetric.totalAccounts = networkMetric.totalAccounts.plus(newAccounts)
   totalAccounts: String!
+
+  # Count of wallets that have created at least one rail as payer
+  # Formula: Incremented when an account creates their first rail as payer
+  # Code: if (isNewPayer) networkMetric.uniquePayers = networkMetric.uniquePayers.plus(ONE_BIG_INT)
   uniquePayers: String!
+
+  # Count of wallets that have received at least one rail as payee
+  # Formula: Incremented when an account receives their first rail as payee
+  # Code: if (isNewPayee) networkMetric.uniquePayees = networkMetric.uniquePayees.plus(ONE_BIG_INT)
   uniquePayees: String!
+
+  # Count of rails currently in ACTIVE state
+  # Formula: +1 when rail transitions ZERORATE→ACTIVE, -1 when rail transitions ACTIVE→TERMINATED
+  # Code: networkMetric.totalActiveRails = networkMetric.totalActiveRails.plus/minus(ONE_BIG_INT)
   totalActiveRails: String!
+
+  # Count of rails currently in TERMINATED state
+  # Formula: +1 when rail is terminated, -1 when rail is finalized
+  # Code: networkMetric.totalTerminatedRails = networkMetric.totalTerminatedRails.plus/minus(ONE_BIG_INT)
   totalTerminatedRails: String!
+
+  # Cumulative network fees burned (wei, 18 decimals)
+  # Formula: Sum of networkFee from all RailSettled events
+  # Code: networkMetric.totalFilBurned = networkMetric.totalFilBurned.plus(filBurned)
   totalFilBurned: String!
 }
 ```
 
 **DailyMetric**
+
+Per-day aggregated metrics. Each day (UTC) has one DailyMetric entity.
+
 ```graphql
 type DailyMetric {
   id: ID!
+
+  # Unix timestamp of day start (00:00:00 UTC)
   timestamp: String!
+
+  # Date in YYYY-MM-DD format
   date: String!
-  uniquePayers: String!
-  uniquePayees: String!
+
+  # Count of rails created on this day
+  # Formula: Incremented by 1 for each RailCreated event on this day
+  # Code: dailyMetric.railsCreated = dailyMetric.railsCreated.plus(ONE_BIG_INT)
   railsCreated: String!
+
+  # Count of rails terminated on this day
+  # Formula: Incremented by 1 for each RailTerminated event on this day
+  # Code: dailyMetric.railsTerminated = dailyMetric.railsTerminated.plus(ONE_BIG_INT)
   railsTerminated: String!
+
+  # Running count of active rails at end of day
+  # Formula: Incremented when rail transitions to ACTIVE state on this day
+  # Code: dailyMetric.activeRailsCount = dailyMetric.activeRailsCount.plus(ONE_BIG_INT)
   activeRailsCount: String!
+
+  # Count of settlements processed on this day
+  # Formula: Incremented by 1 for each RailSettled event on this day
+  # Code: dailyMetric.totalRailSettlements = dailyMetric.totalRailSettlements.plus(ONE_BIG_INT)
+  totalRailSettlements: String!
+
+  # Network fees burned on this day (wei)
+  # Formula: Sum of networkFee from RailSettled events on this day
+  # Code: dailyMetric.filBurned = dailyMetric.filBurned.plus(filBurned)
+  filBurned: String!
+
+  # First-time accounts created on this day
+  # Formula: Count of accounts that didn't exist before this day
+  # Code: dailyMetric.newAccounts = dailyMetric.newAccounts.plus(newAccounts)
+  newAccounts: String!
 }
 ```
+
+**Note:** For unique payers/payees per time period, use `WeeklyMetric` which tracks:
+- `uniqueActivePayers`: Distinct wallets that created rails that week
+- `uniqueActivePayees`: Distinct wallets that received rails that week
+- `newPayers`: First-time-ever payers that week
+- `newPayees`: First-time-ever payees that week
 
 ---
 
