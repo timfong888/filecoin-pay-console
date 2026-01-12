@@ -21,8 +21,15 @@ import {
   Account,
   Rail,
 } from './queries';
-import { batchFetchPDPData, fetchPDPDataForProvider, formatDataSize, calculateCostPerGB } from '../pdp/fetchers';
-import { PDPEnrichment } from '../pdp/types';
+import {
+  batchFetchPDPData,
+  fetchPDPDataForProvider,
+  formatDataSize,
+  calculateCostPerGB,
+  fetchCorrelatedDataSets,
+  aggregateCorrelatedData,
+} from '../pdp/fetchers';
+import { PDPEnrichment, RailDataSetCorrelation } from '../pdp/types';
 
 // Re-export PDP types and utilities for UI use
 export { formatDataSize } from '../pdp/fetchers';
@@ -333,11 +340,13 @@ export interface PayerDisplayExtended extends PayerDisplay {
   isActive: boolean;
   hasActiveRail: boolean;      // At least one rail with state=ACTIVE
   hasPositiveLockupRate: boolean;  // lockupRate > 0
-  // PDP data (aggregated from payees)
-  totalDataSizeGB: number;     // Sum of data size across all payees
+  // PDP data (aggregated from correlated DataSets)
+  totalDataSizeGB: number;     // Sum of data size from correlated DataSets
   totalDataSizeFormatted: string;
-  proofStatus: 'proven' | 'stale' | 'none';  // 'proven' if ALL payees are proven
+  proofStatus: 'proven' | 'stale' | 'none';  // 'proven' if no faults
   payeeAddresses: string[];    // List of payee addresses for PDP lookup
+  // Rail-DataSet correlation data (payeeAddress:timestamp pairs)
+  railCorrelations: { payeeAddress: string; railCreatedAt: string }[];
 }
 
 function transformAccountToPayerExtended(account: Account): PayerDisplayExtended {
@@ -349,6 +358,7 @@ function transformAccountToPayerExtended(account: Account): PayerDisplayExtended
   let totalFunds = BigInt(0);
   let totalLockupRate = BigInt(0);
   const payeeAddresses: string[] = [];
+  const railCorrelations: { payeeAddress: string; railCreatedAt: string }[] = [];
 
   for (const token of account.userTokens) {
     totalFunds += BigInt(token.funds);
@@ -366,6 +376,11 @@ function transformAccountToPayerExtended(account: Account): PayerDisplayExtended
     // Collect payee addresses for PDP lookup
     if (rail.payee?.address) {
       payeeAddresses.push(rail.payee.address);
+      // Also collect Rail-DataSet correlation data (payee + timestamp)
+      railCorrelations.push({
+        payeeAddress: rail.payee.address,
+        railCreatedAt: rail.createdAt,
+      });
     }
     // Check if rail is ACTIVE (state can be string 'ACTIVE' or number 0)
     const isRailActive = rail.state === 'ACTIVE' || rail.state === 0;
@@ -408,6 +423,7 @@ function transformAccountToPayerExtended(account: Account): PayerDisplayExtended
     totalDataSizeFormatted: '-',
     proofStatus: 'none',
     payeeAddresses: [...new Set(payeeAddresses)], // Deduplicate
+    railCorrelations, // For timestamp-based DataSet correlation
   };
 }
 
@@ -443,54 +459,39 @@ export async function fetchActivePayersCount(): Promise<{ activeCount: number; t
   }
 }
 
-// Enrich payers with PDP data from their payees
+// Enrich payers with PDP data using timestamp-based Rail ↔ DataSet correlation
+// This shows only the data funded by each payer's specific rails,
+// not the total data stored by their payees.
 export async function enrichPayersWithPDP(payers: PayerDisplayExtended[]): Promise<PayerDisplayExtended[]> {
-  // Collect all unique payee addresses across all payers
-  const allPayeeAddresses = new Set<string>();
+  // Collect all rail correlations across all payers
+  const allCorrelations: RailDataSetCorrelation[] = [];
   for (const payer of payers) {
-    for (const addr of payer.payeeAddresses) {
-      allPayeeAddresses.add(addr);
+    for (const corr of payer.railCorrelations) {
+      allCorrelations.push(corr);
     }
   }
 
-  if (allPayeeAddresses.size === 0) {
+  if (allCorrelations.length === 0) {
     return payers;
   }
 
-  // Batch fetch PDP data for all payees
-  const pdpDataMap = await batchFetchPDPData([...allPayeeAddresses]);
+  // Batch fetch correlated DataSets (matched by address + timestamp)
+  const correlatedDataSets = await fetchCorrelatedDataSets(allCorrelations);
 
-  // Enrich each payer with aggregated PDP data from their payees
+  // Enrich each payer with aggregated data from their correlated DataSets
   return payers.map(payer => {
-    let totalDataSizeGB = 0;
-    let hasAnyPDP = false;
-    let allProven = true;
-    let hasAnyStale = false;
+    const result = aggregateCorrelatedData(payer.railCorrelations, correlatedDataSets);
 
-    for (const payeeAddr of payer.payeeAddresses) {
-      const pdp = pdpDataMap.get(payeeAddr.toLowerCase());
-      if (pdp && pdp.isStorageProvider) {
-        hasAnyPDP = true;
-        totalDataSizeGB += pdp.datasetSizeGB;
-        // Use hasFaults to determine proof status
-        // If provider has faults, they're not fully proven
-        if (pdp.hasFaults) {
-          allProven = false;
-          hasAnyStale = true;
-        }
-      }
-    }
-
-    // Determine overall proof status
+    // Determine proof status based on faults
     let proofStatus: 'proven' | 'stale' | 'none' = 'none';
-    if (hasAnyPDP) {
-      proofStatus = allProven ? 'proven' : (hasAnyStale ? 'stale' : 'none');
+    if (result.isStorageProvider) {
+      proofStatus = result.hasFaults ? 'stale' : 'proven';
     }
 
     return {
       ...payer,
-      totalDataSizeGB,
-      totalDataSizeFormatted: totalDataSizeGB > 0 ? formatDataSize(totalDataSizeGB) : '-',
+      totalDataSizeGB: result.totalDataSizeGB,
+      totalDataSizeFormatted: result.totalDataSizeGB > 0 ? formatDataSize(result.totalDataSizeGB) : '-',
       proofStatus,
     };
   });

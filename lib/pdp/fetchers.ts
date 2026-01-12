@@ -13,6 +13,9 @@ import {
   PDPProvidersResponse,
   PDPEnrichment,
   PDPEnrichmentMap,
+  RailDataSetCorrelation,
+  CorrelatedDataSet,
+  PDPDataSetsResponse,
 } from './types';
 
 // PDP Explorer Subgraph endpoint (mainnet)
@@ -212,4 +215,134 @@ export function calculateCostPerGB(
   const costPerGB = monthlyRateUSDFC / dataSizeGB;
 
   return Math.round(costPerGB * 100) / 100;
+}
+
+/**
+ * GraphQL query to fetch DataSets by owner addresses and timestamps.
+ * Used for Rail ↔ DataSet correlation.
+ */
+const DATASETS_BY_ADDRESSES_QUERY = `
+  query DataSetsByAddresses($addresses: [Bytes!]!) {
+    dataSets(first: 1000, where: { owner_in: $addresses }) {
+      setId
+      totalDataSize
+      isActive
+      totalFaultedPeriods
+      createdAt
+      owner {
+        address
+      }
+    }
+  }
+`;
+
+/**
+ * Result type for correlated data lookup
+ */
+export interface CorrelatedDataResult {
+  totalDataSizeGB: number;
+  totalDataSizeBytes: bigint;
+  matchedDataSets: number;
+  hasFaults: boolean;
+  isStorageProvider: boolean;
+}
+
+/**
+ * Fetch DataSets correlated with Rails by matching timestamp and owner address.
+ *
+ * The correlation works because the onboarding flow creates both the Rail
+ * and DataSet in the same transaction, resulting in identical createdAt timestamps.
+ *
+ * @param correlations - Array of {payeeAddress, railCreatedAt} pairs from Rails
+ * @returns Map of "address:timestamp" key -> CorrelatedDataSet
+ */
+export async function fetchCorrelatedDataSets(
+  correlations: RailDataSetCorrelation[]
+): Promise<Map<string, CorrelatedDataSet>> {
+  const results = new Map<string, CorrelatedDataSet>();
+
+  if (correlations.length === 0) {
+    return results;
+  }
+
+  // Get unique addresses to query
+  const uniqueAddresses = [...new Set(correlations.map(c => c.payeeAddress.toLowerCase()))];
+
+  // Build lookup set of address:timestamp keys for filtering results
+  const correlationKeys = new Set(
+    correlations.map(c => `${c.payeeAddress.toLowerCase()}:${c.railCreatedAt}`)
+  );
+
+  const BATCH_SIZE = 100;
+
+  for (let i = 0; i < uniqueAddresses.length; i += BATCH_SIZE) {
+    const batch = uniqueAddresses.slice(i, i + BATCH_SIZE);
+
+    try {
+      const data = await pdpClient.request<PDPDataSetsResponse>(
+        DATASETS_BY_ADDRESSES_QUERY,
+        { addresses: batch }
+      );
+
+      if (data.dataSets) {
+        for (const ds of data.dataSets) {
+          // Build the correlation key
+          const key = `${ds.owner.address.toLowerCase()}:${ds.createdAt}`;
+
+          // Only include if this matches a Rail correlation
+          if (correlationKeys.has(key)) {
+            results.set(key, {
+              setId: ds.setId,
+              totalDataSize: ds.totalDataSize,
+              isActive: ds.isActive,
+              hasFaults: parseInt(ds.totalFaultedPeriods || '0') > 0,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('PDP correlated datasets fetch error:', error);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Aggregate correlated DataSet data for a payer's rails.
+ *
+ * @param railCorrelations - Rails from a single payer with their timestamps
+ * @param correlatedDataSets - Map from fetchCorrelatedDataSets()
+ * @returns Aggregated result for this payer
+ */
+export function aggregateCorrelatedData(
+  railCorrelations: RailDataSetCorrelation[],
+  correlatedDataSets: Map<string, CorrelatedDataSet>
+): CorrelatedDataResult {
+  let totalDataSizeBytes = BigInt(0);
+  let matchedDataSets = 0;
+  let hasFaults = false;
+
+  for (const rail of railCorrelations) {
+    const key = `${rail.payeeAddress.toLowerCase()}:${rail.railCreatedAt}`;
+    const ds = correlatedDataSets.get(key);
+
+    if (ds) {
+      totalDataSizeBytes += BigInt(ds.totalDataSize);
+      matchedDataSets++;
+      if (ds.hasFaults) {
+        hasFaults = true;
+      }
+    }
+  }
+
+  const totalDataSizeGB = Number(totalDataSizeBytes) / BYTES_PER_GB;
+
+  return {
+    totalDataSizeGB: Math.round(totalDataSizeGB * 100) / 100,
+    totalDataSizeBytes,
+    matchedDataSets,
+    hasFaults,
+    isStorageProvider: matchedDataSets > 0,
+  };
 }

@@ -19,9 +19,10 @@ export interface PDPProvider {
 export interface PDPDataSet {
   setId: string;
   isActive: boolean;
-  totalRoots: string;
+  totalRoots?: string;
   totalDataSize: string;        // Bytes
-  lastProvenEpoch: string;
+  totalFaultedPeriods?: string;
+  lastProvenEpoch?: string;
   createdAt: string;
   owner: {
     address: string;
@@ -65,3 +66,18 @@ export interface PDPEnrichment {
 
 // Batch lookup result type
 export type PDPEnrichmentMap = Map<string, PDPEnrichment>;
+
+// Rail-to-DataSet correlation type
+// Correlates by matching: Rail.payee == DataSet.owner AND Rail.createdAt == DataSet.createdAt
+export interface RailDataSetCorrelation {
+  payeeAddress: string;     // Rail.payee.address
+  railCreatedAt: string;    // Rail.createdAt (Unix timestamp seconds)
+}
+
+// Result from correlated DataSet lookup
+export interface CorrelatedDataSet {
+  setId: string;
+  totalDataSize: string;    // Bytes
+  isActive: boolean;
+  hasFaults: boolean;       // totalFaultedPeriods > 0
+}
