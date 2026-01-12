@@ -34,7 +34,7 @@ npx playwright test
 - **Framework:** Next.js 16 with App Router
 - **Styling:** Tailwind CSS + shadcn/ui components
 - **Charts:** Recharts (sparklines)
-- **Data Source:** Goldsky Subgraph (`filecoin-pay-mainnet/1.0.0`)
+- **Data Source:** Goldsky Subgraph (`filecoin-pay-mainnet/1.1.0`)
 - **Deployment:** Static export to PinMe/IPFS
 
 ## Key Files
@@ -57,7 +57,7 @@ npx playwright test
 
 Goldsky Subgraph endpoint:
 ```
-https://api.goldsky.com/api/public/project_cmb9tuo8r1xdw01ykb8uidk7h/subgraphs/filecoin-pay-mainnet/1.0.0/gn
+https://api.goldsky.com/api/public/project_cmj7soo5uf4no01xw0tij21a1/subgraphs/filecoin-pay-mainnet/1.1.0/gn
 ```
 
 Key entities: `paymentsMetrics`, `accounts`, `rails`, `dailyMetrics`, `settlements`

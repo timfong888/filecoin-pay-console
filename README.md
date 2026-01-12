@@ -13,12 +13,12 @@ npm run build   # Production build (static export to /out)
 
 **Endpoint:**
 ```
-https://api.goldsky.com/api/public/project_cmb9tuo8r1xdw01ykb8uidk7h/subgraphs/filecoin-pay-mainnet/1.0.0/gn
+https://api.goldsky.com/api/public/project_cmj7soo5uf4no01xw0tij21a1/subgraphs/filecoin-pay-mainnet/1.1.0/gn
 ```
 
 **Network:** Filecoin Mainnet
 **Contract:** `0x23b1e018F08BB982348b15a86ee926eEBf7F4DAa` ([View on Filfox](https://filfox.info/en/address/0x23b1e018F08BB982348b15a86ee926eEBf7F4DAa))
-**Subgraph Version:** 1.0.0
+**Subgraph Version:** 1.1.0
 
 ---
 
