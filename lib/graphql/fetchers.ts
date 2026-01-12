@@ -513,12 +513,16 @@ export interface PayeeDisplay {
 
 function transformAccountToPayee(account: Account): PayeeDisplay {
   // Sum up received from all payee rails
+  // Use totalNetPayeeAmount (net after fees) for accurate payee totals
   let totalReceived = BigInt(0);
   let earliestDate = Date.now();
   const uniquePayers = new Set<string>();
 
   for (const rail of account.payeeRails || []) {
-    totalReceived += BigInt(rail.totalSettledAmount);
+    // Prefer totalNetPayeeAmount (net to payee after fees)
+    // Fall back to totalSettledAmount if not available
+    const amount = rail.totalNetPayeeAmount || rail.totalSettledAmount;
+    totalReceived += BigInt(amount);
     const createdAt = parseInt(rail.createdAt) * 1000;
     if (createdAt < earliestDate) {
       earliestDate = createdAt;
@@ -654,6 +658,10 @@ export interface RailDisplay {
   counterpartyEnsName?: string;
   settled: string;
   settledRaw: number;
+  netPayeeAmount: string;       // Net amount to payee after fees
+  netPayeeAmountRaw: number;
+  commission: string;           // Operator commission
+  commissionRaw: number;
   rate: string;
   rateRaw: number;
   state: string;
@@ -682,13 +690,25 @@ export interface AccountDetail {
 function transformRailToDisplay(rail: Rail, isPayer: boolean): RailDisplay {
   const counterparty = isPayer ? rail.payee?.address : rail.payer?.address;
   const settledValue = weiToUSDC(rail.totalSettledAmount);
+  const netPayeeValue = rail.totalNetPayeeAmount ? weiToUSDC(rail.totalNetPayeeAmount) : settledValue;
+  const commissionValue = rail.totalCommission ? weiToUSDC(rail.totalCommission) : 0;
   const rateValue = rail.paymentRate ? weiToUSDC(rail.paymentRate) : 0;
   const createdAtMs = parseInt(rail.createdAt) * 1000;
   const createdDate = new Date(createdAtMs);
 
-  // Convert state to number (GraphQL may return string)
-  const stateNum = typeof rail.state === 'string' ? parseInt(rail.state) : rail.state;
-  const stateLabel = RailState[stateNum as keyof typeof RailState] || 'Unknown';
+  // Convert state to number or use string directly (GraphQL may return either)
+  let stateNum: number;
+  let stateLabel: string;
+  if (typeof rail.state === 'string') {
+    // Handle string enum values from subgraph
+    const stateMap: Record<string, number> = { 'ACTIVE': 0, 'TERMINATED': 1, 'FINALIZED': 2, 'ZERORATE': 3 };
+    stateNum = stateMap[rail.state] ?? parseInt(rail.state) ?? -1;
+    stateLabel = rail.state === 'ZERORATE' ? 'Zero Rate' :
+                 rail.state.charAt(0) + rail.state.slice(1).toLowerCase();
+  } else {
+    stateNum = rail.state;
+    stateLabel = RailState[stateNum as keyof typeof RailState] || 'Unknown';
+  }
 
   return {
     id: rail.id,
@@ -696,6 +716,10 @@ function transformRailToDisplay(rail: Rail, isPayer: boolean): RailDisplay {
     counterpartyFormatted: counterparty ? formatAddress(counterparty) : 'Unknown',
     settled: formatCurrency(settledValue),
     settledRaw: settledValue,
+    netPayeeAmount: formatCurrency(netPayeeValue),
+    netPayeeAmountRaw: netPayeeValue,
+    commission: formatCurrency(commissionValue),
+    commissionRaw: commissionValue,
     rate: rateValue > 0 ? `${formatCurrency(rateValue)}/epoch` : '-',
     rateRaw: rateValue,
     state: stateLabel,

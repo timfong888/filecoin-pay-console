@@ -123,12 +123,15 @@ function PayeeDetailView({ address }: { address: string }) {
   }
 
   // Calculate totals from payee rails
+  // Use netPayeeAmountRaw for accurate payee received amounts (net after fees)
   let totalReceived = 0;
+  let totalGrossSettled = 0;
   let totalPaymentRate = 0;
   let activeRailsCount = 0;
   const uniquePayers = new Set<string>();
   for (const rail of account.payeeRails) {
-    totalReceived += rail.settledRaw;
+    totalReceived += rail.netPayeeAmountRaw;
+    totalGrossSettled += rail.settledRaw;
     if (rail.counterpartyAddress) {
       uniquePayers.add(rail.counterpartyAddress.toLowerCase());
     }
@@ -184,10 +187,12 @@ function PayeeDetailView({ address }: { address: string }) {
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
           <p className="text-sm text-purple-600">Claimable Now</p>
           <p className="text-2xl font-bold text-purple-900">{account.totalPayout}</p>
+          <p className="text-xs text-purple-500 mt-1">From UserToken.payout</p>
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <p className="text-sm text-purple-600">Total Settled</p>
+          <p className="text-sm text-purple-600">Total Received (Net)</p>
           <p className="text-2xl font-bold text-purple-900">${totalReceived.toLocaleString()}</p>
+          <p className="text-xs text-purple-500 mt-1">After fees from all rails</p>
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
           <p className="text-sm text-purple-600">Unique Payers</p>
@@ -197,7 +202,7 @@ function PayeeDetailView({ address }: { address: string }) {
           <p className="text-sm text-purple-600">Monthly Run Rate</p>
           <p className="text-2xl font-bold text-purple-900">{formatCurrency(monthlyRunRate)}</p>
           <p className="text-xs text-purple-500 mt-1">
-            = Σ(rate/epoch across {activeRailsCount} rail{activeRailsCount !== 1 ? 's' : ''}) × 86,400 epochs/mo
+            From {activeRailsCount} active rail{activeRailsCount !== 1 ? 's' : ''}
           </p>
         </div>
       </div>
@@ -215,7 +220,7 @@ function PayeeDetailView({ address }: { address: string }) {
               <TableHeader>
                 <TableRow className="bg-purple-50">
                   <TableHead className="font-medium text-purple-800">Payer</TableHead>
-                  <TableHead className="font-medium text-purple-800">Received</TableHead>
+                  <TableHead className="font-medium text-purple-800">Received (Net)</TableHead>
                   <TableHead className="font-medium text-purple-800">Status</TableHead>
                   <TableHead className="font-medium text-purple-800">Created</TableHead>
                 </TableRow>
@@ -234,7 +239,7 @@ function PayeeDetailView({ address }: { address: string }) {
                         {rail.counterpartyFormatted}
                       </Link>
                     </TableCell>
-                    <TableCell>{rail.settled}</TableCell>
+                    <TableCell>{rail.netPayeeAmount}</TableCell>
                     <TableCell>
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -420,9 +425,9 @@ function PayeeListView() {
         {/* Default Hero Metrics (placeholder for error state) */}
         <div className="flex gap-6">
           <HeroMetricCard
-            title="Total Claimable"
+            title="Total Received (Net)"
             value="--"
-            subtitle="All-time settlements"
+            subtitle="Sum of payeeRails.totalNetPayeeAmount"
           />
           <HeroMetricCard
             title="Unique Payees"
@@ -471,9 +476,9 @@ function PayeeListView() {
       {/* Hero Metrics */}
       <div className="flex gap-6">
         <HeroMetricCard
-          title="Total Claimable"
+          title="Total Received (Net)"
           value={formatCurrency(totalReceived)}
-          subtitle="All-time settlements"
+          subtitle="Sum of payeeRails.totalNetPayeeAmount"
         />
         <HeroMetricCard
           title="Unique Payees"
@@ -509,7 +514,7 @@ function PayeeListView() {
                 className="font-medium text-purple-800 cursor-pointer hover:bg-purple-100"
                 onClick={() => handleSort("received")}
               >
-                Total Settled {sortField === "received" && (sortDirection === "desc" ? "↓" : "↑")}
+                Total Received (Net) {sortField === "received" && (sortDirection === "desc" ? "↓" : "↑")}
               </TableHead>
               <TableHead
                 className="font-medium text-purple-800 cursor-pointer hover:bg-purple-100"

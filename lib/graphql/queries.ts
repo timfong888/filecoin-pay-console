@@ -113,10 +113,13 @@ export const TOP_PAYEES_QUERY = gql`
         funds
         lockupCurrent
         payout
+        fundsCollected
       }
-      payeeRails(first: 10, orderBy: createdAt, orderDirection: desc) {
+      payeeRails(first: 100, orderBy: createdAt, orderDirection: desc) {
         id
         totalSettledAmount
+        totalNetPayeeAmount
+        totalCommission
         createdAt
         state
         payer {
@@ -148,6 +151,8 @@ export const ACCOUNT_DETAIL_QUERY = gql`
       payerRails {
         id
         totalSettledAmount
+        totalNetPayeeAmount
+        totalCommission
         paymentRate
         state
         createdAt
@@ -158,6 +163,9 @@ export const ACCOUNT_DETAIL_QUERY = gql`
       payeeRails {
         id
         totalSettledAmount
+        totalNetPayeeAmount
+        totalCommission
+        paymentRate
         state
         createdAt
         payer {
@@ -193,8 +201,10 @@ export interface UserToken {
 export interface Rail {
   id: string;
   totalSettledAmount: string;
+  totalNetPayeeAmount?: string;
+  totalCommission?: string;
   createdAt: string;
-  state: number;
+  state: number | string;
   paymentRate?: string;
   payee?: { address: string };
   payer?: { address: string };
