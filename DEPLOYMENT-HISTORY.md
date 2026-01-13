@@ -1,5 +1,23 @@
 # Deployment History
 
+## v0.15.0 - 2026-01-12
+
+**Changes:**
+- Fix Dashboard "Unique Payers" to use Active Payers definition - fixes [#27](https://github.com/timfong888/filecoin-pay-console/issues/27)
+- Active Payers: at least 1 ACTIVE rail AND lockup rate > 0
+- Shows 68 Active Payers (vs 70 Unique Payers before)
+- Update DASHBOARD_VERSION to 0.14.0 → 0.15.0
+
+**Deployment:**
+- PinMe ENS URL: https://1fb745d0.pinit.eth.limo
+- Git Tag: [v0.15.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.15.0)
+- Commit: [8ad150e](https://github.com/timfong888/filecoin-pay-console/commit/8ad150e)
+
+**Direct Commits:**
+- [8ad150e](https://github.com/timfong888/filecoin-pay-console/commit/8ad150e) - fix: use Active Payers definition on Dashboard (#27)
+
+---
+
 ## v0.14.0 - 2026-01-12
 
 **Changes:**
