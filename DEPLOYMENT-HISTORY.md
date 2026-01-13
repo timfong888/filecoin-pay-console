@@ -1,5 +1,24 @@
 # Deployment History
 
+## v0.17.0 - 2026-01-13
+
+**Changes:**
+- Add wireframe images for Linear project overview - [b3c52ae](https://github.com/timfong888/filecoin-pay-console/commit/b3c52ae)
+- Improve payer metrics and add CID lookup - closes [#31](https://github.com/timfong888/filecoin-pay-console/issues/31), [#32](https://github.com/timfong888/filecoin-pay-console/issues/32)
+
+**Deployment:**
+- PinMe ENS URL: https://13af0c80.pinit.eth.limo
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX1-sndCl6OJPwKachQKt25RrNo7fQxPJ0xVl4P9XCizjuKu7cO93NBPf4lHUaHS2fLq8Z91DX6q84lopTz3tSFVxjvLhDrxYPrX4AQ4JPSAjosK-JsC0ejQP4EezCStgAQIUD1TGEC0LLPe16pAfaQ
+- IPFS CID: `bafybeigspi6sa3tnb7zupasetfmh7rahu5ndjntzrg2nzgrk3vk3y33sqa`
+- Git Tag: [v0.17.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.17.0)
+- Commit: [b3c52ae](https://github.com/timfong888/filecoin-pay-console/commit/b3c52ae)
+
+**Direct Commits:**
+- [b3c52ae](https://github.com/timfong888/filecoin-pay-console/commit/b3c52ae) - docs: add wireframe images for Linear project overview
+- [d944bc0](https://github.com/timfong888/filecoin-pay-console/commit/d944bc0) - feat: improve payer metrics and add CID lookup (#31, #32)
+
+---
+
 ## v0.16.0 - 2026-01-12
 
 **Changes:**
