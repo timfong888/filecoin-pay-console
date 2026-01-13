@@ -1,5 +1,23 @@
 # Deployment History
 
+## v0.13.0 - 2026-01-12
+
+**Changes:**
+- Fix Data Size on Payer Accounts to show correlated data (not provider totals) - fixes [#28](https://github.com/timfong888/filecoin-pay-console/issues/28)
+- Implement timestamp-based Rail↔DataSet correlation for accurate per-payer data sizes
+
+**Deployment:**
+- PinMe ENS URL: https://df7c9531.pinit.eth.limo
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX19fvfpMpdvw1XNZo9AMe5gCd77kvvEOMNXNEuBStroVktAiENSQqJ_81BWqLwoKy2LcXMM_vahQUyfudr_DOIwvcDYSuP3FLIQnenzs
+- IPFS CID: `bafybeibezeyu62ghnaecafm7usywm6e3udfnvjhckncxytrwgwq35oep5e`
+- Git Tag: [v0.13.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.13.0)
+- Commit: [5a3d530](https://github.com/timfong888/filecoin-pay-console/commit/5a3d530)
+
+**Direct Commits:**
+- [5a3d530](https://github.com/timfong888/filecoin-pay-console/commit/5a3d530) - fix: correlate Data Size with specific Rails via timestamp matching
+
+---
+
 ## v0.12.0 - 2026-01-12
 
 **Changes:**
