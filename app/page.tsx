@@ -41,6 +41,11 @@ interface DashboardData {
     annualizedFormatted: string;
     activeRailsCount: number;
   };
+  // Settled in last 7 days (actual fund flow)
+  settled7d: {
+    total: number;
+    formatted: string;
+  };
   // Cumulative chart data
   cumulativePayers: number[];
   cumulativeSettled: number[];
@@ -204,7 +209,7 @@ export default function Dashboard() {
         <div className="flex gap-6">
           <HeroMetricCard title="Unique Payers" value="--" />
           <HeroMetricCard title="USDFC Settled" value="--" />
-          <HeroMetricCard title="Monthly Run Rate" value="--" />
+          <HeroMetricCard title="Settled (7d)" value="--" />
         </div>
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -292,7 +297,7 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { globalMetrics, totalSettled, topPayers, runRate } = data;
+  const { globalMetrics, totalSettled, topPayers, settled7d } = data;
 
   return (
     <div className="space-y-6">
@@ -307,9 +312,9 @@ export default function Dashboard() {
           value={totalSettled.totalFormatted}
         />
         <HeroMetricCard
-          title="Monthly Run Rate"
-          value={runRate.monthlyFormatted}
-          subtitle={`= Σ(rate/sec across ${runRate.activeRailsCount} active rails) × 2.59M sec/mo`}
+          title="Settled (7d)"
+          value={settled7d.formatted}
+          subtitle="USDFC actually settled in the last 7 days"
         />
       </div>
 
