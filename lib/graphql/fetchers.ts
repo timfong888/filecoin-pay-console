@@ -814,7 +814,7 @@ export async function fetchDailyMetrics(days: number = 30) {
 
 // Fetch all dashboard data at once (including cumulative chart data)
 export async function fetchDashboardData() {
-  const [globalMetrics, totalSettled, settled7d, topPayers, runRate, payersByDate, dailySettledMap] = await Promise.all([
+  const [globalMetrics, totalSettled, settled7d, topPayers, runRate, payersByDate, dailySettledMap, activePayersData] = await Promise.all([
     fetchGlobalMetrics(),
     fetchTotalSettled(),
     fetchSettled7d(),
@@ -822,6 +822,7 @@ export async function fetchDashboardData() {
     fetchMonthlyRunRate(),
     fetchPayersByDate(),
     fetchDailySettled(),
+    fetchActivePayersCount(),
   ]);
 
   // Generate chart dates (last 30 days)
@@ -866,6 +867,8 @@ export async function fetchDashboardData() {
     settled7d,
     topPayers,
     runRate,
+    // Active Payers: at least one ACTIVE rail AND lockupRate > 0
+    activePayers: activePayersData.activeCount,
     // Cumulative chart data
     cumulativePayers,
     cumulativeSettled,

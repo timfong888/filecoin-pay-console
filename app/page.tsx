@@ -46,6 +46,8 @@ interface DashboardData {
     total: number;
     formatted: string;
   };
+  // Active Payers: at least one ACTIVE rail AND lockupRate > 0
+  activePayers: number;
   // Cumulative chart data
   cumulativePayers: number[];
   cumulativeSettled: number[];
@@ -207,7 +209,7 @@ export default function Dashboard() {
           </div>
         )}
         <div className="flex gap-6">
-          <HeroMetricCard title="Unique Payers" value="--" />
+          <HeroMetricCard title="Active Payers" value="--" subtitle="At least 1 ACTIVE rail AND lockup rate > 0" />
           <HeroMetricCard title="USDFC Settled" value="--" />
           <HeroMetricCard title="Settled (7d)" value="--" />
         </div>
@@ -297,15 +299,16 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { globalMetrics, totalSettled, topPayers, settled7d } = data;
+  const { totalSettled, topPayers, settled7d, activePayers } = data;
 
   return (
     <div className="space-y-6">
       {/* Hero Metric Cards */}
       <div className="flex gap-6">
         <HeroMetricCard
-          title="Unique Payers"
-          value={globalMetrics.uniquePayers.toLocaleString()}
+          title="Active Payers"
+          value={activePayers.toLocaleString()}
+          subtitle="At least 1 ACTIVE rail AND lockup rate > 0"
         />
         <HeroMetricCard
           title="USDFC Settled"
