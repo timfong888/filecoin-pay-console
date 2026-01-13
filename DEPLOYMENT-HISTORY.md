@@ -1,5 +1,25 @@
 # Deployment History
 
+## v0.16.0 - 2026-01-12
+
+**Changes:**
+- Fix cumulative Settled USDFC chart date alignment - fixes [#30](https://github.com/timfong888/filecoin-pay-console/issues/30)
+- Chart was bucketing settlements by rail creation date instead of actual settlement date
+- Now uses DailyTokenMetric with timestamp conversion for accurate timeline
+- Chart correctly shows flat $0 until Jan 8, then sharp increase
+
+**Deployment:**
+- PinMe ENS URL: https://a7b4c286.pinit.eth.limo
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX1-5R2pVb_m8bhElQiO4WblvGyKAmfLDm8t9Je5UJk01TxJhYVIuDQn7F6K61Lg3h05wZSvCASiYl-rjkkt30ZNkT7tufX0tAqGW0mmV
+- IPFS CID: `bafybeieqn6iibjjhnlvuzbrj2t3yszqm3fk5hlvfmze3us4iomznejfaki`
+- Git Tag: [v0.16.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.16.0)
+- Commit: [8e458c2](https://github.com/timfong888/filecoin-pay-console/commit/8e458c2)
+
+**Direct Commits:**
+- [8e458c2](https://github.com/timfong888/filecoin-pay-console/commit/8e458c2) - fix: use DailyTokenMetric timestamp for cumulative settled chart (#30)
+
+---
+
 ## v0.15.0 - 2026-01-12
 
 **Changes:**
