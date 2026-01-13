@@ -1,5 +1,24 @@
 # Deployment History
 
+## v0.14.0 - 2026-01-12
+
+**Changes:**
+- Replace Monthly Run Rate with Settled (7d) on Dashboard - closes partial [#16](https://github.com/timfong888/filecoin-pay-console/issues/16)
+- MRR was misleading (theoretical); Settled (7d) shows actual fund flow
+- Update DASHBOARD_VERSION to 0.13.0 → 0.14.0
+
+**Deployment:**
+- PinMe ENS URL: https://6bd62dde.pinit.eth.limo
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX1-jV2Z_yuIpebtjW9hkC0HVcL1oDJD8yQkEAUuPKFgozmXdXXPBZfFjzS9JVKGlyKTaH72S5dVJW2XJgkJrDdL4x_hbz0wv0Epa8oyW
+- IPFS CID: `bafybeiefa5jvvbrrsyftiqjwboyyuykpg4slk4ckkwg4ncehz2yxvra73u`
+- Git Tag: [v0.14.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.14.0)
+- Commit: [2237e95](https://github.com/timfong888/filecoin-pay-console/commit/2237e95)
+
+**Direct Commits:**
+- [2237e95](https://github.com/timfong888/filecoin-pay-console/commit/2237e95) - fix: replace Monthly Run Rate with Settled (7d) on Dashboard
+
+---
+
 ## v0.13.0 - 2026-01-12
 
 **Changes:**
