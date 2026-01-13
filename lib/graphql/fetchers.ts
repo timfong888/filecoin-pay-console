@@ -9,6 +9,7 @@ import {
   DAILY_METRICS_QUERY,
   ACCOUNT_DETAIL_QUERY,
   DAILY_TOKEN_METRICS_QUERY,
+  ALL_DAILY_TOKEN_METRICS_QUERY,
   GlobalMetricsResponse,
   TopPayersResponse,
   TopPayeesResponse,
@@ -531,17 +532,25 @@ async function fetchPayersByDate(): Promise<Map<string, number>> {
 }
 
 // Fetch settled amounts bucketed by day for cumulative calculations
+// Uses DailyTokenMetric with timestamp conversion (not the buggy date field)
 async function fetchDailySettled(): Promise<Map<string, number>> {
   try {
-    const data = await graphqlClient.request<TotalSettledResponse>(TOTAL_SETTLED_QUERY);
+    // Fetch all daily token metrics (up to 100 days of history)
+    const data = await graphqlClient.request<DailyTokenMetricsResponse>(
+      ALL_DAILY_TOKEN_METRICS_QUERY,
+      { first: 100 }
+    );
     const dailySettled = new Map<string, number>();
 
-    for (const rail of data.rails) {
-      const createdAtMs = parseInt(rail.createdAt) * 1000;
-      const date = new Date(createdAtMs);
+    for (const metric of data.dailyTokenMetrics) {
+      // Convert timestamp to date key (timestamp is in seconds)
+      // Use timestamp instead of buggy date field
+      const timestampMs = parseInt(metric.timestamp) * 1000;
+      const date = new Date(timestampMs);
       const dateKey = date.toISOString().split('T')[0];
 
-      const amount = weiToUSDC(rail.totalSettledAmount);
+      const amount = weiToUSDC(metric.settledAmount);
+      // Add to existing amount for this date (shouldn't happen but be safe)
       dailySettled.set(dateKey, (dailySettled.get(dateKey) || 0) + amount);
     }
 

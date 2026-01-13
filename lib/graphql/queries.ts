@@ -294,3 +294,24 @@ export interface DailyTokenMetric {
 export interface DailyTokenMetricsResponse {
   dailyTokenMetrics: DailyTokenMetric[];
 }
+
+// All daily token metrics query (for cumulative settled chart)
+// Fetches all historical daily metrics without timestamp filter
+export const ALL_DAILY_TOKEN_METRICS_QUERY = gql`
+  query AllDailyTokenMetrics($first: Int!) {
+    dailyTokenMetrics(
+      first: $first
+      where: { token_: { symbol: "USDFC" } }
+      orderBy: timestamp
+      orderDirection: desc
+    ) {
+      id
+      date
+      timestamp
+      settledAmount
+      token {
+        symbol
+      }
+    }
+  }
+`;
