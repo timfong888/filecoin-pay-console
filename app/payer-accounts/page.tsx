@@ -44,7 +44,11 @@ import {
 interface PayerListMetrics {
   activePayers: number;  // Payers with ACTIVE rail AND lockupRate > 0
   totalPayers: number;   // All payers (for reference)
-  payersWoWChange: string;
+  payersWoWChange: string; // Legacy field
+  // New fields for "Last 7 days" display
+  newPayersLast7d: number;      // Absolute count of new payers in last 7 days
+  newPayersPrev7d: number;      // New payers in prior 7 days (for comparison)
+  payersLast7dPercentChange: string; // Percentage change vs prior 7 days
   payersGoalProgress: number;
   settledTotal: number;
   settledFormatted: string;
@@ -70,28 +74,28 @@ function HeroMetricCard({
   title,
   value,
   subtitle,
-  wowChange,
+  last7dChange,
 }: {
   title: string;
   value: string | number;
   subtitle?: string;
-  wowChange?: string;
+  last7dChange?: { count: number; percentChange: string } | null;
 }) {
-  const isPositiveChange = wowChange && parseFloat(wowChange) >= 0;
+  const isPositiveChange = last7dChange && parseFloat(last7dChange.percentChange) >= 0;
 
   return (
     <div className="bg-white border rounded-lg p-6 flex-1">
       <p className="text-sm text-gray-500 font-medium">{title}</p>
       <div className="flex items-baseline gap-3 mt-1">
         <p className="text-3xl font-bold">{value}</p>
-        {wowChange && (
+        {last7dChange && (
           <span
             className={`text-sm font-medium ${
               isPositiveChange ? "text-green-600" : "text-red-600"
             }`}
+            title={`${last7dChange.count} new accounts in last 7 days (${isPositiveChange ? "+" : ""}${last7dChange.percentChange}% vs prior week)`}
           >
-            {isPositiveChange ? "+" : ""}
-            {wowChange}% WoW
+            +{last7dChange.count} last 7d ({isPositiveChange ? "+" : ""}{last7dChange.percentChange}%)
           </span>
         )}
       </div>
@@ -707,7 +711,10 @@ function PayerListView() {
             title="Active Payers"
             value={metrics.activePayers.toLocaleString()}
             subtitle="At least 1 ACTIVE rail AND lockup rate > 0"
-            wowChange={metrics.payersWoWChange}
+            last7dChange={{
+              count: metrics.newPayersLast7d,
+              percentChange: metrics.payersLast7dPercentChange,
+            }}
           />
           <HeroMetricCard
             title="Total Settled (USDFC)"

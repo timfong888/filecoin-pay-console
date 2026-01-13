@@ -630,16 +630,20 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
       cumulativeSettled.push(Math.round(runningSettled * 100) / 100);
     }
 
-    // Calculate WoW change (based on new payers in last 7 days vs previous 7)
+    // Calculate new payers in last 7 days and percentage change vs prior 7 days
     const last7Days = chartDates.slice(-7);
     const prev7Days = chartDates.slice(-14, -7);
 
-    const recentNewPayers = last7Days.reduce((sum, date) => sum + (payersByDate.get(date) || 0), 0);
-    const prevNewPayers = prev7Days.reduce((sum, date) => sum + (payersByDate.get(date) || 0), 0);
+    const newPayersLast7d = last7Days.reduce((sum, date) => sum + (payersByDate.get(date) || 0), 0);
+    const newPayersPrev7d = prev7Days.reduce((sum, date) => sum + (payersByDate.get(date) || 0), 0);
 
-    const payersWoWChange = prevNewPayers > 0
-      ? ((recentNewPayers - prevNewPayers) / prevNewPayers * 100).toFixed(1)
-      : '0';
+    // Calculate percentage change (can be negative)
+    const payersLast7dPercentChange = newPayersPrev7d > 0
+      ? ((newPayersLast7d - newPayersPrev7d) / newPayersPrev7d * 100).toFixed(1)
+      : (newPayersLast7d > 0 ? '100' : '0');
+
+    // Keep legacy field for backwards compatibility but also add new fields
+    const payersWoWChange = payersLast7dPercentChange;
 
     // Calculate goal progress (Goal: 1000 payers)
     const payersGoalProgress = Math.min((globalMetrics.uniquePayers / 1000) * 100, 100);
@@ -654,7 +658,11 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
       // Active Payers: at least one ACTIVE rail AND lockupRate > 0
       activePayers: activePayersData.activeCount,
       totalPayers: activePayersData.totalCount,
-      payersWoWChange,
+      payersWoWChange, // Legacy field for backwards compatibility
+      // New fields for accurate "Last 7 days" display
+      newPayersLast7d,
+      newPayersPrev7d,
+      payersLast7dPercentChange,
       payersGoalProgress,
       settledTotal: totalSettled.total,
       settledFormatted: totalSettled.totalFormatted,
