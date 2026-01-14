@@ -1,5 +1,24 @@
 # Deployment History
 
+## v0.18.0 - 2026-01-13
+
+**Changes:**
+- Add Feature Request link to header navigation - closes [#33](https://github.com/timfong888/filecoin-pay-console/issues/33)
+- Remove CID Lookup from navigation
+- Feature Request opens https://filecoin.fillout.com/builders in new tab
+
+**Deployment:**
+- PinMe ENS URL: https://filpay.pinit.eth.limo
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX1_uN724GKzEJ6101Zxoy2fMtZYPq_pycppgzq4nZGBj0gvWujJy0-3-qa7zWPE3IYYrqK3-01MJ_UVTZZJd6sowINHEoNNC6rbQ7YooODvB6Zg0pcKP_E-qvKeHlZhBjXQZ2af7daNARzW62se_kA
+- IPFS CID: `bafybeicdjocuze4v3s25drm3b4jhfjl33gjculspj2nh7hpnfchumiyhbe`
+- Git Tag: [v0.18.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.18.0)
+- Commit: [8b0bfef](https://github.com/timfong888/filecoin-pay-console/commit/8b0bfef)
+
+**Direct Commits:**
+- [8b0bfef](https://github.com/timfong888/filecoin-pay-console/commit/8b0bfef) - feat: add Feature Request link, remove CID Lookup from nav (#33)
+
+---
+
 ## v0.17.0 - 2026-01-13
 
 **Changes:**
