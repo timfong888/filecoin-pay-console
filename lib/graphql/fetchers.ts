@@ -510,6 +510,7 @@ export async function enrichPayersWithSettled7d(payers: PayerDisplayExtended[]):
 }
 
 // Fetch payer first activity dates bucketed by day
+// Note: This fetches ALL payers, used for reference
 async function fetchPayersByDate(): Promise<Map<string, number>> {
   try {
     const data = await graphqlClient.request<PayerFirstActivityResponse>(PAYER_FIRST_ACTIVITY_QUERY);
@@ -527,6 +528,58 @@ async function fetchPayersByDate(): Promise<Map<string, number>> {
     return payersByDate;
   } catch (error) {
     console.error('Error fetching payers by date:', error);
+    return new Map();
+  }
+}
+
+// Fetch ACTIVE payer first activity dates bucketed by day
+// Active = at least 1 ACTIVE rail AND lockupRate > 0
+// This matches the hero metric "Active Payers" definition
+async function fetchActivePayersByDate(): Promise<Map<string, number>> {
+  try {
+    const data = await graphqlClient.request<TopPayersResponse>(TOP_PAYERS_QUERY, { first: 1000 });
+    const activePayersByDate = new Map<string, number>();
+
+    for (const account of data.accounts) {
+      if (account.payerRails.length === 0) continue;
+
+      // Check if this payer meets Active criteria
+      // 1. Has at least one ACTIVE rail
+      let hasActiveRail = false;
+      let earliestCreatedAt = Infinity;
+
+      for (const rail of account.payerRails) {
+        const isRailActive = rail.state === 'ACTIVE' || rail.state === 0;
+        if (isRailActive) {
+          hasActiveRail = true;
+        }
+        const createdAt = parseInt(rail.createdAt);
+        if (createdAt < earliestCreatedAt) {
+          earliestCreatedAt = createdAt;
+        }
+      }
+
+      // 2. Has lockupRate > 0
+      let hasPositiveLockupRate = false;
+      for (const token of account.userTokens) {
+        if (token.lockupRate && BigInt(token.lockupRate) > BigInt(0)) {
+          hasPositiveLockupRate = true;
+          break;
+        }
+      }
+
+      // Only count if ACTIVE (both criteria met)
+      if (hasActiveRail && hasPositiveLockupRate) {
+        const createdAtMs = earliestCreatedAt * 1000;
+        const date = new Date(createdAtMs);
+        const dateKey = date.toISOString().split('T')[0];
+        activePayersByDate.set(dateKey, (activePayersByDate.get(dateKey) || 0) + 1);
+      }
+    }
+
+    return activePayersByDate;
+  } catch (error) {
+    console.error('Error fetching active payers by date:', error);
     return new Map();
   }
 }
@@ -583,12 +636,13 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
     const effectiveStart = startDate || defaultStart;
     const effectiveEnd = endDate || now;
 
-    const [globalMetrics, totalSettled, settled7d, runRate, payersByDate, dailySettledMap, activePayersData] = await Promise.all([
+    // Use fetchActivePayersByDate() for chart to match hero metric definition
+    const [globalMetrics, totalSettled, settled7d, runRate, activePayersByDate, dailySettledMap, activePayersData] = await Promise.all([
       fetchGlobalMetrics(),
       fetchTotalSettled(),
       fetchSettled7d(),
       fetchMonthlyRunRate(),
-      fetchPayersByDate(),
+      fetchActivePayersByDate(),  // Changed: now filters for Active payers only
       fetchDailySettled(),
       fetchActivePayersCount(),
     ]);
@@ -596,10 +650,10 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
     // Generate continuous date range for chart
     const chartDates = generateDateRange(effectiveStart, effectiveEnd);
 
-    // Calculate cumulative payers over time
-    // First, get all payers before the start date
+    // Calculate cumulative ACTIVE payers over time
+    // Uses activePayersByDate which filters for: ACTIVE rail AND lockupRate > 0
     let priorPayers = 0;
-    for (const [dateKey, count] of payersByDate) {
+    for (const [dateKey, count] of activePayersByDate) {
       if (dateKey < chartDates[0]) {
         priorPayers += count;
       }
@@ -609,7 +663,7 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
     const cumulativePayers: number[] = [];
     let runningTotal = priorPayers;
     for (const date of chartDates) {
-      runningTotal += payersByDate.get(date) || 0;
+      runningTotal += activePayersByDate.get(date) || 0;
       cumulativePayers.push(runningTotal);
     }
 
@@ -630,12 +684,12 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
       cumulativeSettled.push(Math.round(runningSettled * 100) / 100);
     }
 
-    // Calculate new payers in last 7 days and percentage change vs prior 7 days
+    // Calculate new ACTIVE payers in last 7 days and percentage change vs prior 7 days
     const last7Days = chartDates.slice(-7);
     const prev7Days = chartDates.slice(-14, -7);
 
-    const newPayersLast7d = last7Days.reduce((sum, date) => sum + (payersByDate.get(date) || 0), 0);
-    const newPayersPrev7d = prev7Days.reduce((sum, date) => sum + (payersByDate.get(date) || 0), 0);
+    const newPayersLast7d = last7Days.reduce((sum, date) => sum + (activePayersByDate.get(date) || 0), 0);
+    const newPayersPrev7d = prev7Days.reduce((sum, date) => sum + (activePayersByDate.get(date) || 0), 0);
 
     // Calculate percentage change (can be negative)
     const payersLast7dPercentChange = newPayersPrev7d > 0
@@ -831,13 +885,14 @@ export async function fetchDailyMetrics(days: number = 30) {
 
 // Fetch all dashboard data at once (including cumulative chart data)
 export async function fetchDashboardData() {
-  const [globalMetrics, totalSettled, settled7d, topPayers, runRate, payersByDate, dailySettledMap, activePayersData] = await Promise.all([
+  // Use fetchActivePayersByDate() for chart to match hero metric definition
+  const [globalMetrics, totalSettled, settled7d, topPayers, runRate, activePayersByDate, dailySettledMap, activePayersData] = await Promise.all([
     fetchGlobalMetrics(),
     fetchTotalSettled(),
     fetchSettled7d(),
     fetchTopPayers(10),
     fetchMonthlyRunRate(),
-    fetchPayersByDate(),
+    fetchActivePayersByDate(),  // Changed: now filters for Active payers only
     fetchDailySettled(),
     fetchActivePayersCount(),
   ]);
@@ -848,9 +903,10 @@ export async function fetchDashboardData() {
   defaultStart.setDate(now.getDate() - 30);
   const chartDates = generateDateRange(defaultStart, now);
 
-  // Calculate cumulative payers over time
+  // Calculate cumulative ACTIVE payers over time
+  // Uses activePayersByDate which filters for: ACTIVE rail AND lockupRate > 0
   let priorPayers = 0;
-  for (const [dateKey, count] of payersByDate) {
+  for (const [dateKey, count] of activePayersByDate) {
     if (dateKey < chartDates[0]) {
       priorPayers += count;
     }
@@ -859,7 +915,7 @@ export async function fetchDashboardData() {
   const cumulativePayers: number[] = [];
   let runningTotal = priorPayers;
   for (const date of chartDates) {
-    runningTotal += payersByDate.get(date) || 0;
+    runningTotal += activePayersByDate.get(date) || 0;
     cumulativePayers.push(runningTotal);
   }
 

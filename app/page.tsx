@@ -324,11 +324,11 @@ export default function Dashboard() {
       {/* Cumulative Line Charts */}
       {chartData.length > 0 && (
         <div className="grid grid-cols-2 gap-6">
-          {/* Chart 1: Total Unique Payers */}
+          {/* Chart 1: Total Active Payers */}
           <div className="bg-white border rounded-lg p-4">
-            <h3 className="text-lg font-semibold mb-2">Total Unique Payers</h3>
+            <h3 className="text-lg font-semibold mb-2">Total Active Payers</h3>
             <p className="text-sm text-gray-500 mb-4">
-              Cumulative count of unique payer wallets over time
+              Cumulative count of active payer wallets (ACTIVE rail AND lockup rate &gt; 0)
             </p>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -346,7 +346,7 @@ export default function Dashboard() {
                   />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip
-                    formatter={(value) => [value ?? 0, "Total Payers"]}
+                    formatter={(value) => [value ?? 0, "Active Payers"]}
                     labelFormatter={(label) => `Date: ${label}`}
                   />
                   <Line
