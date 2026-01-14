@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense, useMemo } from "react";
+import { useEffect, useState, Suspense, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Payer } from "@/components/dashboard/TopPayersTable";
@@ -20,6 +20,17 @@ import {
   NETWORK,
 } from "@/lib/graphql/client";
 import { batchResolveENS, resolveENS } from "@/lib/ens";
+import {
+  fetchDataSetsWithRoots,
+  calculateStorageSummary,
+  formatBytesSize,
+} from "@/lib/pdp/fetchers";
+import { PDPDataSetWithRoots, PieceDisplayData } from "@/lib/pdp/types";
+import {
+  fetchPieceMetadata,
+  hexCidToBase32,
+  truncateCID,
+} from "@/lib/stateview/client";
 import {
   Table,
   TableBody,
@@ -159,6 +170,18 @@ function PayerDetailView({ address }: { address: string }) {
   const [ensName, setEnsName] = useState<string | null>(null);
   const [counterpartyEnsNames, setCounterpartyEnsNames] = useState<Map<string, string | null>>(new Map());
 
+  // My Data state
+  const [dataSets, setDataSets] = useState<PDPDataSetWithRoots[]>([]);
+  const [pieceData, setPieceData] = useState<PieceDisplayData[]>([]);
+  const [dataLoading, setDataLoading] = useState(false);
+  // Provider ENS names - reserved for future use when we correlate DataSets with Rails
+  // const [providerEnsNames, setProviderEnsNames] = useState<Map<string, string | null>>(new Map());
+
+  // CID Lookup state
+  const [cidSearchQuery, setCidSearchQuery] = useState("");
+  const [cidSearchResult, setCidSearchResult] = useState<PieceDisplayData | null>(null);
+  const [cidSearching, setCidSearching] = useState(false);
+
   useEffect(() => {
     async function loadData() {
       if (!address) return;
@@ -234,6 +257,100 @@ function PayerDetailView({ address }: { address: string }) {
     resolveCounterpartyNames(Array.from(addresses));
   }, [account]);
 
+  // Fetch My Data (DataSets and pieces)
+  useEffect(() => {
+    if (!address) return;
+
+    async function loadMyData() {
+      try {
+        setDataLoading(true);
+
+        // Fetch DataSets with roots from PDP subgraph
+        const fetchedDataSets = await fetchDataSetsWithRoots(address);
+        setDataSets(fetchedDataSets);
+
+        // Transform to PieceDisplayData
+        // Note: Provider info not available directly on DataSet in PDP subgraph
+        // Future enhancement: correlate with Rails to find the payee (SP)
+        const pieces: PieceDisplayData[] = [];
+
+        for (const ds of fetchedDataSets) {
+          for (const root of ds.roots || []) {
+            // Convert hex CID to base32
+            const pieceCIDBase32 = hexCidToBase32(root.cid);
+
+            pieces.push({
+              dataSetId: ds.setId,
+              pieceId: root.rootId,
+              pieceCID: pieceCIDBase32,
+              pieceCIDHex: root.cid,
+              ipfsCID: null, // Will be fetched from StateView
+              size: formatBytesSize(BigInt(root.rawSize)),
+              sizeBytes: BigInt(root.rawSize),
+              provider: "", // Not available directly on DataSet
+              providerFormatted: "—",
+              isActive: ds.isActive,
+            });
+          }
+        }
+
+        setPieceData(pieces);
+
+        // Fetch IPFS CIDs from StateView (in background, may be slow)
+        const enrichedPieces = await Promise.all(
+          pieces.map(async (piece) => {
+            try {
+              const metadata = await fetchPieceMetadata(piece.dataSetId, piece.pieceId);
+              return {
+                ...piece,
+                ipfsCID: metadata.ipfsRootCID,
+              };
+            } catch {
+              return piece;
+            }
+          })
+        );
+
+        setPieceData(enrichedPieces);
+      } catch (err) {
+        console.error("Failed to load My Data:", err);
+      } finally {
+        setDataLoading(false);
+      }
+    }
+
+    loadMyData();
+  }, [address]);
+
+  // CID search handler
+  const handleCidSearch = useCallback(async () => {
+    if (!cidSearchQuery.trim()) return;
+
+    setCidSearching(true);
+    setCidSearchResult(null);
+
+    const query = cidSearchQuery.trim().toLowerCase();
+
+    // Search in pieceData
+    const found = pieceData.find(
+      (p) =>
+        p.pieceCID.toLowerCase().includes(query) ||
+        p.pieceCIDHex.toLowerCase().includes(query) ||
+        (p.ipfsCID && p.ipfsCID.toLowerCase().includes(query))
+    );
+
+    if (found) {
+      setCidSearchResult(found);
+    }
+
+    setCidSearching(false);
+  }, [cidSearchQuery, pieceData]);
+
+  // Calculate storage summary
+  const storageSummary = useMemo(() => {
+    return calculateStorageSummary(dataSets);
+  }, [dataSets]);
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -295,21 +412,191 @@ function PayerDetailView({ address }: { address: string }) {
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-white border rounded-lg p-4">
-          <p className="text-sm text-gray-500">Total Funds</p>
+          <p className="text-sm text-gray-500">Available Funds</p>
           <p className="text-2xl font-bold">{account.totalFunds}</p>
         </div>
         <div className="bg-white border rounded-lg p-4">
-          <p className="text-sm text-gray-500">Locked</p>
-          <p className="text-2xl font-bold">{account.totalLocked}</p>
+          <p className="text-sm text-gray-500">Total Storage</p>
+          <p className="text-2xl font-bold">
+            {dataLoading ? "..." : storageSummary.totalStorageFormatted || "-"}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">
+            {dataLoading ? "" : `across ${storageSummary.totalPieces} CIDs`}
+          </p>
         </div>
         <div className="bg-white border rounded-lg p-4">
-          <p className="text-sm text-gray-500">Total Settled</p>
-          <p className="text-2xl font-bold">{account.totalSettled}</p>
+          <p className="text-sm text-gray-500">Runway</p>
+          <p className="text-2xl font-bold">
+            {storageSummary.runwayDays !== null ? `${storageSummary.runwayDays} days` : "-"}
+          </p>
+          <p className="text-xs text-gray-400 mt-1">at current rate</p>
         </div>
         <div className="bg-white border rounded-lg p-4">
-          <p className="text-sm text-gray-500">Payment Rails</p>
-          <p className="text-2xl font-bold">{account.payerRails.length}</p>
+          <p className="text-sm text-gray-500">Bandwidth</p>
+          <p className="text-2xl font-bold text-gray-400">Coming Soon</p>
         </div>
+      </div>
+
+      {/* My Data Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">
+            My Data {pieceData.length > 0 && `(${pieceData.length})`}
+          </h2>
+        </div>
+
+        {/* CID Lookup */}
+        <div className="bg-gray-50 border rounded-lg p-4">
+          <div className="flex items-center gap-4">
+            <input
+              type="text"
+              placeholder="Enter IPFS CID or Piece CID to lookup..."
+              value={cidSearchQuery}
+              onChange={(e) => setCidSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCidSearch()}
+              className="flex-1 px-4 py-2 border rounded-md"
+            />
+            <button
+              onClick={handleCidSearch}
+              disabled={cidSearching || !cidSearchQuery.trim()}
+              className="bg-blue-600 text-white px-6 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              {cidSearching ? "..." : "Search"}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Supports bidirectional lookup: IPFS CID → Piece CID or Piece CID → IPFS CID
+          </p>
+
+          {/* Search Result */}
+          {cidSearchResult && (
+            <div className="mt-4 p-3 bg-white border rounded-md">
+              <p className="text-sm font-medium text-green-600 mb-2">Found match:</p>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-gray-500">Piece CID:</span>{" "}
+                  <span className="font-mono">{truncateCID(cidSearchResult.pieceCID)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">IPFS CID:</span>{" "}
+                  <span className="font-mono">{cidSearchResult.ipfsCID ? truncateCID(cidSearchResult.ipfsCID) : "—"}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Size:</span> {cidSearchResult.size}
+                </div>
+                <div>
+                  <span className="text-gray-500">Provider:</span>{" "}
+                  <span className="text-gray-400">{cidSearchResult.providerFormatted}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* My Data Table */}
+        {dataLoading ? (
+          <div className="h-48 bg-gray-100 rounded-lg animate-pulse" />
+        ) : pieceData.length === 0 ? (
+          <div className="bg-gray-50 border rounded-lg p-8 text-center text-gray-500">
+            No data sets found for this payer
+          </div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-gray-50">
+                  <TableHead className="font-medium">Piece CID</TableHead>
+                  <TableHead className="font-medium">IPFS CID</TableHead>
+                  <TableHead className="font-medium">Size</TableHead>
+                  <TableHead className="font-medium">Provider</TableHead>
+                  <TableHead className="font-medium">Data Set</TableHead>
+                  <TableHead className="font-medium">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pieceData.map((piece, index) => (
+                  <TableRow
+                    key={`${piece.dataSetId}-${piece.pieceId}`}
+                    className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-sm" title={piece.pieceCID}>
+                          {truncateCID(piece.pieceCID)}
+                        </span>
+                        <button
+                          onClick={() => navigator.clipboard.writeText(piece.pieceCID)}
+                          className="text-gray-400 hover:text-gray-600"
+                          title="Copy Piece CID"
+                        >
+                          📋
+                        </button>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {piece.ipfsCID ? (
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm" title={piece.ipfsCID}>
+                            {truncateCID(piece.ipfsCID)}
+                          </span>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(piece.ipfsCID!)}
+                            className="text-gray-400 hover:text-gray-600"
+                            title="Copy IPFS CID"
+                          >
+                            📋
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{piece.size}</TableCell>
+                    <TableCell>
+                      <span className="text-gray-400" title="Provider info not available">
+                        {piece.providerFormatted}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-blue-600 font-medium">DS-{piece.dataSetId.slice(-3).padStart(3, "0")}</span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            const url = piece.ipfsCID
+                              ? `https://dweb.link/ipfs/${piece.ipfsCID}`
+                              : `https://data.filecoin.io/piece/${piece.pieceCID}`;
+                            navigator.clipboard.writeText(url);
+                          }}
+                          className="text-blue-600 hover:underline text-sm"
+                          title="Copy retrieval URL"
+                        >
+                          Copy URL
+                        </button>
+                        {piece.ipfsCID && (
+                          <a
+                            href={`https://dweb.link/ipfs/${piece.ipfsCID}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            View
+                          </a>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {/* Note about IPFS CID */}
+        <p className="text-xs text-gray-400">
+          Note: IPFS CID shows &quot;—&quot; when not set (Synapse SDK users). Piece CID is always available.
+        </p>
       </div>
 
       {/* Payment Rails (as Payer) */}

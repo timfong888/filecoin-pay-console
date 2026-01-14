@@ -16,6 +16,9 @@ import {
   RailDataSetCorrelation,
   CorrelatedDataSet,
   PDPDataSetsResponse,
+  PDPDataSetWithRoots,
+  PieceDisplayData,
+  PayerStorageSummary,
 } from './types';
 
 // PDP Explorer Subgraph endpoint (mainnet)
@@ -345,4 +348,121 @@ export function aggregateCorrelatedData(
     hasFaults,
     isStorageProvider: matchedDataSets > 0,
   };
+}
+
+/**
+ * GraphQL query to fetch DataSets with roots (pieces) by owner address.
+ * Used for the "My Data" table in payer detail view.
+ */
+const DATASETS_WITH_ROOTS_BY_OWNER_QUERY = `
+  query DataSetsWithRootsByOwner($ownerAddress: Bytes!) {
+    dataSets(where: { owner_: { address: $ownerAddress } }, first: 100) {
+      setId
+      isActive
+      totalDataSize
+      totalRoots
+      lastProvenEpoch
+      createdAt
+      owner {
+        address
+      }
+      roots(first: 100, where: { removed: false }) {
+        rootId
+        cid
+        rawSize
+        removed
+      }
+    }
+  }
+`;
+
+interface DataSetsWithRootsResponse {
+  dataSets: PDPDataSetWithRoots[];
+}
+
+/**
+ * Fetch DataSets with their roots (pieces) for a payer address.
+ *
+ * @param ownerAddress - The payer/owner address
+ * @returns Array of DataSets with their roots
+ */
+export async function fetchDataSetsWithRoots(
+  ownerAddress: string
+): Promise<PDPDataSetWithRoots[]> {
+  try {
+    const normalizedAddress = ownerAddress.toLowerCase();
+    const data = await pdpClient.request<DataSetsWithRootsResponse>(
+      DATASETS_WITH_ROOTS_BY_OWNER_QUERY,
+      { ownerAddress: normalizedAddress }
+    );
+
+    return data.dataSets || [];
+  } catch (error) {
+    console.error('Failed to fetch DataSets with roots for', ownerAddress, ':', error);
+    return [];
+  }
+}
+
+/**
+ * Calculate storage summary for a payer's DataSets.
+ *
+ * @param dataSets - DataSets from fetchDataSetsWithRoots
+ * @param fundsAvailable - Available funds in USDFC (optional, for runway calc)
+ * @param lockupRatePerSecond - Lockup rate in USDFC/second (optional)
+ * @returns PayerStorageSummary
+ */
+export function calculateStorageSummary(
+  dataSets: PDPDataSetWithRoots[],
+  fundsAvailable?: number,
+  lockupRatePerSecond?: number
+): PayerStorageSummary {
+  let totalStorageBytes = BigInt(0);
+  let totalPieces = 0;
+
+  for (const ds of dataSets) {
+    totalStorageBytes += BigInt(ds.totalDataSize);
+    totalPieces += ds.roots?.length || 0;
+  }
+
+  const totalStorageGB = Number(totalStorageBytes) / BYTES_PER_GB;
+
+  // Calculate runway if we have funds and rate
+  let runwayDays: number | null = null;
+  if (fundsAvailable && lockupRatePerSecond && lockupRatePerSecond > 0) {
+    const secondsRemaining = fundsAvailable / lockupRatePerSecond;
+    runwayDays = Math.floor(secondsRemaining / (24 * 60 * 60));
+  }
+
+  return {
+    totalStorageBytes,
+    totalStorageFormatted: formatDataSize(totalStorageGB),
+    totalPieces,
+    totalDataSets: dataSets.length,
+    runwayDays,
+  };
+}
+
+/**
+ * Format bytes to human-readable size with appropriate unit.
+ *
+ * @param bytes - Size in bytes
+ * @returns Formatted string (e.g., "1.23 MiB", "456.78 GiB")
+ */
+export function formatBytesSize(bytes: bigint | number): string {
+  const bytesNum = typeof bytes === 'bigint' ? Number(bytes) : bytes;
+
+  const units = ['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+  let unitIndex = 0;
+  let size = bytesNum;
+
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex++;
+  }
+
+  if (unitIndex === 0) {
+    return `${size} ${units[unitIndex]}`;
+  }
+
+  return `${size.toFixed(2)} ${units[unitIndex]}`;
 }

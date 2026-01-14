@@ -81,3 +81,58 @@ export interface CorrelatedDataSet {
   isActive: boolean;
   hasFaults: boolean;       // totalFaultedPeriods > 0
 }
+
+// Types for "My Data" table display
+
+/**
+ * Root/Piece data from PDP subgraph
+ */
+export interface PDPRoot {
+  rootId: string;           // Piece ID within DataSet
+  cid: string;              // Piece CID (hex format: 0x0155...)
+  rawSize: string;          // Size in bytes
+  removed: boolean;
+}
+
+/**
+ * DataSet with roots (pieces) for display
+ */
+export interface PDPDataSetWithRoots {
+  setId: string;
+  isActive: boolean;
+  totalDataSize: string;
+  totalRoots: string;
+  lastProvenEpoch: string | null;
+  createdAt: string;
+  owner: {
+    address: string;
+  };
+  roots: PDPRoot[];
+}
+
+/**
+ * Piece display data for "My Data" table
+ */
+export interface PieceDisplayData {
+  dataSetId: string;
+  pieceId: string;
+  pieceCID: string;         // Base32 encoded (bafkz...)
+  pieceCIDHex: string;      // Original hex format
+  ipfsCID: string | null;   // From StateView metadata (may be blank)
+  size: string;             // Formatted size (e.g., "1.23 MiB")
+  sizeBytes: bigint;
+  provider: string;         // SP address
+  providerFormatted: string; // Truncated or ENS
+  isActive: boolean;
+}
+
+/**
+ * Summary stats for payer's storage
+ */
+export interface PayerStorageSummary {
+  totalStorageBytes: bigint;
+  totalStorageFormatted: string;  // e.g., "2.4 GiB"
+  totalPieces: number;
+  totalDataSets: number;
+  runwayDays: number | null;      // Calculated from funds/rate
+}
