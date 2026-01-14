@@ -1,5 +1,25 @@
 # Deployment History
 
+## v0.20.0 - 2026-01-13
+
+**Changes:**
+- Add SP Registry hero section to Payee Detail page - closes [#37](https://github.com/timfong888/filecoin-pay-console/issues/37)
+- Display SP name, location, status, service URL, storage pricing, piece size range, proving period
+- Show "Unregistered SP" fallback when payee not found in registry
+- Parse ISO 3166 location format (e.g., "C=GB;ST=Gloucestershire;L=Cheltenham") to readable city/country
+
+**Deployment:**
+- PinMe ENS URL: https://filpay.pinit.eth.limo
+- PinMe Auto-generated: https://c84d2040.pinit.eth.limo
+- IPFS CID: `bafybeieavpcsmfbudwgvmamofaymuh2fe3okqfmgsoqh56gmrcrovtj4r4`
+- Git Tag: [v0.20.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.20.0)
+- Commit: [9e3354f](https://github.com/timfong888/filecoin-pay-console/commit/9e3354f)
+
+**Direct Commits:**
+- [9e3354f](https://github.com/timfong888/filecoin-pay-console/commit/9e3354f) - feat: add SP Registry hero section to Payee Detail page (#37)
+
+---
+
 ## v0.19.0 - 2026-01-13
 
 **Changes:**
