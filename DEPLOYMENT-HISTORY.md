@@ -1,5 +1,26 @@
 # Deployment History
 
+## v0.23.0 - 2026-01-13
+
+**Changes:**
+- Fix Data Size column in list view to show correct per-payer values - fixes [#39](https://github.com/timfong888/filecoin-pay-console/issues/39)
+- Fix Total Storage in detail view using rail correlation (payee:createdAt)
+- Add Locked Funds card with tooltip explaining reserved funds
+- Add tooltip to Available Funds explaining withdrawable amount
+- Aggregate DataSets properly when multiple rails share same key
+- Show provider (SP) address with link in My Data table
+
+**Deployment:**
+- PinMe ENS URL: https://filpay.pinit.eth.limo
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX18iqKH9AQqG1DD7vTpKtIioAE2TK5-2hI-0XCk2CRiFmjEJRq3e4rntWUOEab3IHT3itenjAeBqxc5uVuPrPY9AR7ZBSXeyEsCjweJwNsTT126XSee9dGsCGXEW0ZJ3qCASxUZXzUIRdS9cPoAprA
+- Git Tag: [v0.23.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.23.0)
+- Commit: [8380ad2](https://github.com/timfong888/filecoin-pay-console/commit/8380ad2)
+
+**Direct Commits:**
+- [8380ad2](https://github.com/timfong888/filecoin-pay-console/commit/8380ad2) - fix: correct payer storage calculations and add Locked Funds display (#39)
+
+---
+
 ## v0.22.0 - 2026-01-13
 
 **Changes:**
