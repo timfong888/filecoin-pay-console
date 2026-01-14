@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { PayeeDisplay, fetchAllPayees, fetchAccountDetail, AccountDetail, formatDataSize, fetchTotalSettled } from "@/lib/graphql/fetchers";
 import { batchResolveENS, resolveENS } from "@/lib/ens";
+import { useSPRegistry } from "@/lib/sp-registry/hooks";
+import { SPHero } from "@/components/sp-registry";
 import {
   FILECOIN_PAY_CONTRACT,
   GOLDSKY_ENDPOINT,
@@ -46,6 +48,9 @@ function PayeeDetailView({ address }: { address: string }) {
   const [error, setError] = useState<string | null>(null);
   const [ensName, setEnsName] = useState<string | null>(null);
   const [counterpartyEnsNames, setCounterpartyEnsNames] = useState<Map<string, string | null>>(new Map());
+
+  // Fetch SP Registry data for this payee
+  const { data: spRegistryData, loading: spRegistryLoading } = useSPRegistry(address);
 
   useEffect(() => {
     async function loadData() {
@@ -209,6 +214,11 @@ function PayeeDetailView({ address }: { address: string }) {
         </button>
       </div>
 
+      {/* SP Registry Hero */}
+      {spRegistryData && (
+        <SPHero data={spRegistryData} loading={spRegistryLoading} />
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4">
         <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
@@ -316,6 +326,17 @@ function PayeeDetailView({ address }: { address: string }) {
           </div>
           <div>Subgraph Version:</div>
           <div className="font-mono">{SUBGRAPH_VERSION}</div>
+          <div>SP Registry:</div>
+          <div className="font-mono text-xs">
+            <a
+              href="https://www.filecoin.services/providers"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-purple-600 hover:underline"
+            >
+              filecoin.services/providers
+            </a>
+          </div>
         </div>
       </div>
     </div>
