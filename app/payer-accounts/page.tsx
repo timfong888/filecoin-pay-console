@@ -473,7 +473,7 @@ function PayerDetailView({ address }: { address: string }) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">
-            My Data {pieceData.length > 0 && `(${pieceData.length})`}
+            My Data {storageSummary.totalPieces > 0 && `(${storageSummary.totalPieces.toLocaleString()})`}
           </h2>
         </div>
 
