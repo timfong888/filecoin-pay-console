@@ -539,7 +539,9 @@ export function calculateStorageSummary(
 
   for (const ds of dataSets) {
     totalStorageBytes += BigInt(ds.totalDataSize);
-    totalPieces += ds.roots?.length || 0;
+    // Use totalRoots from DataSet, not fetched roots array length
+    // The roots array is limited by GraphQL query (first: 100)
+    totalPieces += parseInt(ds.totalRoots) || ds.roots?.length || 0;
   }
 
   const totalStorageGB = Number(totalStorageBytes) / BYTES_PER_GB;
