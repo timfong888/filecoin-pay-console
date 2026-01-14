@@ -1,5 +1,26 @@
 # Deployment History
 
+## v0.19.0 - 2026-01-13
+
+**Changes:**
+- Fix time series chart to match Active Payers hero metric definition - fixes [#36](https://github.com/timfong888/filecoin-pay-console/issues/36)
+- Chart was showing all unique payers; now filters for Active criteria (ACTIVE rail AND lockupRate > 0)
+- Renamed chart from "Total Unique Payers" to "Total Active Payers"
+- Updated both Dashboard and Payer Accounts page charts for consistency
+- Update DASHBOARD_VERSION to 0.16.0 → 0.19.0
+
+**Deployment:**
+- PinMe ENS URL: https://filpay.pinit.eth.limo
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX1-FtWHO3_9Pzvi7fCf14cyKZXJ9JdSKSEs6GmTn7swZw4ubDEqAKdHyJeQUg5DVMf4X22ACkcOCEKfWIufdjySP9kUJjL6vrFt3C91Q_z5_4fCkx_Knlkz7vEiGv-o4GoIx26AwvJpszYACmMB96g
+- IPFS CID: `bafybeia4wrv2pwrgyizebvfymge5yttww4ockoeb53vrvnitcx7osmvqru`
+- Git Tag: [v0.19.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.19.0)
+- Commit: [c4cda24](https://github.com/timfong888/filecoin-pay-console/commit/c4cda24)
+
+**Direct Commits:**
+- [c4cda24](https://github.com/timfong888/filecoin-pay-console/commit/c4cda24) - fix: update time series chart to match Active Payers hero metric (#36)
+
+---
+
 ## v0.18.0 - 2026-01-13
 
 **Changes:**
