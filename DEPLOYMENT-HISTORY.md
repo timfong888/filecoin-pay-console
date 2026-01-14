@@ -1,5 +1,24 @@
 # Deployment History
 
+## v0.22.0 - 2026-01-13
+
+**Changes:**
+- Fix SP Registry to properly fetch and display registered Storage Provider data - fixes [#37](https://github.com/timfong888/filecoin-pay-console/issues/37)
+- Update ABI to use `getProviderByAddress` and `getProviderWithProduct` (replaces non-existent `getPDPService`)
+- Fix capability value decoding: values are raw bytes, not ABI-encoded
+- SP Hero now correctly displays: name, location, description, service URL, piece size range
+
+**Deployment:**
+- PinMe ENS URL: https://filpay.pinit.eth.limo
+- IPFS CID: `bafybeiclgkiup5csu254jpuyozaephizhobf2oli576hxjjmew6vkt6wha`
+- Git Tag: [v0.22.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.22.0)
+- Commit: [afab675](https://github.com/timfong888/filecoin-pay-console/commit/afab675)
+
+**Direct Commits:**
+- [afab675](https://github.com/timfong888/filecoin-pay-console/commit/afab675) - fix: SP Registry uses correct contract functions and raw byte decoding
+
+---
+
 ## v0.21.0 - 2026-01-13
 
 **Changes:**
