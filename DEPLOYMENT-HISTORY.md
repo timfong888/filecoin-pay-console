@@ -1,5 +1,21 @@
 # Deployment History
 
+## v0.24.0 - 2026-01-13
+
+**Changes:**
+- Fix CID count in Total Storage to use `totalRoots` field instead of limited roots array
+- Fix My Data section header to show correct total CID count with proper formatting
+- CID count now shows accurate values (e.g., 54,573 instead of 130)
+
+**Deployment:**
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX184uOV6qrVDfq4G_JGoMElcKRREYYvbGGwsQ6grku99O4K__VTS90ch6MVvTjZ_N3ItDrCyNrsQQtulcOJ7EMh7qAVcKGFVBzcusY9avsGf4fg_5qDGlCtDbxUJbk8Wm3haWGYME2UxJn_6lWkNNg
+- Git Tag: [v0.24.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.24.0)
+- Commits:
+  - [22ecd09](https://github.com/timfong888/filecoin-pay-console/commit/22ecd09) - fix: use totalRoots for CID count instead of limited roots array
+  - [bacdb17](https://github.com/timfong888/filecoin-pay-console/commit/bacdb17) - fix: show correct CID count in My Data section header
+
+---
+
 ## v0.23.0 - 2026-01-13
 
 **Changes:**
