@@ -8,7 +8,6 @@ const navItems = [
   { href: "/", label: "Dashboard" },
   { href: "/payer-accounts", label: "Payer Accounts" },
   { href: "/payee-accounts", label: "Payee Accounts" },
-  { href: "/cid-lookup", label: "CID Lookup" },
 ];
 
 export function Header() {
@@ -32,6 +31,14 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
+            <a
+              href="https://filecoin.fillout.com/builders"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-2 px-3 py-1.5 text-sm font-medium rounded-md bg-amber-100 text-amber-700 border border-amber-300 hover:bg-amber-200 transition-colors"
+            >
+              Feature Request
+            </a>
           </nav>
           <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100">
             Connect Wallet
