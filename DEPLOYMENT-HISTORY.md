@@ -1,5 +1,27 @@
 # Deployment History
 
+## v0.21.0 - 2026-01-13
+
+**Changes:**
+- Add My Data section with PDP integration for payer detail view - closes [#35](https://github.com/timfong888/filecoin-pay-console/issues/35)
+- Add Total Storage and Runway summary cards showing GB across CIDs
+- Add "My Data" table with Piece CID, IPFS CID, Size, Provider, Data Set columns
+- Add CID lookup panel for bidirectional IPFS CID ↔ Piece CID search
+- Create StateView contract client for fetching IPFS CID metadata from chain
+- Bandwidth card shows "Coming Soon" placeholder
+
+**Deployment:**
+- PinMe ENS URL: https://filpay.pinit.eth.limo
+- PinMe Auto-generated: https://72adf7a4.pinit.eth.limo
+- IPFS CID: `bafybeifnjeb435nbbn7dlsuspnz4jtriolu5c4r7xp7fpw3dqy3gqpgc44`
+- Git Tag: [v0.21.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.21.0)
+- Commit: [9c7efd8](https://github.com/timfong888/filecoin-pay-console/commit/9c7efd8)
+
+**Direct Commits:**
+- [9c7efd8](https://github.com/timfong888/filecoin-pay-console/commit/9c7efd8) - feat: add My Data section with PDP integration for payer detail view (#35)
+
+---
+
 ## v0.20.0 - 2026-01-13
 
 **Changes:**
