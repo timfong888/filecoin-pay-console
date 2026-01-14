@@ -11,6 +11,7 @@
 
 **Deployment:**
 - PinMe ENS URL: https://filpay.pinit.eth.limo
+- PinMe Auto-generated: https://72232bf1.pinit.eth.limo
 - PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX1-FtWHO3_9Pzvi7fCf14cyKZXJ9JdSKSEs6GmTn7swZw4ubDEqAKdHyJeQUg5DVMf4X22ACkcOCEKfWIufdjySP9kUJjL6vrFt3C91Q_z5_4fCkx_Knlkz7vEiGv-o4GoIx26AwvJpszYACmMB96g
 - IPFS CID: `bafybeia4wrv2pwrgyizebvfymge5yttww4ockoeb53vrvnitcx7osmvqru`
 - Git Tag: [v0.19.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.19.0)
