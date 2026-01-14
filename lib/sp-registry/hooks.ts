@@ -8,7 +8,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Contract, JsonRpcProvider } from 'ethers';
+import { Contract, JsonRpcProvider, AbiCoder } from 'ethers';
 import type { SPRegistryEnrichment, ParsedLocation } from './types';
 
 // SP Registry contract address (Filecoin Mainnet)
@@ -18,10 +18,11 @@ const SP_REGISTRY_ADDRESS = '0xf55dDbf63F1b55c3F1D4FA7e339a68AB7b64A5eB';
 const FILECOIN_RPC_URL = 'https://api.node.glif.io/rpc/v1';
 
 // Minimal ABI for SP Registry queries
+// getProviderByAddress returns tuple(uint256 providerId, tuple(serviceProvider, payee, name, description, isActive))
+// getProviderWithProduct returns (uint256 providerId, tuple providerInfo, tuple product, bytes[] productCapabilityValues)
 const SP_REGISTRY_ABI = [
-  'function getProviderIdByAddress(address) view returns (uint256)',
-  'function getProvider(uint256 providerId) view returns (tuple(address serviceProvider, address payee, string name, string description, bool active))',
-  'function getPDPService(uint256 providerId) view returns (tuple(tuple(string serviceURL, uint256 minPieceSizeInBytes, uint256 maxPieceSizeInBytes, bool ipniPiece, bool ipniIpfs, uint256 storagePricePerTibPerDay, uint256 minProvingPeriodInEpochs, string location, address paymentTokenAddress) offering, bool isActive))',
+  'function getProviderByAddress(address) view returns (tuple(uint256, tuple(address, address, string, string, bool)))',
+  'function getProviderWithProduct(uint256 providerId, uint8 productType) view returns (tuple(uint256, tuple(address, address, string, string, bool), tuple(uint8, string[], bool), bytes[]))',
 ];
 
 // Bytes conversions
@@ -34,6 +35,9 @@ const SECONDS_PER_DAY = 24 * 60 * 60;
 
 // attoFIL to FIL conversion
 const ATTOFIL_DECIMALS = 18;
+
+// Product types for SP Registry
+const PRODUCT_TYPE_PDP = 0; // PDP product type
 
 /**
  * Parse ISO 3166 location string to readable format.
@@ -115,6 +119,57 @@ function formatProvingPeriod(epochs: bigint | number): string {
   }
 }
 
+/**
+ * Decode capability value from bytes based on key name.
+ * PDP capabilities include: serviceURL, minPieceSizeInBytes, maxPieceSizeInBytes,
+ * directPay, renew, storagePricePerTibPerMonth, minProvingPeriodInEpochs, location, payeeAddress
+ *
+ * Note: Values are stored as raw bytes, NOT ABI-encoded.
+ */
+function decodeCapabilityValue(key: string, value: string): string | bigint | boolean {
+  try {
+    // Remove 0x prefix if present
+    const hexString = value.startsWith('0x') ? value.slice(2) : value;
+
+    switch (key) {
+      case 'serviceURL':
+      case 'location': {
+        // Decode hex to UTF-8 string
+        const bytes = new Uint8Array(hexString.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []);
+        return new TextDecoder().decode(bytes);
+      }
+      case 'minPieceSizeInBytes':
+      case 'maxPieceSizeInBytes':
+      case 'storagePricePerTibPerMonth':
+      case 'minProvingPeriodInEpochs': {
+        // Decode hex to bigint (big-endian)
+        return BigInt('0x' + hexString);
+      }
+      case 'directPay':
+      case 'renew': {
+        // Decode as boolean (0 = false, non-zero = true)
+        return BigInt('0x' + hexString) !== BigInt(0);
+      }
+      case 'payeeAddress': {
+        // Address is already in hex format, just ensure 0x prefix
+        return '0x' + hexString.padStart(40, '0');
+      }
+      default: {
+        // Try to decode as string first
+        try {
+          const bytes = new Uint8Array(hexString.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []);
+          return new TextDecoder().decode(bytes);
+        } catch {
+          return value;
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Failed to decode capability ${key}:`, error);
+    return value;
+  }
+}
+
 // Singleton contract instance
 let registryContract: Contract | null = null;
 
@@ -132,31 +187,25 @@ function getRegistryContract(): Contract {
 async function fetchSPRegistryData(address: string): Promise<SPRegistryEnrichment> {
   try {
     const contract = getRegistryContract();
-    const normalizedAddress = address.toLowerCase();
 
-    // Get provider ID by address
-    let providerId: bigint;
+    // Get provider info directly by address
+    // Returns: tuple(providerId, tuple(serviceProvider, payee, name, description, isActive))
+    let result;
     try {
-      providerId = await contract.getProviderIdByAddress(normalizedAddress);
+      result = await contract.getProviderByAddress(address);
     } catch {
       return { isRegistered: false };
     }
+
+    // Result is [providerId, [serviceProvider, payee, name, description, isActive]]
+    const providerId = result[0];
+    const info = result[1];
 
     if (providerId === BigInt(0)) {
       return { isRegistered: false };
     }
 
-    // Get provider info
-    const providerInfo = await contract.getProvider(providerId);
-    const [serviceProvider, , name, description, active] = providerInfo;
-
-    // Try to get PDP service info
-    let pdpService = null;
-    try {
-      pdpService = await contract.getPDPService(providerId);
-    } catch {
-      // No PDP service
-    }
+    const [serviceProvider, , name, description, active] = info;
 
     // Build enrichment
     const enrichment: SPRegistryEnrichment = {
@@ -167,29 +216,55 @@ async function fetchSPRegistryData(address: string): Promise<SPRegistryEnrichmen
       serviceProvider,
     };
 
-    if (pdpService) {
-      const [offering, isActive] = pdpService;
-      const [
-        serviceURL,
-        minPieceSizeInBytes,
-        maxPieceSizeInBytes,
-        ,
-        ,
-        storagePricePerTibPerDay,
-        minProvingPeriodInEpochs,
-        location,
-      ] = offering;
+    // Try to get PDP product info
+    try {
+      const productResult = await contract.getProviderWithProduct(providerId, PRODUCT_TYPE_PDP);
+      // Result is [providerId, providerInfo, product, productCapabilityValues]
+      const product = productResult[2]; // [productType, capabilityKeys[], isActive]
+      const capabilityValues = productResult[3]; // bytes[]
 
-      enrichment.active = active && isActive;
-      enrichment.location = parseLocation(location);
-      enrichment.serviceURL = serviceURL;
-      enrichment.storagePriceDisplay = formatStoragePrice(storagePricePerTibPerDay);
-      enrichment.storagePriceAttoFIL = storagePricePerTibPerDay.toString();
-      enrichment.pieceSizeRange = formatPieceSizeRange(minPieceSizeInBytes, maxPieceSizeInBytes);
-      enrichment.minPieceSizeBytes = minPieceSizeInBytes.toString();
-      enrichment.maxPieceSizeBytes = maxPieceSizeInBytes.toString();
-      enrichment.provingPeriod = formatProvingPeriod(minProvingPeriodInEpochs);
-      enrichment.minProvingPeriodEpochs = Number(minProvingPeriodInEpochs);
+      const capabilityKeys = product[1] as string[];
+      const productIsActive = product[2] as boolean;
+
+      // Decode capability values into a map
+      const capabilities: Record<string, string | bigint | boolean> = {};
+      for (let i = 0; i < capabilityKeys.length; i++) {
+        const key = capabilityKeys[i];
+        const value = capabilityValues[i];
+        capabilities[key] = decodeCapabilityValue(key, value);
+      }
+
+      // Update enrichment with PDP-specific data
+      enrichment.active = active && productIsActive;
+
+      if (capabilities.location) {
+        enrichment.location = parseLocation(capabilities.location as string);
+      }
+      if (capabilities.serviceURL) {
+        enrichment.serviceURL = capabilities.serviceURL as string;
+      }
+      if (capabilities.storagePricePerTibPerMonth) {
+        const pricePerMonth = capabilities.storagePricePerTibPerMonth as bigint;
+        // Convert monthly to daily for formatting (divide by 30)
+        const pricePerDay = pricePerMonth / BigInt(30);
+        enrichment.storagePriceDisplay = formatStoragePrice(pricePerDay);
+        enrichment.storagePriceAttoFIL = pricePerMonth.toString();
+      }
+      if (capabilities.minPieceSizeInBytes && capabilities.maxPieceSizeInBytes) {
+        enrichment.pieceSizeRange = formatPieceSizeRange(
+          capabilities.minPieceSizeInBytes as bigint,
+          capabilities.maxPieceSizeInBytes as bigint
+        );
+        enrichment.minPieceSizeBytes = (capabilities.minPieceSizeInBytes as bigint).toString();
+        enrichment.maxPieceSizeBytes = (capabilities.maxPieceSizeInBytes as bigint).toString();
+      }
+      if (capabilities.minProvingPeriodInEpochs) {
+        const epochs = capabilities.minProvingPeriodInEpochs as bigint;
+        enrichment.provingPeriod = formatProvingPeriod(epochs);
+        enrichment.minProvingPeriodEpochs = Number(epochs);
+      }
+    } catch {
+      // No PDP product or error fetching - continue with basic info
     }
 
     return enrichment;
