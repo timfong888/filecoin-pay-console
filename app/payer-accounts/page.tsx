@@ -21,10 +21,11 @@ import {
 } from "@/lib/graphql/client";
 import { batchResolveENS, resolveENS } from "@/lib/ens";
 import {
-  fetchDataSetsWithRoots,
+  fetchDataSetsWithRootsByCorrelation,
   calculateStorageSummary,
   formatBytesSize,
 } from "@/lib/pdp/fetchers";
+import { RailDataSetCorrelation } from "@/lib/pdp/types";
 import { PDPDataSetWithRoots, PieceDisplayData } from "@/lib/pdp/types";
 import {
   fetchPieceMetadata,
@@ -257,24 +258,35 @@ function PayerDetailView({ address }: { address: string }) {
     resolveCounterpartyNames(Array.from(addresses));
   }, [account]);
 
-  // Fetch My Data (DataSets and pieces)
+  // Fetch My Data (DataSets and pieces) - depends on account data for rail correlations
   useEffect(() => {
-    if (!address) return;
+    // Wait for both address and account data to be available
+    if (!address || !account || loading) return;
 
     async function loadMyData() {
+      // Re-check account since it could change during async execution
+      if (!account) return;
+
       try {
         setDataLoading(true);
 
-        // Fetch DataSets with roots from PDP subgraph
-        const fetchedDataSets = await fetchDataSetsWithRoots(address);
+        // Build rail correlations from account's payer rails
+        // DataSets are owned by SPs (payees), so we correlate by payee + timestamp
+        const railCorrelations: RailDataSetCorrelation[] = account.payerRails.map(rail => ({
+          payeeAddress: rail.counterpartyAddress,
+          railCreatedAt: Math.floor(rail.createdAtTimestamp / 1000).toString(), // Convert ms to seconds
+        }));
+
+        // Fetch DataSets with roots using rail correlations
+        const fetchedDataSets = await fetchDataSetsWithRootsByCorrelation(railCorrelations);
         setDataSets(fetchedDataSets);
 
         // Transform to PieceDisplayData
-        // Note: Provider info not available directly on DataSet in PDP subgraph
-        // Future enhancement: correlate with Rails to find the payee (SP)
+        // Provider (SP) is the DataSet owner
         const pieces: PieceDisplayData[] = [];
 
         for (const ds of fetchedDataSets) {
+          const providerAddress = ds.owner?.address || "";
           for (const root of ds.roots || []) {
             // Convert hex CID to base32
             const pieceCIDBase32 = hexCidToBase32(root.cid);
@@ -287,8 +299,8 @@ function PayerDetailView({ address }: { address: string }) {
               ipfsCID: null, // Will be fetched from StateView
               size: formatBytesSize(BigInt(root.rawSize)),
               sizeBytes: BigInt(root.rawSize),
-              provider: "", // Not available directly on DataSet
-              providerFormatted: "—",
+              provider: providerAddress,
+              providerFormatted: providerAddress ? `${providerAddress.slice(0, 6)}...${providerAddress.slice(-4)}` : "—",
               isActive: ds.isActive,
             });
           }
@@ -320,7 +332,7 @@ function PayerDetailView({ address }: { address: string }) {
     }
 
     loadMyData();
-  }, [address]);
+  }, [address, account, loading]);
 
   // CID search handler
   const handleCidSearch = useCallback(async () => {
@@ -410,10 +422,30 @@ function PayerDetailView({ address }: { address: string }) {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <div className="bg-white border rounded-lg p-4">
-          <p className="text-sm text-gray-500">Available Funds</p>
+          <p className="text-sm text-gray-500 flex items-center gap-1">
+            Available Funds
+            <span
+              className="text-gray-400 cursor-help"
+              title="Funds that can be withdrawn. Total deposited minus locked amount."
+            >
+              ⓘ
+            </span>
+          </p>
           <p className="text-2xl font-bold">{account.totalFunds}</p>
+        </div>
+        <div className="bg-white border rounded-lg p-4">
+          <p className="text-sm text-gray-500 flex items-center gap-1">
+            Locked Funds
+            <span
+              className="text-gray-400 cursor-help"
+              title="Funds committed to payment rails. Reserved for future settlements to SPs."
+            >
+              ⓘ
+            </span>
+          </p>
+          <p className="text-2xl font-bold">{account.totalLocked}</p>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500">Total Storage</p>
@@ -553,9 +585,17 @@ function PayerDetailView({ address }: { address: string }) {
                     </TableCell>
                     <TableCell>{piece.size}</TableCell>
                     <TableCell>
-                      <span className="text-gray-400" title="Provider info not available">
-                        {piece.providerFormatted}
-                      </span>
+                      {piece.provider ? (
+                        <Link
+                          href={`/payee-accounts?address=${piece.provider}`}
+                          className="text-blue-600 hover:underline font-mono text-sm"
+                          title={piece.provider}
+                        >
+                          {piece.providerFormatted}
+                        </Link>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span className="text-blue-600 font-medium">DS-{piece.dataSetId.slice(-3).padStart(3, "0")}</span>

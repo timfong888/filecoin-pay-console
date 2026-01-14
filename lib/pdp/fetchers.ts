@@ -256,8 +256,11 @@ export interface CorrelatedDataResult {
  * The correlation works because the onboarding flow creates both the Rail
  * and DataSet in the same transaction, resulting in identical createdAt timestamps.
  *
+ * Note: Multiple DataSets may share the same owner:timestamp key when multiple
+ * rails are created in the same block. We aggregate (sum) all matching DataSets.
+ *
  * @param correlations - Array of {payeeAddress, railCreatedAt} pairs from Rails
- * @returns Map of "address:timestamp" key -> CorrelatedDataSet
+ * @returns Map of "address:timestamp" key -> CorrelatedDataSet (aggregated)
  */
 export async function fetchCorrelatedDataSets(
   correlations: RailDataSetCorrelation[]
@@ -276,6 +279,13 @@ export async function fetchCorrelatedDataSets(
     correlations.map(c => `${c.payeeAddress.toLowerCase()}:${c.railCreatedAt}`)
   );
 
+  // Count how many rails share each key (for averaging later)
+  const railsPerKey = new Map<string, number>();
+  for (const c of correlations) {
+    const key = `${c.payeeAddress.toLowerCase()}:${c.railCreatedAt}`;
+    railsPerKey.set(key, (railsPerKey.get(key) || 0) + 1);
+  }
+
   const BATCH_SIZE = 100;
 
   for (let i = 0; i < uniqueAddresses.length; i += BATCH_SIZE) {
@@ -288,19 +298,44 @@ export async function fetchCorrelatedDataSets(
       );
 
       if (data.dataSets) {
+        // Group DataSets by key and sum their sizes
+        const aggregated = new Map<string, { totalSize: bigint; count: number; hasFaults: boolean; isActive: boolean }>();
+
         for (const ds of data.dataSets) {
-          // Build the correlation key
           const key = `${ds.owner.address.toLowerCase()}:${ds.createdAt}`;
 
           // Only include if this matches a Rail correlation
           if (correlationKeys.has(key)) {
-            results.set(key, {
-              setId: ds.setId,
-              totalDataSize: ds.totalDataSize,
-              isActive: ds.isActive,
-              hasFaults: parseInt(ds.totalFaultedPeriods || '0') > 0,
-            });
+            const existing = aggregated.get(key);
+            if (existing) {
+              existing.totalSize += BigInt(ds.totalDataSize);
+              existing.count += 1;
+              existing.hasFaults = existing.hasFaults || parseInt(ds.totalFaultedPeriods || '0') > 0;
+              existing.isActive = existing.isActive && ds.isActive;
+            } else {
+              aggregated.set(key, {
+                totalSize: BigInt(ds.totalDataSize),
+                count: 1,
+                hasFaults: parseInt(ds.totalFaultedPeriods || '0') > 0,
+                isActive: ds.isActive,
+              });
+            }
           }
+        }
+
+        // Convert aggregated data to CorrelatedDataSet format
+        // If multiple rails share the same key, divide the total by number of rails
+        // This gives each payer their fair share of the aggregated data
+        for (const [key, agg] of aggregated) {
+          const railCount = railsPerKey.get(key) || 1;
+          const perRailSize = agg.totalSize / BigInt(railCount);
+
+          results.set(key, {
+            setId: `agg-${key}`, // Aggregated, no single setId
+            totalDataSize: perRailSize.toString(),
+            isActive: agg.isActive,
+            hasFaults: agg.hasFaults,
+          });
         }
       }
     } catch (error) {
@@ -383,6 +418,9 @@ interface DataSetsWithRootsResponse {
 /**
  * Fetch DataSets with their roots (pieces) for a payer address.
  *
+ * @deprecated Use fetchDataSetsWithRootsByCorrelation for accurate payer data.
+ * This function queries by owner address, but DataSets are owned by SPs, not payers.
+ *
  * @param ownerAddress - The payer/owner address
  * @returns Array of DataSets with their roots
  */
@@ -401,6 +439,86 @@ export async function fetchDataSetsWithRoots(
     console.error('Failed to fetch DataSets with roots for', ownerAddress, ':', error);
     return [];
   }
+}
+
+/**
+ * GraphQL query to fetch DataSets with roots by owner addresses (batch).
+ */
+const DATASETS_WITH_ROOTS_BY_OWNERS_QUERY = `
+  query DataSetsWithRootsByOwners($addresses: [Bytes!]!) {
+    dataSets(first: 1000, where: { owner_in: $addresses }) {
+      setId
+      isActive
+      totalDataSize
+      totalRoots
+      lastProvenEpoch
+      createdAt
+      owner {
+        address
+      }
+      roots(first: 100, where: { removed: false }) {
+        rootId
+        cid
+        rawSize
+        removed
+      }
+    }
+  }
+`;
+
+/**
+ * Fetch DataSets with roots using rail correlations.
+ *
+ * DataSets are owned by SPs (payees), not payers. This function:
+ * 1. Takes a payer's rails (payee + timestamp pairs)
+ * 2. Queries DataSets owned by those payees
+ * 3. Filters to only DataSets matching the rail timestamps
+ *
+ * @param railCorrelations - Array of {payeeAddress, railCreatedAt} from payer's rails
+ * @returns Array of DataSets with their roots that match the correlations
+ */
+export async function fetchDataSetsWithRootsByCorrelation(
+  railCorrelations: RailDataSetCorrelation[]
+): Promise<PDPDataSetWithRoots[]> {
+  if (railCorrelations.length === 0) {
+    return [];
+  }
+
+  // Get unique payee addresses
+  const uniqueAddresses = [...new Set(railCorrelations.map(c => c.payeeAddress.toLowerCase()))];
+
+  // Build lookup set of address:timestamp keys for filtering
+  const correlationKeys = new Set(
+    railCorrelations.map(c => `${c.payeeAddress.toLowerCase()}:${c.railCreatedAt}`)
+  );
+
+  const results: PDPDataSetWithRoots[] = [];
+  const BATCH_SIZE = 100;
+
+  for (let i = 0; i < uniqueAddresses.length; i += BATCH_SIZE) {
+    const batch = uniqueAddresses.slice(i, i + BATCH_SIZE);
+
+    try {
+      const data = await pdpClient.request<DataSetsWithRootsResponse>(
+        DATASETS_WITH_ROOTS_BY_OWNERS_QUERY,
+        { addresses: batch }
+      );
+
+      if (data.dataSets) {
+        for (const ds of data.dataSets) {
+          // Only include if this matches a rail correlation
+          const key = `${ds.owner.address.toLowerCase()}:${ds.createdAt}`;
+          if (correlationKeys.has(key)) {
+            results.push(ds);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch correlated DataSets with roots:', error);
+    }
+  }
+
+  return results;
 }
 
 /**
