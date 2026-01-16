@@ -1,5 +1,22 @@
 # Deployment History
 
+## v0.25.0 - 2026-01-16
+
+**Changes:**
+- Add footer with subgraph URL and repo link for transparency - fixes [#41](https://github.com/timfong888/filecoin-pay-console/issues/41)
+- Footer displays version, network, Goldsky subgraph endpoint, and source code link
+
+**Deployment:**
+- PinMe ENS URL: https://filpay.pinit.eth.limo
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX18msP-a-lBt3MADmH7_bgFpgVvllAcg9_ZZqNxEu72S6WnfuVxx--wrvvuOREJOhfx9cZdgvPSKiyyg3tU4eSRDYbsDl9C4bgyU0StAcnNsNox6kpv7Be7vyae7yZaJdtb5pobcTVvdc0emeN4uOQ
+- IPFS CID: `bafybeif3ufi42ibaml4wziqfn273ckirrntszk5x365m2s4cywvrmp6i5y`
+- Git Tag: [v0.25.0](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.25.0)
+- Commits:
+  - [a23f98e](https://github.com/timfong888/filecoin-pay-console/commit/a23f98e) - feat: add footer with subgraph URL and repo link
+  - [6814291](https://github.com/timfong888/filecoin-pay-console/commit/6814291) - chore: bump version to 0.25.0
+
+---
+
 ## v0.24.0 - 2026-01-13
 
 **Changes:**
