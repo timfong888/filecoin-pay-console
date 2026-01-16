@@ -1,6 +1,7 @@
 "use client";
 
 import { GOLDSKY_ENDPOINT, DASHBOARD_VERSION, NETWORK } from "@/lib/graphql/client";
+import { CONSOLE_MODE, isGAMode } from "@/lib/config/mode";
 
 const REPO_URL = "https://github.com/timfong888/filecoin-pay-console";
 
@@ -11,6 +12,9 @@ export function Footer() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
             <span>v{DASHBOARD_VERSION}</span>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${isGAMode ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+              {CONSOLE_MODE.toUpperCase()}
+            </span>
             <span className="hidden sm:inline">|</span>
             <span>{NETWORK}</span>
           </div>

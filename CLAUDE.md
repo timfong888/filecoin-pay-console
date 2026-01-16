@@ -6,6 +6,63 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Filecoin Pay Console - A dashboard for tracking payments, settlements, and metrics on Filecoin Pay. Deployed as a static site via PinMe (IPFS).
 
+## Build Modes (GA vs Prototype)
+
+The console supports two deployment modes controlled by `NEXT_PUBLIC_CONSOLE_MODE`:
+
+| Mode | Branch | Features | Subdomain |
+|------|--------|----------|-----------|
+| `ga` | main | 3 metrics, Dashboard only | filpay-ga.pinit.eth.limo |
+| `prototype` | prototype | Full features | filpay-prototype.pinit.eth.limo |
+
+### GA Mode Features (Simplified Production)
+- **3 Hero Metrics:** Active Wallets, USDFC Settled, Churned Wallets
+- **Navigation:** Dashboard only (no Payer/Payee Accounts links)
+- **Hidden:** Top 10 tables, time series charts
+
+### Prototype Mode Features (Full)
+- **3 Hero Metrics:** Active Payers, USDFC Settled, Settled (7d)
+- **Navigation:** Dashboard, Payer Accounts, Payee Accounts
+- **Visible:** Top 10 Payers table, cumulative charts
+
+### Build Commands
+
+```bash
+# Development
+npm run dev              # Default (prototype mode)
+npm run dev:ga           # GA mode
+npm run dev:prototype    # Prototype mode
+
+# Production build
+npm run build            # Default (prototype mode)
+npm run build:ga         # GA mode build
+npm run build:prototype  # Prototype mode build
+```
+
+### Deployment
+
+```bash
+# GA Deployment (from main branch)
+git checkout main
+npm run build:ga
+pinme upload out
+# Tag: git tag v0.26.0-ga && git push origin v0.26.0-ga
+
+# Prototype Deployment (from prototype branch)
+git checkout prototype
+npm run build:prototype
+pinme upload out
+# Tag: git tag v0.26.0-prototype && git push origin v0.26.0-prototype
+```
+
+### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `lib/config/mode.ts` | Mode configuration and feature flags |
+| `.env.ga` | GA mode environment template |
+| `.env.prototype` | Prototype mode environment template |
+
 ## Deployed Site
 
 **Live URL (use this for all testing):** https://f59ac2fb.pinit.eth.limo/

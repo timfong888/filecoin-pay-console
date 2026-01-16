@@ -3,12 +3,23 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { features } from "@/lib/config/mode";
 
-const navItems = [
-  { href: "/", label: "Dashboard" },
-  { href: "/payer-accounts", label: "Payer Accounts" },
-  { href: "/payee-accounts", label: "Payee Accounts" },
-];
+// Build navigation items based on mode
+const getNavItems = () => {
+  const items = [{ href: "/", label: "Dashboard" }];
+
+  if (features.showPayerAccountsNav) {
+    items.push({ href: "/payer-accounts", label: "Payer Accounts" });
+  }
+  if (features.showPayeeAccountsNav) {
+    items.push({ href: "/payee-accounts", label: "Payee Accounts" });
+  }
+
+  return items;
+};
+
+const navItems = getNavItems();
 
 export function Header() {
   const pathname = usePathname();

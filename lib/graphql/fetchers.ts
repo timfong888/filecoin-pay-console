@@ -460,6 +460,36 @@ export async function fetchActivePayersCount(): Promise<{ activeCount: number; t
   }
 }
 
+// Count churned wallets (payers where ALL rails are TERMINATED)
+// Used in GA mode instead of Settled 7d metric
+export async function fetchChurnedWalletsCount(): Promise<number> {
+  try {
+    const data = await graphqlClient.request<TopPayersResponse>(TOP_PAYERS_QUERY, { first: 1000 });
+
+    let churnedCount = 0;
+
+    for (const account of data.accounts) {
+      // Only consider accounts that have payer rails
+      if (account.payerRails.length === 0) continue;
+
+      // Check if ALL rails are terminated
+      const allTerminated = account.payerRails.every(rail => {
+        // Rail state can be string 'TERMINATED' or number 1
+        return rail.state === 'TERMINATED' || rail.state === 1;
+      });
+
+      if (allTerminated) {
+        churnedCount++;
+      }
+    }
+
+    return churnedCount;
+  } catch (error) {
+    console.error('Error fetching churned wallets count:', error);
+    return 0;
+  }
+}
+
 // Enrich payers with PDP data using timestamp-based Rail ↔ DataSet correlation
 // This shows only the data funded by each payer's specific rails,
 // not the total data stored by their payees.

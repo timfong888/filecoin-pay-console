@@ -4,7 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:ga": "NEXT_PUBLIC_CONSOLE_MODE=ga next dev",
+    "dev:prototype": "NEXT_PUBLIC_CONSOLE_MODE=prototype next dev",
     "build": "next build",
+    "build:ga": "NEXT_PUBLIC_CONSOLE_MODE=ga next build",
+    "build:prototype": "NEXT_PUBLIC_CONSOLE_MODE=prototype next build",
     "start": "next start",
     "lint": "eslint"
   },

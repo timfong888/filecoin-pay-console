@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { TopPayersTable, mockPayers, Payer } from "@/components/dashboard/TopPayersTable";
-import { fetchDashboardData } from "@/lib/graphql/fetchers";
+import { fetchDashboardData, fetchChurnedWalletsCount } from "@/lib/graphql/fetchers";
 import { batchResolveENS } from "@/lib/ens";
 import {
   FILECOIN_PAY_CONTRACT,
@@ -10,6 +10,7 @@ import {
   NETWORK,
   DASHBOARD_VERSION,
 } from "@/lib/graphql/client";
+import { isGAMode, features, CONSOLE_MODE } from "@/lib/config/mode";
 import {
   LineChart,
   Line,
@@ -48,6 +49,8 @@ interface DashboardData {
   };
   // Active Payers: at least one ACTIVE rail AND lockupRate > 0
   activePayers: number;
+  // Churned wallets (GA mode): payers where ALL rails are TERMINATED
+  churnedWallets: number;
   // Cumulative chart data
   cumulativePayers: number[];
   cumulativeSettled: number[];
@@ -119,7 +122,11 @@ export default function Dashboard() {
       try {
         setLoading(true);
         const dashboardData = await fetchDashboardData();
-        setData(dashboardData);
+
+        // Fetch churned wallets count (used in GA mode instead of Settled 7d)
+        const churnedWallets = isGAMode ? await fetchChurnedWalletsCount() : 0;
+
+        setData({ ...dashboardData, churnedWallets });
         setError(null);
       } catch (err) {
         console.error('Failed to fetch dashboard data:', err);
@@ -209,41 +216,44 @@ export default function Dashboard() {
           </div>
         )}
         <div className="flex gap-6">
-          <HeroMetricCard title="Active Payers" value="--" subtitle="At least 1 ACTIVE rail AND lockup rate > 0" />
+          <HeroMetricCard title={isGAMode ? "Active Wallets" : "Active Payers"} value="--" subtitle="At least 1 ACTIVE rail AND lockup rate > 0" />
           <HeroMetricCard title="USDFC Settled" value="--" />
-          <HeroMetricCard title="Settled (7d)" value="--" />
+          <HeroMetricCard title={isGAMode ? "Churned Wallets" : "Settled (7d)"} value="--" />
         </div>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Top 10 Payers</h2>
-            <div className="flex items-center gap-4">
-              <input
-                type="text"
-                placeholder="🔍 search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="px-3 py-1.5 text-sm border rounded-md w-48"
-              />
-              <div className="flex items-center gap-2 text-sm">
-                <span>From Date:</span>
+        {/* Top Payers Section - Prototype mode only */}
+        {features.showTop10Tables && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Top 10 Payers</h2>
+              <div className="flex items-center gap-4">
                 <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  className="px-2 py-1 border rounded-md text-sm"
+                  type="text"
+                  placeholder="🔍 search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="px-3 py-1.5 text-sm border rounded-md w-48"
                 />
-                <span>To Date:</span>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  className="px-2 py-1 border rounded-md text-sm"
-                />
+                <div className="flex items-center gap-2 text-sm">
+                  <span>From Date:</span>
+                  <input
+                    type="date"
+                    value={fromDate}
+                    onChange={(e) => setFromDate(e.target.value)}
+                    className="px-2 py-1 border rounded-md text-sm"
+                  />
+                  <span>To Date:</span>
+                  <input
+                    type="date"
+                    value={toDate}
+                    onChange={(e) => setToDate(e.target.value)}
+                    className="px-2 py-1 border rounded-md text-sm"
+                  />
+                </div>
               </div>
             </div>
+            <TopPayersTable payers={filterPayers(mockPayers)} />
           </div>
-          <TopPayersTable payers={filterPayers(mockPayers)} />
-        </div>
+        )}
 
         {/* Data source indicator */}
         <div className="bg-gray-50 border rounded-lg p-4 space-y-4 text-sm">
@@ -284,7 +294,15 @@ export default function Dashboard() {
               <dl className="space-y-1 text-gray-600">
                 <div className="flex gap-2">
                   <dt className="w-32 flex-shrink-0">Version:</dt>
-                  <dd className="font-mono font-semibold">v{DASHBOARD_VERSION}</dd>
+                  <dd className="font-mono font-semibold">v{DASHBOARD_VERSION}-{CONSOLE_MODE}</dd>
+                </div>
+                <div className="flex gap-2">
+                  <dt className="w-32 flex-shrink-0">Mode:</dt>
+                  <dd className="font-mono">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${isGAMode ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                      {CONSOLE_MODE.toUpperCase()}
+                    </span>
+                  </dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="w-32 flex-shrink-0">Site URL:</dt>
@@ -299,14 +317,14 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { totalSettled, topPayers, settled7d, activePayers } = data;
+  const { totalSettled, topPayers, settled7d, activePayers, churnedWallets } = data;
 
   return (
     <div className="space-y-6">
       {/* Hero Metric Cards */}
       <div className="flex gap-6">
         <HeroMetricCard
-          title="Active Payers"
+          title={isGAMode ? "Active Wallets" : "Active Payers"}
           value={activePayers.toLocaleString()}
           subtitle="At least 1 ACTIVE rail AND lockup rate > 0"
         />
@@ -314,15 +332,23 @@ export default function Dashboard() {
           title="USDFC Settled"
           value={totalSettled.totalFormatted}
         />
-        <HeroMetricCard
-          title="Settled (7d)"
-          value={settled7d.formatted}
-          subtitle="USDFC actually settled in the last 7 days"
-        />
+        {isGAMode ? (
+          <HeroMetricCard
+            title="Churned Wallets"
+            value={churnedWallets.toLocaleString()}
+            subtitle="All rails = TERMINATED"
+          />
+        ) : (
+          <HeroMetricCard
+            title="Settled (7d)"
+            value={settled7d.formatted}
+            subtitle="USDFC actually settled in the last 7 days"
+          />
+        )}
       </div>
 
-      {/* Cumulative Line Charts */}
-      {chartData.length > 0 && (
+      {/* Cumulative Line Charts - Prototype mode only */}
+      {features.showCharts && chartData.length > 0 && (
         <div className="grid grid-cols-2 gap-6">
           {/* Chart 1: Total Active Payers */}
           <div className="bg-white border rounded-lg p-4">
@@ -403,40 +429,42 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Top Payers Section */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Top 10 Payers</h2>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="🔍 search"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="px-3 py-1.5 text-sm border rounded-md w-48"
-              />
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span>From Date:</span>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="px-2 py-1 border rounded-md text-sm"
-              />
-              <span>To Date:</span>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="px-2 py-1 border rounded-md text-sm"
-              />
+      {/* Top Payers Section - Prototype mode only */}
+      {features.showTop10Tables && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Top 10 Payers</h2>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="🔍 search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="px-3 py-1.5 text-sm border rounded-md w-48"
+                />
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span>From Date:</span>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="px-2 py-1 border rounded-md text-sm"
+                />
+                <span>To Date:</span>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="px-2 py-1 border rounded-md text-sm"
+                />
+              </div>
             </div>
           </div>
+          <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} />
         </div>
-        <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} />
-      </div>
+      )}
 
       {/* Data source indicator */}
       <div className="bg-gray-50 border rounded-lg p-4 text-sm">
@@ -477,7 +505,15 @@ export default function Dashboard() {
             <dl className="space-y-1 text-gray-600">
               <div className="flex gap-2">
                 <dt className="w-32 flex-shrink-0">Version:</dt>
-                <dd className="font-mono font-semibold">v{DASHBOARD_VERSION}</dd>
+                <dd className="font-mono font-semibold">v{DASHBOARD_VERSION}-{CONSOLE_MODE}</dd>
+              </div>
+              <div className="flex gap-2">
+                <dt className="w-32 flex-shrink-0">Mode:</dt>
+                <dd className="font-mono">
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${isGAMode ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+                    {CONSOLE_MODE.toUpperCase()}
+                  </span>
+                </dd>
               </div>
               <div className="flex gap-2">
                 <dt className="w-32 flex-shrink-0">Site URL:</dt>
