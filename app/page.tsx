@@ -2,15 +2,10 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { TopPayersTable, mockPayers, Payer } from "@/components/dashboard/TopPayersTable";
+import { DataSourcePanel } from "@/components/dashboard/DataSourcePanel";
 import { fetchDashboardData, fetchChurnedWalletsCount } from "@/lib/graphql/fetchers";
 import { batchResolveENS } from "@/lib/ens";
-import {
-  FILECOIN_PAY_CONTRACT,
-  SUBGRAPH_VERSION,
-  NETWORK,
-  DASHBOARD_VERSION,
-} from "@/lib/graphql/client";
-import { isGAMode, features, CONSOLE_MODE } from "@/lib/config/mode";
+import { isGAMode, features } from "@/lib/config/mode";
 import {
   LineChart,
   Line,
@@ -256,62 +251,7 @@ export default function Dashboard() {
         )}
 
         {/* Data source indicator */}
-        <div className="bg-gray-50 border rounded-lg p-4 space-y-4 text-sm">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <div className="font-medium text-gray-700 mb-2">Data Source</div>
-              <dl className="space-y-1 text-gray-600">
-                <div className="flex gap-2">
-                  <dt className="w-32 flex-shrink-0">Network:</dt>
-                  <dd className="font-mono">{NETWORK}</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-32 flex-shrink-0">Contract:</dt>
-                  <dd className="font-mono text-xs">
-                    <a
-                      href={`https://filfox.info/en/address/${FILECOIN_PAY_CONTRACT}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {FILECOIN_PAY_CONTRACT}
-                    </a>
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-32 flex-shrink-0">Subgraph Version:</dt>
-                  <dd className="font-mono">{SUBGRAPH_VERSION}</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-32 flex-shrink-0">Last Updated:</dt>
-                  <dd className="font-mono">{new Date().toLocaleString()}</dd>
-                </div>
-              </dl>
-            </div>
-
-            <div>
-              <div className="font-medium text-gray-700 mb-2">Dashboard Deployment (PinMe/IPFS)</div>
-              <dl className="space-y-1 text-gray-600">
-                <div className="flex gap-2">
-                  <dt className="w-32 flex-shrink-0">Version:</dt>
-                  <dd className="font-mono font-semibold">v{DASHBOARD_VERSION}-{CONSOLE_MODE}</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-32 flex-shrink-0">Mode:</dt>
-                  <dd className="font-mono">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${isGAMode ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
-                      {CONSOLE_MODE.toUpperCase()}
-                    </span>
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="w-32 flex-shrink-0">Site URL:</dt>
-                  <dd className="font-mono text-xs">{hostname || 'Loading...'}</dd>
-                </div>
-              </dl>
-            </div>
-          </div>
-        </div>
+        <DataSourcePanel hostname={hostname} />
       </div>
     );
   }
@@ -467,62 +407,7 @@ export default function Dashboard() {
       )}
 
       {/* Data source indicator */}
-      <div className="bg-gray-50 border rounded-lg p-4 text-sm">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <div className="font-medium text-gray-700 mb-2">Data Source</div>
-            <dl className="space-y-1 text-gray-600">
-              <div className="flex gap-2">
-                <dt className="w-32 flex-shrink-0">Network:</dt>
-                <dd className="font-mono">{NETWORK}</dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="w-32 flex-shrink-0">Contract:</dt>
-                <dd className="font-mono text-xs">
-                  <a
-                    href={`https://filfox.info/en/address/${FILECOIN_PAY_CONTRACT}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
-                  >
-                    {FILECOIN_PAY_CONTRACT}
-                  </a>
-                </dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="w-32 flex-shrink-0">Subgraph Version:</dt>
-                <dd className="font-mono">{SUBGRAPH_VERSION}</dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="w-32 flex-shrink-0">Last Updated:</dt>
-                <dd className="font-mono">{new Date().toLocaleString()}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div>
-            <div className="font-medium text-gray-700 mb-2">Dashboard Deployment (PinMe/IPFS)</div>
-            <dl className="space-y-1 text-gray-600">
-              <div className="flex gap-2">
-                <dt className="w-32 flex-shrink-0">Version:</dt>
-                <dd className="font-mono font-semibold">v{DASHBOARD_VERSION}-{CONSOLE_MODE}</dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="w-32 flex-shrink-0">Mode:</dt>
-                <dd className="font-mono">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${isGAMode ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
-                    {CONSOLE_MODE.toUpperCase()}
-                  </span>
-                </dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="w-32 flex-shrink-0">Site URL:</dt>
-                <dd className="font-mono text-xs">{hostname || 'Loading...'}</dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-      </div>
+      <DataSourcePanel hostname={hostname} />
     </div>
   );
 }

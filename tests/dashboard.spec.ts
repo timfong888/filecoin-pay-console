@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 // Test against localhost for development, live site for CI
 // Latest deployment: v0.7.8 (2026-01-11) - https://6c91c42c.pinit.eth.limo
@@ -12,12 +12,35 @@ const NAV_WAIT = isIPFS ? 8000 : 5000;
 const CONTENT_TIMEOUT = isIPFS ? 45000 : 30000;
 
 // =============================================================================
+// MODE DETECTION
+// Detects whether the deployed app is GA or Prototype mode
+// =============================================================================
+async function detectMode(page: Page): Promise<'ga' | 'prototype'> {
+  // Look for the mode badge in the Data Source panel
+  const gaBadge = page.locator('text=GA').first();
+  const prototypeBadge = page.locator('text=PROTOTYPE').first();
+
+  // Try to find mode badge
+  const isGA = await gaBadge.isVisible({ timeout: 2000 }).catch(() => false);
+  const isPrototype = await prototypeBadge.isVisible({ timeout: 2000 }).catch(() => false);
+
+  if (isGA) return 'ga';
+  if (isPrototype) return 'prototype';
+
+  // Fallback: Check for Prototype-only features
+  const payerAccountsLink = page.getByRole('link', { name: 'Payer Accounts' });
+  const hasPayerAccountsLink = await payerAccountsLink.isVisible({ timeout: 2000 }).catch(() => false);
+
+  return hasPayerAccountsLink ? 'prototype' : 'ga';
+}
+
+// =============================================================================
 // CRITICAL - Data Integrity Tests (P0)
 // These tests must pass to ensure the app is using real subgraph data
 // Issue #2: https://github.com/timfong888/filecoin-pay-console/issues/2
 // =============================================================================
 test.describe('Critical - No Mock Data Fallback', () => {
-  // AT-MOCK-01: Dashboard should not display mock data
+  // AT-MOCK-01: Dashboard should not display mock data [GA + PROTOTYPE]
   test('AT-MOCK-01: Dashboard loads real data (no mock fallback)', async ({ page }) => {
     const errors: string[] = [];
     page.on('console', msg => {
@@ -25,8 +48,8 @@ test.describe('Critical - No Mock Data Fallback', () => {
     });
 
     await page.goto(BASE_URL);
-    // Wait for actual content to appear instead of fixed timeout - use exact match
-    await expect(page.getByText('Unique Payers', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    // Wait for USDFC Settled which is present in both modes
+    await expect(page.getByText('USDFC Settled', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
 
     // After content loads, check there's no error message visible
     const mockDataWarning = page.getByText(/sample data|mock data/i);
@@ -45,8 +68,17 @@ test.describe('Critical - No Mock Data Fallback', () => {
     expect(subgraphErrors).toHaveLength(0);
   });
 
-  // AT-MOCK-02: Payer Accounts should not display mock data
-  test('AT-MOCK-02: Payer Accounts loads real data (no mock fallback)', async ({ page }) => {
+  // AT-MOCK-02: Payer Accounts should not display mock data [PROTOTYPE ONLY]
+  test('AT-MOCK-02: Payer Accounts loads real data (no mock fallback) [PROTOTYPE]', async ({ page }) => {
+    await page.goto(BASE_URL);
+    await expect(page.getByText('USDFC Settled', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
+
+    const mode = await detectMode(page);
+    if (mode === 'ga') {
+      test.skip();
+      return;
+    }
+
     const errors: string[] = [];
     page.on('console', msg => {
       if (msg.type() === 'error') errors.push(msg.text());
@@ -74,8 +106,17 @@ test.describe('Critical - No Mock Data Fallback', () => {
     expect(subgraphErrors).toHaveLength(0);
   });
 
-  // AT-MOCK-03: Payee Accounts should not display mock data
-  test('AT-MOCK-03: Payee Accounts loads real data (no mock fallback)', async ({ page }) => {
+  // AT-MOCK-03: Payee Accounts should not display mock data [PROTOTYPE ONLY]
+  test('AT-MOCK-03: Payee Accounts loads real data (no mock fallback) [PROTOTYPE]', async ({ page }) => {
+    await page.goto(BASE_URL);
+    await expect(page.getByText('USDFC Settled', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
+
+    const mode = await detectMode(page);
+    if (mode === 'ga') {
+      test.skip();
+      return;
+    }
+
     const errors: string[] = [];
     page.on('console', msg => {
       if (msg.type() === 'error') errors.push(msg.text());
@@ -105,31 +146,58 @@ test.describe('Critical - No Mock Data Fallback', () => {
 });
 
 test.describe('Dashboard - Acceptance Tests', () => {
+  let currentMode: 'ga' | 'prototype';
+
   test.beforeEach(async ({ page }) => {
     await page.goto(BASE_URL);
-    // Wait for dashboard data to load - use exact match to avoid matching "Total Unique Payers" chart title
-    await expect(page.getByText('Unique Payers', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
-    // Also wait for table data to load
-    await expect(page.locator('tbody tr').first()).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    // Wait for USDFC Settled which is present in both modes
+    await expect(page.getByText('USDFC Settled', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    currentMode = await detectMode(page);
   });
 
-  // AT-D01: Total settled amount displays in USDFC
+  // AT-D01: Total settled amount displays in USDFC [GA + PROTOTYPE]
   test('AT-D01: Total settled amount displays in USDFC', async ({ page }) => {
     await expect(page.getByText('USDFC Settled', { exact: true })).toBeVisible();
-    await expect(page.getByText('Monthly Run Rate')).toBeVisible();
-    await expect(page.getByText('Unique Payers', { exact: true })).toBeVisible();
   });
 
-  // AT-D05: Top 10 Payers table loads data
-  test('AT-D05: Top 10 Payers table loads data', async ({ page }) => {
+  // AT-D02: GA mode shows correct hero metrics [GA ONLY]
+  test('AT-D02: GA mode shows Active Wallets and Churned Wallets [GA]', async ({ page }) => {
+    if (currentMode !== 'ga') {
+      test.skip();
+      return;
+    }
+    await expect(page.getByText('Active Wallets', { exact: true })).toBeVisible();
+    await expect(page.getByText('Churned Wallets', { exact: true })).toBeVisible();
+  });
+
+  // AT-D03: Prototype mode shows correct hero metrics [PROTOTYPE ONLY]
+  test('AT-D03: Prototype mode shows Active Payers and Settled (7d) [PROTOTYPE]', async ({ page }) => {
+    if (currentMode !== 'prototype') {
+      test.skip();
+      return;
+    }
+    await expect(page.getByText('Active Payers', { exact: true })).toBeVisible();
+    await expect(page.getByText('Settled (7d)', { exact: true })).toBeVisible();
+  });
+
+  // AT-D05: Top 10 Payers table loads data [PROTOTYPE ONLY]
+  test('AT-D05: Top 10 Payers table loads data [PROTOTYPE]', async ({ page }) => {
+    if (currentMode !== 'prototype') {
+      test.skip();
+      return;
+    }
     await expect(page.getByText('Top 10 Payers')).toBeVisible();
     const rows = page.locator('tbody tr');
     const count = await rows.count();
     expect(count).toBeGreaterThan(0);
   });
 
-  // AT-D06: Clicking payer address navigates to Payer Detail
-  test('AT-D06: Clicking payer navigates to Payer Detail via query param', async ({ page }) => {
+  // AT-D06: Clicking payer address navigates to Payer Detail [PROTOTYPE ONLY]
+  test('AT-D06: Clicking payer navigates to Payer Detail via query param [PROTOTYPE]', async ({ page }) => {
+    if (currentMode !== 'prototype') {
+      test.skip();
+      return;
+    }
     // Find first payer link in the table
     const firstPayerLink = page.locator('tbody tr').first().locator('a');
     await expect(firstPayerLink).toBeVisible();
@@ -144,8 +212,12 @@ test.describe('Dashboard - Acceptance Tests', () => {
     await expect(page.getByText('Payer Details')).toBeVisible();
   });
 
-  // AT-D07: Table columns sortable: Start, Locked, Runway
-  test('AT-D07: Table columns sortable - Locked', async ({ page }) => {
+  // AT-D07: Table columns sortable: Start, Locked, Runway [PROTOTYPE ONLY]
+  test('AT-D07: Table columns sortable - Locked [PROTOTYPE]', async ({ page }) => {
+    if (currentMode !== 'prototype') {
+      test.skip();
+      return;
+    }
     const lockedHeader = page.getByRole('columnheader', { name: /Locked/i });
     await expect(lockedHeader).toBeVisible();
 
@@ -158,7 +230,11 @@ test.describe('Dashboard - Acceptance Tests', () => {
     expect(headerText).toMatch(/[↓↑]/);
   });
 
-  test('AT-D07: Table columns sortable - Runway', async ({ page }) => {
+  test('AT-D07: Table columns sortable - Runway [PROTOTYPE]', async ({ page }) => {
+    if (currentMode !== 'prototype') {
+      test.skip();
+      return;
+    }
     const runwayHeader = page.getByRole('columnheader', { name: /Runway/i });
     await expect(runwayHeader).toBeVisible();
 
@@ -169,7 +245,11 @@ test.describe('Dashboard - Acceptance Tests', () => {
     expect(headerText).toMatch(/[↓↑]/);
   });
 
-  test('AT-D07: Table columns sortable - Start', async ({ page }) => {
+  test('AT-D07: Table columns sortable - Start [PROTOTYPE]', async ({ page }) => {
+    if (currentMode !== 'prototype') {
+      test.skip();
+      return;
+    }
     const startHeader = page.getByRole('columnheader', { name: /Start/i });
     await expect(startHeader).toBeVisible();
 
@@ -180,7 +260,7 @@ test.describe('Dashboard - Acceptance Tests', () => {
     expect(headerText).toMatch(/[↓↑]/);
   });
 
-  // AT-D08: Data source panel shows Network, Contract, Subgraph Version
+  // AT-D08: Data source panel shows Network, Contract, Subgraph Version [GA + PROTOTYPE]
   test('AT-D08: Data source panel displays network info', async ({ page }) => {
     await expect(page.getByText('Data Source')).toBeVisible();
     await expect(page.getByText('Network:')).toBeVisible();
@@ -189,30 +269,54 @@ test.describe('Dashboard - Acceptance Tests', () => {
     await expect(page.getByText('Subgraph Version:')).toBeVisible();
   });
 
-  // AT-D09: Deployment metadata shows Version and Site URL
+  // AT-D09: Deployment metadata shows Version and Site URL [GA + PROTOTYPE]
   test('AT-D09: Deployment metadata displays version info', async ({ page }) => {
     await expect(page.getByText('Dashboard Deployment (PinMe/IPFS)')).toBeVisible();
     await expect(page.getByText('Version:', { exact: true })).toBeVisible();
     await expect(page.getByText('Site URL:')).toBeVisible();
   });
 
-  // Metric cards display correctly
-  test('Metric cards display correctly', async ({ page }) => {
-    await expect(page.getByText('Unique Payers', { exact: true })).toBeVisible();
-    await expect(page.getByText('USDFC Settled', { exact: true })).toBeVisible();
-    await expect(page.getByText('Monthly Run Rate')).toBeVisible();
+  // Navigation elements - Dashboard link present in both modes [GA + PROTOTYPE]
+  test('Navigation: Dashboard link present', async ({ page }) => {
+    await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
   });
 
-  // Navigation elements
-  test('Navigation elements are present', async ({ page }) => {
-    await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
+  // Navigation: Payer/Payee Accounts links [PROTOTYPE ONLY]
+  test('Navigation: Payer and Payee Accounts links visible [PROTOTYPE]', async ({ page }) => {
+    if (currentMode !== 'prototype') {
+      test.skip();
+      return;
+    }
     await expect(page.getByRole('link', { name: 'Payer Accounts' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Payee Accounts' })).toBeVisible();
   });
+
+  // Navigation: No Payer/Payee links in GA mode [GA ONLY]
+  test('Navigation: No Payer and Payee Accounts links in GA mode [GA]', async ({ page }) => {
+    if (currentMode !== 'ga') {
+      test.skip();
+      return;
+    }
+    await expect(page.getByRole('link', { name: 'Payer Accounts' })).not.toBeVisible();
+    await expect(page.getByRole('link', { name: 'Payee Accounts' })).not.toBeVisible();
+  });
 });
 
-test.describe('Payer Accounts List - Acceptance Tests', () => {
+// =============================================================================
+// PAYER ACCOUNTS TESTS - PROTOTYPE MODE ONLY
+// These pages do not exist in GA mode
+// =============================================================================
+test.describe('Payer Accounts List - Acceptance Tests [PROTOTYPE]', () => {
   test.beforeEach(async ({ page }) => {
+    // First check if we're in prototype mode
+    await page.goto(BASE_URL);
+    await expect(page.getByText('USDFC Settled', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    const mode = await detectMode(page);
+    if (mode === 'ga') {
+      test.skip();
+      return;
+    }
+
     await page.goto(`${BASE_URL}/payer-accounts`);
     // Wait for hero metrics to appear (indicates data loaded)
     await expect(page.getByText('Payer Wallets', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
@@ -301,8 +405,17 @@ test.describe('Payer Accounts List - Acceptance Tests', () => {
   });
 });
 
-test.describe('Payer Account Detail - Acceptance Tests', () => {
+test.describe('Payer Account Detail - Acceptance Tests [PROTOTYPE]', () => {
   test.beforeEach(async ({ page }) => {
+    // First check if we're in prototype mode
+    await page.goto(BASE_URL);
+    await expect(page.getByText('USDFC Settled', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    const mode = await detectMode(page);
+    if (mode === 'ga') {
+      test.skip();
+      return;
+    }
+
     // First go to payer list and wait for table data
     await page.goto(`${BASE_URL}/payer-accounts`);
     // Wait for hero metrics and table to load
@@ -371,8 +484,21 @@ test.describe('Payer Account Detail - Acceptance Tests', () => {
   });
 });
 
-test.describe('Payee Accounts List - Acceptance Tests', () => {
+// =============================================================================
+// PAYEE ACCOUNTS TESTS - PROTOTYPE MODE ONLY
+// These pages do not exist in GA mode
+// =============================================================================
+test.describe('Payee Accounts List - Acceptance Tests [PROTOTYPE]', () => {
   test.beforeEach(async ({ page }) => {
+    // First check if we're in prototype mode
+    await page.goto(BASE_URL);
+    await expect(page.getByText('USDFC Settled', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    const mode = await detectMode(page);
+    if (mode === 'ga') {
+      test.skip();
+      return;
+    }
+
     await page.goto(`${BASE_URL}/payee-accounts`);
     // Wait for hero metrics to appear (indicates data loaded)
     await expect(page.getByText('Total Claimable')).toBeVisible({ timeout: CONTENT_TIMEOUT });
@@ -438,8 +564,17 @@ test.describe('Payee Accounts List - Acceptance Tests', () => {
   });
 });
 
-test.describe('Payee Account Detail - Acceptance Tests', () => {
+test.describe('Payee Account Detail - Acceptance Tests [PROTOTYPE]', () => {
   test.beforeEach(async ({ page }) => {
+    // First check if we're in prototype mode
+    await page.goto(BASE_URL);
+    await expect(page.getByText('USDFC Settled', { exact: true })).toBeVisible({ timeout: CONTENT_TIMEOUT });
+    const mode = await detectMode(page);
+    if (mode === 'ga') {
+      test.skip();
+      return;
+    }
+
     // First go to payee list and wait for data to load
     await page.goto(`${BASE_URL}/payee-accounts`);
     await expect(page.getByText('Total Claimable')).toBeVisible({ timeout: CONTENT_TIMEOUT });
