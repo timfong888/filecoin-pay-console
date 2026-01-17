@@ -1,5 +1,24 @@
 # Deployment History
 
+## v0.27.0-prototype - 2026-01-16
+
+**Changes:**
+- Code quality improvements: split monolithic fetchers.ts (1125 lines) into 6 domain modules
+- Add unit tests with Vitest (34 tests for utility functions)
+- Extract reusable DataSourcePanel component
+- Update acceptance tests with GA/Prototype mode detection
+- Implement build-time GA/Prototype mode configuration
+
+**Deployment:**
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX1_MWNwd2YBbxP9HzXBbY5PFzrg6T7HUvm0XO2Z1Dn00sbUsKeY4j-nvZzarbOhU--AkyF1K9d93M2ODEfBpC5a_jzHw2wmGka4eF_eX9ZN9R0Q1KAtKnjxco9VT3BG1ytZXLcvtTcBfh52FlVoxTg
+- Git Tag: [v0.27.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.27.0-prototype)
+- Commits:
+  - [9f14f0f](https://github.com/timfong888/filecoin-pay-console/commit/9f14f0f) - chore: bump version to 0.27.0
+  - [ddbbe7c](https://github.com/timfong888/filecoin-pay-console/commit/ddbbe7c) - refactor: code quality improvements
+  - [922bcf3](https://github.com/timfong888/filecoin-pay-console/commit/922bcf3) - feat: implement GA/Prototype dual-mode deployment
+
+---
+
 ## v0.25.0 - 2026-01-16
 
 **Changes:**
