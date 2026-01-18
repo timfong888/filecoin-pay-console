@@ -1,5 +1,24 @@
 # Deployment History
 
+## v0.27.0-ga - 2026-01-17
+
+**Changes:**
+- GA mode deployment with simplified 3-metric dashboard
+- Shows: Active Wallets, USDFC Settled, Churned Wallets
+- Churned Wallets: count of payer wallets where all rails are TERMINATED
+- Hides Payer/Payee Accounts navigation links
+
+**Deployment:**
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX1-JCR0gqTOoS8B3GkdEZ_uDWq9bhHan8cOeWauoeoh2S313bm8PVlf4gda-8T8lEpMSUIZQV1ig9IA-VRdgxVyUFXMzEtEIfFTy2IhF9zeZlXEGN-QpnbPKmrh1oG9PjjxXHlp0VYwM4BhA8ILHoA
+- Target ENS: `filpay-ga.pinit.eth.limo`
+- Git Tag: [v0.27.0-ga](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.27.0-ga)
+- Same codebase as v0.27.0-prototype, built with `NEXT_PUBLIC_CONSOLE_MODE=ga`
+
+**Related Issues:**
+- [#44](https://github.com/timfong888/filecoin-pay-console/issues/44) - Replace Settled (7d) with Churned Wallets metric
+
+---
+
 ## v0.27.0-prototype - 2026-01-16
 
 **Changes:**
@@ -11,6 +30,7 @@
 
 **Deployment:**
 - PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX1_MWNwd2YBbxP9HzXBbY5PFzrg6T7HUvm0XO2Z1Dn00sbUsKeY4j-nvZzarbOhU--AkyF1K9d93M2ODEfBpC5a_jzHw2wmGka4eF_eX9ZN9R0Q1KAtKnjxco9VT3BG1ytZXLcvtTcBfh52FlVoxTg
+- Target ENS: `filpay-prototype.pinit.eth.limo`
 - Git Tag: [v0.27.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.27.0-prototype)
 - Commits:
   - [9f14f0f](https://github.com/timfong888/filecoin-pay-console/commit/9f14f0f) - chore: bump version to 0.27.0
