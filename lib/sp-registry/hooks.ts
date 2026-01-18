@@ -8,14 +8,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Contract, JsonRpcProvider, AbiCoder } from 'ethers';
-import type { SPRegistryEnrichment, ParsedLocation } from './types';
-
-// SP Registry contract address (Filecoin Mainnet)
-const SP_REGISTRY_ADDRESS = '0xf55dDbf63F1b55c3F1D4FA7e339a68AB7b64A5eB';
-
-// Filecoin RPC endpoint
-const FILECOIN_RPC_URL = 'https://api.node.glif.io/rpc/v1';
+import { Contract, JsonRpcProvider } from 'ethers';
+import type { SPRegistryEnrichment } from './types';
+import {
+  SP_REGISTRY_ADDRESS,
+  FILECOIN_RPC_URL,
+  parseLocation,
+  formatPieceSizeRange,
+  formatStoragePrice,
+  formatProvingPeriod,
+} from './fetchers';
 
 // Minimal ABI for SP Registry queries
 // getProviderByAddress returns tuple(uint256 providerId, tuple(serviceProvider, payee, name, description, isActive))
@@ -25,99 +27,8 @@ const SP_REGISTRY_ABI = [
   'function getProviderWithProduct(uint256 providerId, uint8 productType) view returns (tuple(uint256, tuple(address, address, string, string, bool), tuple(uint8, string[], bool), bytes[]))',
 ];
 
-// Bytes conversions
-const BYTES_PER_GIB = 1024 ** 3;
-const BYTES_PER_TIB = 1024 ** 4;
-
-// Epoch to seconds (1 epoch = 30 seconds on Filecoin)
-const SECONDS_PER_EPOCH = 30;
-const SECONDS_PER_DAY = 24 * 60 * 60;
-
-// attoFIL to FIL conversion
-const ATTOFIL_DECIMALS = 18;
-
 // Product types for SP Registry
 const PRODUCT_TYPE_PDP = 0; // PDP product type
-
-/**
- * Parse ISO 3166 location string to readable format.
- */
-function parseLocation(raw: string): ParsedLocation {
-  const parsed: ParsedLocation = { country: '', raw };
-
-  if (!raw) return parsed;
-
-  const parts = raw.split(';');
-  for (const part of parts) {
-    const [key, value] = part.split('=').map(s => s.trim());
-    switch (key) {
-      case 'C':
-        parsed.country = value;
-        break;
-      case 'ST':
-        parsed.state = value;
-        break;
-      case 'L':
-        parsed.city = value;
-        break;
-    }
-  }
-
-  return parsed;
-}
-
-/**
- * Format bytes to human-readable size (GiB, TiB).
- */
-function formatPieceSize(bytes: bigint): string {
-  const numBytes = Number(bytes);
-  if (numBytes >= BYTES_PER_TIB) {
-    return `${(numBytes / BYTES_PER_TIB).toFixed(0)} TiB`;
-  } else if (numBytes >= BYTES_PER_GIB) {
-    return `${(numBytes / BYTES_PER_GIB).toFixed(0)} GiB`;
-  } else {
-    return `${(numBytes / (1024 * 1024)).toFixed(0)} MiB`;
-  }
-}
-
-/**
- * Format piece size range.
- */
-function formatPieceSizeRange(min: bigint, max: bigint): string {
-  return `${formatPieceSize(min)} - ${formatPieceSize(max)}`;
-}
-
-/**
- * Format storage price from attoFIL per TiB per day to FIL per TiB per month.
- */
-function formatStoragePrice(attoFilPerTibPerDay: bigint): string {
-  const filPerTibPerDay = Number(attoFilPerTibPerDay) / (10 ** ATTOFIL_DECIMALS);
-  const filPerTibPerMonth = filPerTibPerDay * 30;
-
-  if (filPerTibPerMonth >= 1) {
-    return `${filPerTibPerMonth.toFixed(2)} FIL/TiB/month`;
-  } else if (filPerTibPerMonth >= 0.01) {
-    return `${filPerTibPerMonth.toFixed(4)} FIL/TiB/month`;
-  } else {
-    return `${(filPerTibPerMonth * 1000).toFixed(4)} mFIL/TiB/month`;
-  }
-}
-
-/**
- * Format proving period from epochs to human-readable duration.
- */
-function formatProvingPeriod(epochs: bigint | number): string {
-  const numEpochs = typeof epochs === 'bigint' ? Number(epochs) : epochs;
-  const seconds = numEpochs * SECONDS_PER_EPOCH;
-  const days = Math.round(seconds / SECONDS_PER_DAY);
-
-  if (days >= 1) {
-    return `${days} day${days === 1 ? '' : 's'}`;
-  } else {
-    const hours = Math.round(seconds / 3600);
-    return `${hours} hour${hours === 1 ? '' : 's'}`;
-  }
-}
 
 /**
  * Decode capability value from bytes based on key name.

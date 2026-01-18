@@ -13,6 +13,7 @@ import {
   formatCurrency,
   formatAddress,
   formatDate,
+  secondsToMs,
 } from './utils';
 
 /**
@@ -74,7 +75,7 @@ function transformRailToDisplay(rail: Rail, isPayer: boolean): RailDisplay {
   const netPayeeValue = rail.totalNetPayeeAmount ? weiToUSDC(rail.totalNetPayeeAmount) : settledValue;
   const commissionValue = rail.totalCommission ? weiToUSDC(rail.totalCommission) : 0;
   const rateValue = rail.paymentRate ? weiToUSDC(rail.paymentRate) : 0;
-  const createdAtMs = parseInt(rail.createdAt) * 1000;
+  const createdAtMs = secondsToMs(rail.createdAt);
 
   // Convert state to number or use string directly (GraphQL may return either)
   let stateNum: number;

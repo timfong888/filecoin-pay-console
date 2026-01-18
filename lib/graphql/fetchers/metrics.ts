@@ -17,7 +17,7 @@ import {
   DailyMetricsResponse,
   DailyTokenMetricsResponse,
 } from '../queries';
-import { weiToUSDC, formatCurrency } from './utils';
+import { weiToUSDC, formatCurrency, secondsToMs } from './utils';
 
 // Monthly run rate calculation constants
 // paymentRate is in wei per EPOCH (not per second!)
@@ -71,7 +71,7 @@ export async function fetchTotalSettled() {
       totalSettled += amount;
 
       // Check if rail was created in last 30 days (approximation)
-      const createdAt = parseInt(rail.createdAt) * 1000;
+      const createdAt = secondsToMs(rail.createdAt);
       if (createdAt > thirtyDaysAgo) {
         last30DaysSettled += amount;
       }
@@ -198,7 +198,7 @@ export async function fetchDailySettled(): Promise<Map<string, number>> {
     for (const metric of data.dailyTokenMetrics) {
       // Convert timestamp to date key (timestamp is in seconds)
       // Use timestamp instead of buggy date field
-      const timestampMs = parseInt(metric.timestamp) * 1000;
+      const timestampMs = secondsToMs(metric.timestamp);
       const date = new Date(timestampMs);
       const dateKey = date.toISOString().split('T')[0];
 

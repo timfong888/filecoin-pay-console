@@ -18,6 +18,7 @@ import {
   formatCurrency,
   formatAddress,
   formatDate,
+  secondsToMs,
 } from './utils';
 
 /**
@@ -52,7 +53,7 @@ function transformAccountToPayee(account: Account, pdpData?: PDPEnrichment | nul
     // Fall back to totalSettledAmount if not available
     const amount = rail.totalNetPayeeAmount || rail.totalSettledAmount;
     totalReceived += BigInt(amount);
-    const createdAt = parseInt(rail.createdAt) * 1000;
+    const createdAt = secondsToMs(rail.createdAt);
     if (createdAt < earliestDate) {
       earliestDate = createdAt;
     }

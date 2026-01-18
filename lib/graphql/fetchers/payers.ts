@@ -23,6 +23,7 @@ import {
   calculateRunwayDays,
   formatRunwayDays,
   formatDate,
+  secondsToMs,
 } from './utils';
 
 /**
@@ -82,7 +83,7 @@ function transformAccountToPayer(account: Account): PayerDisplay {
 
   for (const rail of account.payerRails) {
     totalSettled += BigInt(rail.totalSettledAmount);
-    const createdAt = parseInt(rail.createdAt) * 1000;
+    const createdAt = secondsToMs(rail.createdAt);
     if (createdAt < earliestDate) {
       earliestDate = createdAt;
     }

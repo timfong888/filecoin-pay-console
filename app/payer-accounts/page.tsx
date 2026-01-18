@@ -12,6 +12,8 @@ import {
   enrichPayersWithSettled7d,
   AccountDetail,
   PayerDisplayExtended,
+  formatChartDate,
+  formatChartCurrency,
 } from "@/lib/graphql/fetchers";
 import {
   FILECOIN_PAY_CONTRACT,
@@ -1080,12 +1082,7 @@ function PayerListView() {
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => {
-                      if (!value) return "";
-                      const date = new Date(value);
-                      if (isNaN(date.getTime())) return "";
-                      return `${date.getMonth() + 1}/${date.getDate()}`;
-                    }}
+                    tickFormatter={formatChartDate}
                   />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip
@@ -1117,16 +1114,11 @@ function PayerListView() {
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => {
-                      if (!value) return "";
-                      const date = new Date(value);
-                      if (isNaN(date.getTime())) return "";
-                      return `${date.getMonth() + 1}/${date.getDate()}`;
-                    }}
+                    tickFormatter={formatChartDate}
                   />
                   <YAxis
                     tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => `$${value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value}`}
+                    tickFormatter={formatChartCurrency}
                   />
                   <Tooltip
                     formatter={(value) => [`$${(value as number)?.toFixed(2) ?? 0}`, "Total Settled"]}

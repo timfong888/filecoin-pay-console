@@ -17,15 +17,15 @@ export const SP_REGISTRY_ADDRESS = '0xf55dDbf63F1b55c3F1D4FA7e339a68AB7b64A5eB';
 export const FILECOIN_RPC_URL = 'https://api.node.glif.io/rpc/v1';
 
 // Bytes conversions
-const BYTES_PER_GIB = 1024 ** 3;
-const BYTES_PER_TIB = 1024 ** 4;
+export const BYTES_PER_GIB = 1024 ** 3;
+export const BYTES_PER_TIB = 1024 ** 4;
 
 // Epoch to seconds (1 epoch = 30 seconds on Filecoin)
-const SECONDS_PER_EPOCH = 30;
-const SECONDS_PER_DAY = 24 * 60 * 60;
+export const SECONDS_PER_EPOCH = 30;
+export const SECONDS_PER_DAY = 24 * 60 * 60;
 
 // attoFIL to FIL conversion
-const ATTOFIL_DECIMALS = 18;
+export const ATTOFIL_DECIMALS = 18;
 
 /**
  * Parse ISO 3166 location string to readable format.

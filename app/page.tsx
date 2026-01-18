@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { TopPayersTable, mockPayers, Payer } from "@/components/dashboard/TopPayersTable";
 import { DataSourcePanel } from "@/components/dashboard/DataSourcePanel";
-import { fetchDashboardData, fetchChurnedWalletsCount } from "@/lib/graphql/fetchers";
+import { fetchDashboardData, fetchChurnedWalletsCount, formatChartDate, formatChartCurrency } from "@/lib/graphql/fetchers";
 import { batchResolveENS } from "@/lib/ens";
 import { isGAMode, features } from "@/lib/config/mode";
 import {
@@ -303,12 +303,7 @@ export default function Dashboard() {
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => {
-                      if (!value) return "";
-                      const date = new Date(value);
-                      if (isNaN(date.getTime())) return "";
-                      return `${date.getMonth() + 1}/${date.getDate()}`;
-                    }}
+                    tickFormatter={formatChartDate}
                   />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip
@@ -340,16 +335,11 @@ export default function Dashboard() {
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => {
-                      if (!value) return "";
-                      const date = new Date(value);
-                      if (isNaN(date.getTime())) return "";
-                      return `${date.getMonth() + 1}/${date.getDate()}`;
-                    }}
+                    tickFormatter={formatChartDate}
                   />
                   <YAxis
                     tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => `$${value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value}`}
+                    tickFormatter={formatChartCurrency}
                   />
                   <Tooltip
                     formatter={(value) => [`$${(value as number)?.toFixed(2) ?? 0}`, "Total Settled"]}

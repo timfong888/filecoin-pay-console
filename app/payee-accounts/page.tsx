@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { PayeeDisplay, fetchAllPayees, fetchAccountDetail, AccountDetail, formatDataSize, fetchTotalSettled } from "@/lib/graphql/fetchers";
+import { PayeeDisplay, fetchAllPayees, fetchAccountDetail, AccountDetail, formatDataSize, fetchTotalSettled, formatCurrency } from "@/lib/graphql/fetchers";
 import { batchResolveENS, resolveENS } from "@/lib/ens";
 import { useSPRegistry } from "@/lib/sp-registry/hooks";
 import { SPHero } from "@/components/sp-registry";
@@ -179,11 +179,6 @@ function PayeeDetailView({ address }: { address: string }) {
   const SECONDS_PER_MONTH = 30 * 24 * 60 * 60; // 2,592,000
   const EPOCH_DURATION = 30; // seconds
   const monthlyRunRate = totalPaymentRate * (SECONDS_PER_MONTH / EPOCH_DURATION);
-  const formatCurrency = (value: number) => {
-    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(2)}M`;
-    if (value >= 1_000) return `$${(value / 1_000).toFixed(2)}K`;
-    return `$${value.toFixed(2)}`;
-  };
 
   return (
     <div className="space-y-6">
@@ -529,12 +524,6 @@ function PayeeListView() {
       </div>
     );
   }
-
-  const formatCurrency = (value: number): string => {
-    if (value >= 1000000) return `$${(value / 1000000).toFixed(2)}M`;
-    if (value >= 1000) return `$${(value / 1000).toFixed(2)}K`;
-    return `$${value.toFixed(2)}`;
-  };
 
   return (
     <div className="space-y-6">

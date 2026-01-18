@@ -134,3 +134,40 @@ export function formatDate(timestamp: number): string {
     year: '2-digit'
   }).replace(',', " '");
 }
+
+/**
+ * Convert Unix timestamp in seconds to milliseconds.
+ * Use this instead of inline `parseInt(timestamp) * 1000`.
+ * @param seconds - Unix timestamp in seconds (as string or number)
+ * @returns Unix timestamp in milliseconds
+ */
+export function secondsToMs(seconds: string | number): number {
+  const secs = typeof seconds === 'string' ? parseInt(seconds, 10) : seconds;
+  return secs * 1000;
+}
+
+/**
+ * Format a date for chart X-axis display.
+ * @param value - Date string or timestamp
+ * @returns Formatted string (e.g., "1/15") or empty string if invalid
+ */
+export function formatChartDate(value: string | number | undefined): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (isNaN(date.getTime())) return "";
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+}
+
+/**
+ * Format currency value for chart Y-axis display.
+ * @param value - Number to format
+ * @returns Formatted string (e.g., "$1K", "$1.5M")
+ */
+export function formatChartCurrency(value: number): string {
+  if (value >= 1_000_000) {
+    return `$${(value / 1_000_000).toFixed(1)}M`;
+  } else if (value >= 1_000) {
+    return `$${(value / 1_000).toFixed(0)}K`;
+  }
+  return `$${value}`;
+}

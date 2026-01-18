@@ -13,6 +13,9 @@ export {
   formatRunwayDays,
   generateDateRange,
   formatDate,
+  secondsToMs,
+  formatChartDate,
+  formatChartCurrency,
 } from './utils';
 
 // Metrics functions
