@@ -20,6 +20,31 @@ import {
 import { mockRailResponses } from '../__fixtures__/rails';
 
 /**
+ * GraphQL request body structure.
+ */
+interface GraphQLRequestBody {
+  query: string;
+  variables?: {
+    first?: number;
+    id?: string;
+    addresses?: string[];
+    since?: string;
+    [key: string]: unknown;
+  };
+  operationName?: string;
+}
+
+/**
+ * Safe type assertion for JSON responses.
+ */
+function parseRequestBody(json: unknown): GraphQLRequestBody {
+  if (json && typeof json === 'object' && 'query' in json) {
+    return json as GraphQLRequestBody;
+  }
+  return { query: '' };
+}
+
+/**
  * Extract operation name from GraphQL request body.
  */
 function getOperationName(query: string): string | null {
@@ -34,7 +59,7 @@ function getOperationName(query: string): string | null {
 export const handlers = [
   // Generic GraphQL handler that routes based on operation name
   graphql.operation(async ({ request }) => {
-    const body = await request.clone().json();
+    const body = parseRequestBody(await request.clone().json());
     const { query, variables } = body;
     const operationName = getOperationName(query);
 
@@ -151,7 +176,7 @@ export const handlers = [
  */
 export function createErrorHandler(operationName: string, errorMessage: string) {
   return graphql.operation(async ({ request }) => {
-    const body = await request.clone().json();
+    const body = parseRequestBody(await request.clone().json());
     const { query } = body;
     const opName = getOperationName(query);
 
@@ -171,7 +196,7 @@ export function createErrorHandler(operationName: string, errorMessage: string) 
  */
 export function createEmptyHandler(operationName: string) {
   return graphql.operation(async ({ request }) => {
-    const body = await request.clone().json();
+    const body = parseRequestBody(await request.clone().json());
     const { query } = body;
     const opName = getOperationName(query);
 
