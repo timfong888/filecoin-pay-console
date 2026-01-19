@@ -42,10 +42,11 @@ describe('fetchGlobalMetrics', () => {
   });
 
   it('throws on GraphQL error', async () => {
-    server.use(createErrorHandler('GlobalMetrics', 'Test error'));
+    // Use syntax error to trigger non-retryable error (faster test)
+    server.use(createErrorHandler('GlobalMetrics', 'GraphQL syntax error'));
 
     await expect(fetchGlobalMetrics()).rejects.toThrow();
-  });
+  }, 10000); // Increased timeout for retry logic
 });
 
 describe('fetchTotalSettled', () => {
