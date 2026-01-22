@@ -98,6 +98,7 @@ npx playwright test
 
 | Path | Purpose |
 |------|---------|
+| `METRIC-DEFINITIONS.md` | Metric definitions for dashboard development |
 | `app/page.tsx` | Dashboard with metrics and top payers table |
 | `app/layout.tsx` | Root layout with Header navigation |
 | `components/dashboard/MetricCard.tsx` | Metric card with sparkline support |

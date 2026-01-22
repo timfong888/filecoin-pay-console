@@ -4,17 +4,44 @@ This document defines the metrics displayed in the Filecoin Pay Console dashboar
 
 ## Hero Metrics
 
-### Unique Payers
-- **Definition:** Count of distinct wallet addresses that have created at least one payment rail as the payer
-- **Source:** `PaymentsMetric.uniquePayers` from Goldsky subgraph
-- **Formula:** Incremented when an account creates their first rail as payer
+The dashboard displays different metrics depending on build mode.
 
-### Total Settled (USDFC)
+### GA Mode Metrics
+
+#### Active Wallets
+- **Definition:** Count of payer wallets with at least one active rail AND positive lockup
+- **Source:** `Account` entities from Goldsky subgraph
+- **Formula:** Count where `account.payerRails.some(rail.state == "Active") AND account.userTokens.some(lockupCurrent > 0)`
+- **Criteria:**
+  - At least 1 rail with `state = "Active"`
+  - `lockupCurrent > 0` (funds locked for future payments)
+
+#### USDFC Settled (Cumulative)
 - **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
 - **Source:** Sum of `Rail.totalSettledAmount` across all rails with settlements
 - **Formula:** `Σ(rail.totalSettledAmount)` converted from wei (18 decimals) to USDFC
 
-### Settled (7d)
+#### Churned Wallets
+- **Definition:** Count of payer wallets where ALL rails have been terminated
+- **Source:** `Account` entities from Goldsky subgraph
+- **Formula:** Count where `account.payerRails.length > 0 AND account.payerRails.every(rail.state == "Terminated")`
+- **Criteria:**
+  - Has created at least 1 rail (was previously active)
+  - ALL rails have `state = "Terminated"` (no active or finalized rails)
+
+### Prototype Mode Metrics
+
+#### Unique Payers
+- **Definition:** Count of distinct wallet addresses that have created at least one payment rail as the payer
+- **Source:** `PaymentsMetric.uniquePayers` from Goldsky subgraph
+- **Formula:** Incremented when an account creates their first rail as payer
+
+#### Total Settled (USDFC)
+- **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
+- **Source:** Sum of `Rail.totalSettledAmount` across all rails with settlements
+- **Formula:** `Σ(rail.totalSettledAmount)` converted from wei (18 decimals) to USDFC
+
+#### Settled (7d)
 - **Definition:** Total USDFC settled in the last 7 days (rolling window)
 - **Source:** `Settlement` events from Goldsky subgraph filtered by timestamp
 - **Formula:** `Σ(settlement.totalSettledAmount)` where `settlement.settledUpto >= (now - 7 days)`
