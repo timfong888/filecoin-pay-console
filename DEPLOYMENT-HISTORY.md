@@ -1,5 +1,25 @@
 # Deployment History
 
+## v0.29.0-ga - 2026-01-21
+
+**Changes:**
+- Add `next/dynamic` for chart components to improve initial bundle size
+- Create `DashboardCharts` and `PayerListCharts` components with dynamic import
+- Charts now load after initial page load with loading skeletons
+- In GA mode, recharts bundle is never loaded (charts not shown)
+
+**Deployment:**
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX19EVSFForGAb5i-__mHn1vLZSgrjjccLkeJXWo3phoYgiYj_1XIqr5ZYLZhW5HW25MwTdUDqiUXrl2KyRuRGTEcl7AgXyc5yTUHylmCSJHowWiyKxF-Unox0wWV6ccE98OMYSV4l7n-zcykS0TRyg
+- Target ENS: `filpay-ga.pinit.eth.limo`
+- Git Tag: [v0.29.0-ga](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.29.0-ga)
+- Commit: [24d04c7](https://github.com/timfong888/filecoin-pay-console/commit/24d04c7)
+
+**Related Issues:**
+- [#48](https://github.com/timfong888/filecoin-pay-console/issues/48) - Apply Vercel coding best practices as SKILLS
+- [#51](https://github.com/timfong888/filecoin-pay-console/issues/51) - Add next/dynamic for chart components
+
+---
+
 ## v0.28.0-ga - 2026-01-21
 
 **Changes:**
