@@ -57,19 +57,37 @@ interface DashboardData {
   chartDates: string[];
 }
 
+// Base URL for metric definitions
+const METRIC_DEFINITIONS_URL = "https://github.com/timfong888/filecoin-pay-console/blob/main/METRIC-DEFINITIONS.md";
+
 // Hero Metric Card Component (no sparklines)
 function HeroMetricCard({
   title,
   value,
   subtitle,
+  definitionAnchor,
 }: {
   title: string;
   value: string | number;
   subtitle?: string;
+  definitionAnchor?: string;
 }) {
+  const titleElement = definitionAnchor ? (
+    <a
+      href={`${METRIC_DEFINITIONS_URL}#${definitionAnchor}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-sm text-gray-500 font-medium hover:text-blue-600 hover:underline"
+    >
+      {title}
+    </a>
+  ) : (
+    <p className="text-sm text-gray-500 font-medium">{title}</p>
+  );
+
   return (
     <div className="bg-white border rounded-lg p-6 flex-1">
-      <p className="text-sm text-gray-500 font-medium">{title}</p>
+      {titleElement}
       <p className="text-3xl font-bold mt-1">{value}</p>
       {subtitle && (
         <p className="text-xs text-gray-400 mt-1">{subtitle}</p>
@@ -123,8 +141,8 @@ export default function Dashboard() {
         setLoading(true);
         const dashboardData = await fetchDashboardData();
 
-        // Fetch churned wallets count (used in GA mode instead of Settled 7d)
-        const churnedWallets = isGAMode ? await fetchChurnedWalletsCount() : 0;
+        // Fetch churned wallets count (shown in both GA and Prototype modes)
+        const churnedWallets = await fetchChurnedWalletsCount();
 
         setData({ ...dashboardData, churnedWallets });
         setError(null);
@@ -193,10 +211,11 @@ export default function Dashboard() {
 
   // Show loading state
   if (loading) {
+    const cardCount = isGAMode ? 4 : 5; // Prototype mode shows 5 metrics
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className={`grid grid-cols-1 md:grid-cols-${cardCount} gap-4`}>
+          {Array.from({ length: cardCount }, (_, i) => (
             <div key={i} className="h-40 bg-gray-100 rounded-lg animate-pulse" />
           ))}
         </div>
@@ -216,10 +235,37 @@ export default function Dashboard() {
           </div>
         )}
         <div className="flex gap-6">
-          <HeroMetricCard title={isGAMode ? "Active Wallets" : "Active Payers"} value="--" subtitle="At least 1 ACTIVE rail AND lockup rate > 0" />
-          <HeroMetricCard title="Locked USDFC" value="--" subtitle="Total locked across all accounts" />
-          <HeroMetricCard title="USDFC Settled" value="--" />
-          <HeroMetricCard title={isGAMode ? "Churned Wallets" : "Settled (7d)"} value="--" />
+          <HeroMetricCard
+            title={isGAMode ? "Active Wallets" : "Active Payers"}
+            value="--"
+            subtitle="At least 1 ACTIVE rail AND lockup rate > 0"
+            definitionAnchor={isGAMode ? "active-wallets" : "unique-payers"}
+          />
+          <HeroMetricCard
+            title="Locked USDFC"
+            value="--"
+            subtitle="Total locked across all accounts"
+            definitionAnchor="locked-usdfc"
+          />
+          <HeroMetricCard
+            title="USDFC Settled"
+            value="--"
+            definitionAnchor={isGAMode ? "usdfc-settled-cumulative" : "total-settled-usdfc"}
+          />
+          {!isGAMode && (
+            <HeroMetricCard
+              title="Settled (7d)"
+              value="--"
+              subtitle="USDFC actually settled in the last 7 days"
+              definitionAnchor="settled-7d"
+            />
+          )}
+          <HeroMetricCard
+            title="Churned Wallets"
+            value="--"
+            subtitle="All rails = TERMINATED"
+            definitionAnchor="churned-wallets"
+          />
         </div>
         {/* Top Payers Section - Prototype mode only */}
         {features.showTop10Tables && (
@@ -273,29 +319,33 @@ export default function Dashboard() {
           title={isGAMode ? "Active Wallets" : "Active Payers"}
           value={activePayers.toLocaleString()}
           subtitle="At least 1 ACTIVE rail AND lockup rate > 0"
+          definitionAnchor={isGAMode ? "active-wallets" : "unique-payers"}
         />
         <HeroMetricCard
           title="Locked USDFC"
           value={totalLockedUSDFC.formatted}
           subtitle="Total locked across all accounts"
+          definitionAnchor="locked-usdfc"
         />
         <HeroMetricCard
           title="USDFC Settled"
           value={totalSettled.totalFormatted}
+          definitionAnchor={isGAMode ? "usdfc-settled-cumulative" : "total-settled-usdfc"}
         />
-        {isGAMode ? (
-          <HeroMetricCard
-            title="Churned Wallets"
-            value={churnedWallets.toLocaleString()}
-            subtitle="All rails = TERMINATED"
-          />
-        ) : (
+        {!isGAMode && (
           <HeroMetricCard
             title="Settled (7d)"
             value={settled7d.formatted}
             subtitle="USDFC actually settled in the last 7 days"
+            definitionAnchor="settled-7d"
           />
         )}
+        <HeroMetricCard
+          title="Churned Wallets"
+          value={churnedWallets.toLocaleString()}
+          subtitle="All rails = TERMINATED"
+          definitionAnchor="churned-wallets"
+        />
       </div>
 
       {/* Cumulative Line Charts - Prototype mode only */}

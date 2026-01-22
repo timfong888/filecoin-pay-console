@@ -59,6 +59,15 @@ The dashboard displays different metrics depending on build mode.
 - **Formula:** `Σ(settlement.totalSettledAmount)` where `settlement.settledUpto >= (now - 7 days)`
 - **Note:** This is actual settlement activity, not projected
 
+#### Churned Wallets
+- **Definition:** Count of payer wallets where ALL rails have been terminated
+- **Source:** `Account` entities from Goldsky subgraph
+- **Formula:** Count where `account.payerRails.length > 0 AND account.payerRails.every(rail.state == "Terminated")`
+- **Criteria:**
+  - Has created at least 1 rail (was previously active)
+  - ALL rails have `state = "Terminated"` (no active or finalized rails)
+- **Note:** Same metric as GA Mode. Added to Prototype mode for complete visibility.
+
 ---
 
 ## Payer Accounts Table Columns
