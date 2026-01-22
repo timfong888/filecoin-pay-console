@@ -15,15 +15,15 @@ The console supports two deployment modes controlled by `NEXT_PUBLIC_CONSOLE_MOD
 | `ga` | main | 3 metrics, Dashboard only | filpay-ga.pinit.eth.limo |
 | `prototype` | prototype | Full features | filpay-prototype.pinit.eth.limo |
 
-### GA Mode Features (Simplified Production)
-- **3 Hero Metrics:** Active Payers, USDFC Settled, Churned Wallets
+### GA Mode (Simplified Production)
 - **Navigation:** Dashboard only (no Payer/Payee Accounts links)
 - **Hidden:** Top 10 tables, time series charts
 
-### Prototype Mode Features (Full)
-- **3 Hero Metrics:** Active Payers, USDFC Settled, Settled (7d)
+### Prototype Mode (Full Features)
 - **Navigation:** Dashboard, Payer Accounts, Payee Accounts
 - **Visible:** Top 10 Payers table, cumulative charts
+
+**Hero Metrics:** See `METRIC-DEFINITIONS.md` for current metrics in each mode.
 
 ### Build Commands
 

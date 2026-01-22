@@ -1,5 +1,24 @@
 # Deployment History
 
+## v0.30.0 - 2026-01-22
+
+**Changes:**
+- Add "Locked USDFC" hero metric between Active Payers and USDFC Settled
+- Displays total USDFC locked across all accounts for future payments
+- Formula: `Σ(account.userTokens.lockupCurrent)` converted from wei to USDFC
+
+**Deployment:**
+- GA: https://filpay-ga.pinit.eth.limo (CID: `bafybeiftlwbgndtw4x3nztnpbcpb322fuutxechmsan3uyufrxq76735si`)
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeihdjuhf7pcrrmzco2hb4izeugl47h2gsd7jz4mycmkjjgpbenerly`)
+- Git Commits:
+  - prototype: [fb6aaff](https://github.com/timfong888/filecoin-pay-console/commit/fb6aaff)
+  - main: [3153e4e](https://github.com/timfong888/filecoin-pay-console/commit/3153e4e) (cherry-picked)
+
+**Related Issues:**
+- [#56](https://github.com/timfong888/filecoin-pay-console/issues/56) - Add Locked USDFC
+
+---
+
 ## v0.29.0-ga - 2026-01-21
 
 **Changes:**
