@@ -1,5 +1,64 @@
 # Deployment History
 
+## v0.30.0 - 2026-01-22
+
+**Changes:**
+- Add "Locked USDFC" hero metric between Active Payers and USDFC Settled
+- Displays total USDFC locked across all accounts for future payments
+- Formula: `Σ(account.userTokens.lockupCurrent)` converted from wei to USDFC
+
+**Deployment:**
+- GA: https://filpay-ga.pinit.eth.limo (CID: `bafybeiftlwbgndtw4x3nztnpbcpb322fuutxechmsan3uyufrxq76735si`)
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeihdjuhf7pcrrmzco2hb4izeugl47h2gsd7jz4mycmkjjgpbenerly`)
+- Git Commits:
+  - prototype: [fb6aaff](https://github.com/timfong888/filecoin-pay-console/commit/fb6aaff)
+  - main: [3153e4e](https://github.com/timfong888/filecoin-pay-console/commit/3153e4e) (cherry-picked)
+
+**Related Issues:**
+- [#56](https://github.com/timfong888/filecoin-pay-console/issues/56) - Add Locked USDFC
+
+---
+
+## v0.29.0-ga - 2026-01-21
+
+**Changes:**
+- Add `next/dynamic` for chart components to improve initial bundle size
+- Create `DashboardCharts` and `PayerListCharts` components with dynamic import
+- Charts now load after initial page load with loading skeletons
+- In GA mode, recharts bundle is never loaded (charts not shown)
+
+**Deployment:**
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX19EVSFForGAb5i-__mHn1vLZSgrjjccLkeJXWo3phoYgiYj_1XIqr5ZYLZhW5HW25MwTdUDqiUXrl2KyRuRGTEcl7AgXyc5yTUHylmCSJHowWiyKxF-Unox0wWV6ccE98OMYSV4l7n-zcykS0TRyg
+- Target ENS: `filpay-ga.pinit.eth.limo`
+- Git Tag: [v0.29.0-ga](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.29.0-ga)
+- Commit: [24d04c7](https://github.com/timfong888/filecoin-pay-console/commit/24d04c7)
+
+**Related Issues:**
+- [#48](https://github.com/timfong888/filecoin-pay-console/issues/48) - Apply Vercel coding best practices as SKILLS
+- [#51](https://github.com/timfong888/filecoin-pay-console/issues/51) - Add next/dynamic for chart components
+
+---
+
+## v0.28.0-ga - 2026-01-21
+
+**Changes:**
+- Add `optimizePackageImports` for recharts to enable automatic barrel import optimization
+- Reduces bundle size by ~200-400ms for recharts without code changes
+- Next.js automatically transforms `import { X } from 'recharts'` to direct imports at build time
+
+**Deployment:**
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX18Ci0Ktb4hDcrT-6hOTD9JzTCviRvuoodiCpvrFBOxtB-anzki10hZuPDaABTK4TYuAcMFAp0HGOqwIleKyTsrbk6N8vEDy22aZDS2Kvqpd9NRmf2AOP6x2bnmNV1ACksmHpz6XN1Y0cAXEFR2fnw
+- Target ENS: `filpay-ga.pinit.eth.limo`
+- Git Tag: [v0.28.0-ga](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.28.0-ga)
+- Commit: [3ed6d8e](https://github.com/timfong888/filecoin-pay-console/commit/3ed6d8e)
+
+**Related Issues:**
+- [#48](https://github.com/timfong888/filecoin-pay-console/issues/48) - Apply Vercel coding best practices as SKILLS
+- [#50](https://github.com/timfong888/filecoin-pay-console/issues/50) - Replace recharts barrel imports
+- [#54](https://github.com/timfong888/filecoin-pay-console/issues/54) - Configure optimizePackageImports
+
+---
+
 ## v0.27.0-ga - 2026-01-17
 
 **Changes:**
