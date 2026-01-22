@@ -11,11 +11,13 @@ import {
   DAILY_METRICS_QUERY,
   DAILY_TOKEN_METRICS_QUERY,
   ALL_DAILY_TOKEN_METRICS_QUERY,
+  TOTAL_LOCKED_QUERY,
   GlobalMetricsResponse,
   TotalSettledResponse,
   ActiveRailsResponse,
   DailyMetricsResponse,
   DailyTokenMetricsResponse,
+  TotalLockedResponse,
 } from '../queries';
 import { weiToUSDC, formatCurrency, secondsToMs } from './utils';
 import { logError } from '../../errors';
@@ -207,4 +209,33 @@ export async function fetchDailySettled(): Promise<Map<string, number>> {
     logError(error, 'fetchDailySettled');
     return new Map();
   }
+}
+
+/**
+ * Fetch total locked USDFC across all accounts.
+ * Locked USDFC = Σ(account.userTokens.lockupCurrent) for all accounts
+ */
+export async function fetchTotalLockedUSDFC() {
+  const data = await executeQuery<TotalLockedResponse>(
+    TOTAL_LOCKED_QUERY,
+    undefined,
+    { operation: 'fetchTotalLockedUSDFC' }
+  );
+
+  let totalLocked = BigInt(0);
+
+  for (const account of data.accounts) {
+    for (const userToken of account.userTokens) {
+      if (userToken.lockupCurrent) {
+        totalLocked += BigInt(userToken.lockupCurrent);
+      }
+    }
+  }
+
+  const totalLockedValue = weiToUSDC(totalLocked.toString());
+
+  return {
+    total: totalLockedValue,
+    formatted: formatCurrency(totalLockedValue),
+  };
 }

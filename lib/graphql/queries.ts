@@ -315,3 +315,25 @@ export const ALL_DAILY_TOKEN_METRICS_QUERY = gql`
     }
   }
 `;
+
+// Total locked USDFC query (for Locked USDFC hero metric)
+// Fetches all accounts with userTokens to sum lockupCurrent
+export const TOTAL_LOCKED_QUERY = gql`
+  query TotalLocked {
+    accounts(first: 1000) {
+      id
+      userTokens {
+        lockupCurrent
+      }
+    }
+  }
+`;
+
+export interface TotalLockedResponse {
+  accounts: Array<{
+    id: string;
+    userTokens: Array<{
+      lockupCurrent: string;
+    }>;
+  }>;
+}

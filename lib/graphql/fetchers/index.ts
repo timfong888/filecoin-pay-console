@@ -26,6 +26,7 @@ export {
   fetchMonthlyRunRate,
   fetchDailyMetrics,
   fetchDailySettled,
+  fetchTotalLockedUSDFC,
 } from './metrics';
 
 // Payer functions
