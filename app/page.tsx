@@ -48,6 +48,11 @@ interface DashboardData {
     total: number;
     formatted: string;
   };
+  // Total locked USDFC across all accounts
+  totalLockedUSDFC: {
+    total: number;
+    formatted: string;
+  };
   // Active Payers: at least one ACTIVE rail AND lockupRate > 0
   activePayers: number;
   // Churned wallets (GA mode): payers where ALL rails are TERMINATED
@@ -196,8 +201,8 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-40 bg-gray-100 rounded-lg animate-pulse" />
           ))}
         </div>
@@ -218,6 +223,7 @@ export default function Dashboard() {
         )}
         <div className="flex gap-6">
           <HeroMetricCard title="Active Payers" value="--" subtitle="At least 1 ACTIVE rail AND lockup rate > 0" />
+          <HeroMetricCard title="Locked USDFC" value="--" subtitle="Total locked across all accounts" />
           <HeroMetricCard title="USDFC Settled" value="--" />
           <HeroMetricCard title={isGAMode ? "Churned Wallets" : "Settled (7d)"} value="--" />
         </div>
@@ -263,7 +269,7 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { totalSettled, topPayers, settled7d, activePayers, churnedWallets } = data;
+  const { totalSettled, topPayers, settled7d, activePayers, churnedWallets, totalLockedUSDFC } = data;
 
   return (
     <div className="space-y-6">
@@ -273,6 +279,11 @@ export default function Dashboard() {
           title="Active Payers"
           value={activePayers.toLocaleString()}
           subtitle="At least 1 ACTIVE rail AND lockup rate > 0"
+        />
+        <HeroMetricCard
+          title="Locked USDFC"
+          value={totalLockedUSDFC.formatted}
+          subtitle="Total locked across all accounts"
         />
         <HeroMetricCard
           title="USDFC Settled"

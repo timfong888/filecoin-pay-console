@@ -16,6 +16,12 @@ The dashboard displays different metrics depending on build mode.
   - At least 1 rail with `state = "Active"`
   - `lockupCurrent > 0` (funds locked for future payments)
 
+#### Locked USDFC
+- **Definition:** Total USDFC currently locked across all accounts for future payments
+- **Source:** Sum of `Account.userTokens.lockupCurrent` from Goldsky subgraph
+- **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals) to USDFC
+- **Note:** This represents the total amount of USDFC that has been deposited and is locked to secure active payment rails. Displayed between Active Payers and USDFC Settled.
+
 #### USDFC Settled (Cumulative)
 - **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
 - **Source:** Sum of `Rail.totalSettledAmount` across all rails with settlements
@@ -35,6 +41,12 @@ The dashboard displays different metrics depending on build mode.
 - **Definition:** Count of distinct wallet addresses that have created at least one payment rail as the payer
 - **Source:** `PaymentsMetric.uniquePayers` from Goldsky subgraph
 - **Formula:** Incremented when an account creates their first rail as payer
+
+#### Locked USDFC
+- **Definition:** Total USDFC currently locked across all accounts for future payments
+- **Source:** Sum of `Account.userTokens.lockupCurrent` from Goldsky subgraph
+- **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals) to USDFC
+- **Note:** Same metric as GA Mode. Displayed between Active Payers and USDFC Settled.
 
 #### Total Settled (USDFC)
 - **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
