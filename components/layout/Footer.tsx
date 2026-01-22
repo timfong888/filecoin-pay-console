@@ -7,12 +7,12 @@ const REPO_URL = "https://github.com/timfong888/filecoin-pay-console";
 
 export function Footer() {
   return (
-    <footer className="border-t bg-gray-50 mt-auto">
+    <footer className="border-t border-(--color-border-base) bg-zinc-50 mt-auto">
       <div className="container mx-auto px-4 py-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-(--color-paragraph-text)">
           <div className="flex items-center gap-4">
             <span>v{DASHBOARD_VERSION}</span>
-            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${isGAMode ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
+            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${isGAMode ? 'bg-green-100 text-green-700' : 'bg-brand-100 text-brand-700'}`}>
               {CONSOLE_MODE.toUpperCase()}
             </span>
             <span className="hidden sm:inline">|</span>
@@ -20,12 +20,12 @@ export function Footer() {
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-1">
-              <span className="text-gray-500">Subgraph:</span>
+              <span className="text-(--color-paragraph-text-subtle)">Subgraph:</span>
               <a
                 href={GOLDSKY_ENDPOINT}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 hover:underline truncate max-w-[300px]"
+                className="text-brand-700 hover:text-brand-800 hover:underline truncate max-w-[300px]"
                 title={GOLDSKY_ENDPOINT}
               >
                 {GOLDSKY_ENDPOINT.replace('https://api.goldsky.com/api/public/', '').slice(0, 50)}...
@@ -36,7 +36,7 @@ export function Footer() {
               href={REPO_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+              className="text-brand-700 hover:text-brand-800 hover:underline flex items-center gap-1"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "@filecoin-foundation/ui-filecoin/styles";
 
 @custom-variant dark (&:is(.dark *));
 
