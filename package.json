@@ -22,6 +22,7 @@
     "test:e2e:all": "npm run test:e2e:ga:local && npm run test:e2e:prototype:local"
   },
   "dependencies": {
+    "@filecoin-foundation/ui-filecoin": "^0.7.1",
     "@radix-ui/react-slot": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
