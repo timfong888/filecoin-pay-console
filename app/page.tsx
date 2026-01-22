@@ -211,7 +211,7 @@ export default function Dashboard() {
           </div>
         )}
         <div className="flex gap-6">
-          <HeroMetricCard title={isGAMode ? "Active Wallets" : "Active Payers"} value="--" subtitle="At least 1 ACTIVE rail AND lockup rate > 0" />
+          <HeroMetricCard title="Active Payers" value="--" subtitle="At least 1 ACTIVE rail AND lockup rate > 0" />
           <HeroMetricCard title="USDFC Settled" value="--" />
           <HeroMetricCard title={isGAMode ? "Churned Wallets" : "Settled (7d)"} value="--" />
         </div>
@@ -264,7 +264,7 @@ export default function Dashboard() {
       {/* Hero Metric Cards */}
       <div className="flex gap-6">
         <HeroMetricCard
-          title={isGAMode ? "Active Wallets" : "Active Payers"}
+          title="Active Payers"
           value={activePayers.toLocaleString()}
           subtitle="At least 1 ACTIVE rail AND lockup rate > 0"
         />

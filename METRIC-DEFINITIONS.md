@@ -8,7 +8,7 @@ The dashboard displays different metrics depending on build mode.
 
 ### GA Mode Metrics
 
-#### Active Wallets
+#### Active Payers
 - **Definition:** Count of payer wallets with at least one active rail AND positive lockup
 - **Source:** `Account` entities from Goldsky subgraph
 - **Formula:** Count where `account.payerRails.some(rail.state == "Active") AND account.userTokens.some(lockupCurrent > 0)`
