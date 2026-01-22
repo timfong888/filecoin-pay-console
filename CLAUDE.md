@@ -63,6 +63,47 @@ pinme upload out
 | `.env.ga` | GA mode environment template |
 | `.env.prototype` | Prototype mode environment template |
 
+## Branching Strategy
+
+The repository uses a two-branch workflow to maintain GA (production) and prototype (experimental) versions:
+
+```
+main (GA)          prototype
+    │                  │
+    │  ←── rebase ───  │   Keep prototype up-to-date with main
+    │                  │
+    ▼                  ▼
+ GA deploy      Prototype deploy
+```
+
+### Branch Purposes
+
+| Branch | Purpose | Deploy Target |
+|--------|---------|---------------|
+| `main` | Production-ready GA features | filpay-ga.pinit.eth.limo |
+| `prototype` | Experimental/full features | filpay-prototype.pinit.eth.limo |
+
+### PR Workflow
+
+1. **New features for GA:** Create feature branch from `main`, PR to `main`
+2. **Prototype-only features:** Create feature branch from `prototype`, PR to `prototype`
+3. **After merging to main:** Rebase `prototype` from `main` to keep in sync
+
+```bash
+# Keep prototype in sync with main
+git checkout prototype
+git fetch origin
+git rebase origin/main
+git push origin prototype --force-with-lease
+```
+
+### Best Practices
+
+- Always develop against `main` first for features intended for GA
+- Use `--legacy-peer-deps` when installing packages (Next.js 16 peer dep compatibility)
+- Test both `build:ga` and `build:prototype` before pushing
+- Tag releases: `v0.X.0-ga` for main, `v0.X.0-prototype` for prototype
+
 ## Deployed Site
 
 **Live URL (use this for all testing):** https://f59ac2fb.pinit.eth.limo/
