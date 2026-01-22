@@ -1,5 +1,23 @@
 # Deployment History
 
+## v0.31.0-prototype - 2026-01-22
+
+**Changes:**
+- Add "Churned Wallets" metric to Prototype mode (now shows 5 hero metrics instead of 4)
+- Each metric caption now links to its definition in METRIC-DEFINITIONS.md
+- Prototype mode metrics: Active Payers, Locked USDFC, USDFC Settled, Settled (7d), Churned Wallets
+- Updated METRIC-DEFINITIONS.md to document Churned Wallets in Prototype section
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeif7szputtv4csxdrfvoahugllqo7z55nebpkkcugwzyzfl6ayc4ca`)
+- Git Tag: [v0.31.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.31.0-prototype)
+- Commit: [227d0a5](https://github.com/timfong888/filecoin-pay-console/commit/227d0a5)
+
+**Related Issues:**
+- Churned Wallets was missing from Prototype mode after previous GA-focused updates
+
+---
+
 ## v0.30.0 - 2026-01-22
 
 **Changes:**
