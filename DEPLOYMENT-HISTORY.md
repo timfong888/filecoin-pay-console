@@ -1,5 +1,25 @@
 # Deployment History
 
+## v0.28.0-ga - 2026-01-21
+
+**Changes:**
+- Add `optimizePackageImports` for recharts to enable automatic barrel import optimization
+- Reduces bundle size by ~200-400ms for recharts without code changes
+- Next.js automatically transforms `import { X } from 'recharts'` to direct imports at build time
+
+**Deployment:**
+- PinMe Preview: https://pinme.eth.limo/#/preview/U2FsdGVkX18Ci0Ktb4hDcrT-6hOTD9JzTCviRvuoodiCpvrFBOxtB-anzki10hZuPDaABTK4TYuAcMFAp0HGOqwIleKyTsrbk6N8vEDy22aZDS2Kvqpd9NRmf2AOP6x2bnmNV1ACksmHpz6XN1Y0cAXEFR2fnw
+- Target ENS: `filpay-ga.pinit.eth.limo`
+- Git Tag: [v0.28.0-ga](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.28.0-ga)
+- Commit: [3ed6d8e](https://github.com/timfong888/filecoin-pay-console/commit/3ed6d8e)
+
+**Related Issues:**
+- [#48](https://github.com/timfong888/filecoin-pay-console/issues/48) - Apply Vercel coding best practices as SKILLS
+- [#50](https://github.com/timfong888/filecoin-pay-console/issues/50) - Replace recharts barrel imports
+- [#54](https://github.com/timfong888/filecoin-pay-console/issues/54) - Configure optimizePackageImports
+
+---
+
 ## v0.27.0-ga - 2026-01-17
 
 **Changes:**
