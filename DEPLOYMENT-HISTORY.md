@@ -1,5 +1,27 @@
 # Deployment History
 
+## v0.31.0-ga / v0.34.0-prototype - 2026-01-23
+
+**Changes:**
+- Update Goldsky subgraph configuration to correct project ID
+- Update Filecoin Pay subgraph to v1.2.0 (filecoin-pay-mainnet-tim)
+- Add FWSS subgraph configuration (fwss-mainnet-tim v1.0.0)
+- Update DataSourcePanel to display both subgraphs with clickable version links
+- Add "FIL Burned" hero metric (placeholder, non-functional)
+
+**Deployment:**
+- GA: https://filpay-ga.pinit.eth.limo (CID: `bafybeibaripwrzjnjtupdcwbn7unaomlv63svjzzsbngmkgbvi6dedqgnu`)
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeibewrsxid6yawka56rqpnlxuwbsipvi2f3u27kxh2cg56emgfxl7q`)
+- Git Commits:
+  - prototype: [a976342](https://github.com/timfong888/filecoin-pay-console/commit/a976342)
+  - main: [e1eeabe](https://github.com/timfong888/filecoin-pay-console/commit/e1eeabe) (cherry-picked)
+- Git Tags: v0.31.0-ga, v0.34.0-prototype
+
+**Related Issues:**
+- [#59](https://github.com/timfong888/filecoin-pay-console/issues/59) - Add FIL Burned hero metric and fix subgraph display
+
+---
+
 ## v0.30.0 - 2026-01-22
 
 **Changes:**
