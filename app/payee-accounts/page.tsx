@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { PayeeDisplay, fetchAllPayees, fetchAccountDetail, AccountDetail, formatDataSize, fetchTotalSettled, formatCurrency } from "@/lib/graphql/fetchers";
+import { PayeeDisplay, fetchAllPayees, fetchAccountDetail, AccountDetail, formatDataSize, fetchTotalSettled, formatCurrency, RailDisplay } from "@/lib/graphql/fetchers";
 import { batchResolveENS, resolveENS } from "@/lib/ens";
 import { useSPRegistry } from "@/lib/sp-registry/hooks";
 import { SPHero } from "@/components/sp-registry";
@@ -21,6 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { SettleRailDialog, RailForSettle } from "@/components/settle/SettleRailDialog";
+import { useAccount } from "wagmi";
 
 // Hero Metric Card Component - Purple theme
 function HeroMetricCard({
@@ -49,8 +51,37 @@ function PayeeDetailView({ address }: { address: string }) {
   const [ensName, setEnsName] = useState<string | null>(null);
   const [counterpartyEnsNames, setCounterpartyEnsNames] = useState<Map<string, string | null>>(new Map());
 
+  // Settle dialog state
+  const [settleDialogOpen, setSettleDialogOpen] = useState(false);
+  const [selectedRail, setSelectedRail] = useState<RailForSettle | null>(null);
+  const { isConnected } = useAccount();
+
   // Fetch SP Registry data for this payee
   const { data: spRegistryData, loading: spRegistryLoading } = useSPRegistry(address);
+
+  // Helper to convert RailDisplay to RailForSettle
+  const toRailForSettle = (rail: RailDisplay): RailForSettle => ({
+    id: rail.id,
+    railId: rail.railId,
+    payerAddress: rail.payerAddress,
+    payeeAddress: rail.payeeAddress,
+    tokenSymbol: rail.tokenSymbol,
+    tokenDecimals: rail.tokenDecimals,
+    paymentRate: rail.paymentRate,
+    totalSettledAmount: rail.settledRaw.toString(),
+    state: rail.state.toUpperCase(),
+    settledUpto: rail.settledUpto,
+  });
+
+  // Handle settle button click
+  const handleSettleClick = (rail: RailDisplay) => {
+    if (!isConnected) {
+      alert("Please connect your wallet first");
+      return;
+    }
+    setSelectedRail(toRailForSettle(rail));
+    setSettleDialogOpen(true);
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -204,9 +235,18 @@ function PayeeDetailView({ address }: { address: string }) {
             )}
           </div>
         </div>
-        <button className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 transition-colors">
-          Settle Now
-        </button>
+        {account.payeeRails.length > 0 && account.payeeRails.some(r => r.stateCode === 0) && (
+          <button
+            onClick={() => {
+              const activeRail = account.payeeRails.find(r => r.stateCode === 0);
+              if (activeRail) handleSettleClick(activeRail);
+            }}
+            className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
+            disabled={!isConnected}
+          >
+            {isConnected ? "Settle Now" : "Connect Wallet to Settle"}
+          </button>
+        )}
       </div>
 
       {/* SP Registry Hero */}
@@ -334,6 +374,15 @@ function PayeeDetailView({ address }: { address: string }) {
           </div>
         </div>
       </div>
+
+      {/* Settle Dialog */}
+      {selectedRail && (
+        <SettleRailDialog
+          rail={selectedRail}
+          open={settleDialogOpen}
+          onOpenChange={setSettleDialogOpen}
+        />
+      )}
     </div>
   );
 }

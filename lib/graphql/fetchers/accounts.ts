@@ -30,9 +30,12 @@ export const RailState = {
  */
 export interface RailDisplay {
   id: string;
+  railId: string;
   counterpartyAddress: string;
   counterpartyFormatted: string;
   counterpartyEnsName?: string;
+  payerAddress: string;
+  payeeAddress: string;
   settled: string;
   settledRaw: number;
   netPayeeAmount: string;
@@ -43,6 +46,10 @@ export interface RailDisplay {
   rateRaw: number;
   state: string;
   stateCode: number;
+  settledUpto: string;
+  paymentRate: string;
+  tokenSymbol: string;
+  tokenDecimals: number;
   createdAt: string;
   createdAtTimestamp: number;
 }
@@ -69,13 +76,17 @@ export interface AccountDetail {
 /**
  * Transform rail to display format.
  */
-function transformRailToDisplay(rail: Rail, isPayer: boolean): RailDisplay {
+function transformRailToDisplay(rail: Rail, isPayer: boolean, accountAddress: string): RailDisplay {
   const counterparty = isPayer ? rail.payee?.address : rail.payer?.address;
   const settledValue = weiToUSDC(rail.totalSettledAmount);
   const netPayeeValue = rail.totalNetPayeeAmount ? weiToUSDC(rail.totalNetPayeeAmount) : settledValue;
   const commissionValue = rail.totalCommission ? weiToUSDC(rail.totalCommission) : 0;
   const rateValue = rail.paymentRate ? weiToUSDC(rail.paymentRate) : 0;
   const createdAtMs = secondsToMs(rail.createdAt);
+
+  // Determine payer and payee addresses
+  const payerAddress = isPayer ? accountAddress : (rail.payer?.address || '');
+  const payeeAddress = isPayer ? (rail.payee?.address || '') : accountAddress;
 
   // Convert state to number or use string directly (GraphQL may return either)
   let stateNum: number;
@@ -93,8 +104,11 @@ function transformRailToDisplay(rail: Rail, isPayer: boolean): RailDisplay {
 
   return {
     id: rail.id,
+    railId: rail.railId || '0',
     counterpartyAddress: counterparty || 'Unknown',
     counterpartyFormatted: counterparty ? formatAddress(counterparty) : 'Unknown',
+    payerAddress,
+    payeeAddress,
     settled: formatCurrency(settledValue),
     settledRaw: settledValue,
     netPayeeAmount: formatCurrency(netPayeeValue),
@@ -105,6 +119,10 @@ function transformRailToDisplay(rail: Rail, isPayer: boolean): RailDisplay {
     rateRaw: rateValue,
     state: stateLabel,
     stateCode: stateNum,
+    settledUpto: rail.settledUpto || '0',
+    paymentRate: rail.paymentRate || '0',
+    tokenSymbol: rail.token?.symbol || 'USDFC',
+    tokenDecimals: rail.token?.decimals ? parseInt(rail.token.decimals) : 18,
     createdAt: formatDate(createdAtMs),
     createdAtTimestamp: createdAtMs,
   };
@@ -158,8 +176,8 @@ export async function fetchAccountDetail(address: string): Promise<AccountDetail
       totalSettledRaw: totalSettledValue,
       totalPayout: formatCurrency(totalPayoutValue),
       totalPayoutRaw: totalPayoutValue,
-      payerRails: account.payerRails.map(rail => transformRailToDisplay(rail, true)),
-      payeeRails: (account.payeeRails || []).map(rail => transformRailToDisplay(rail, false)),
+      payerRails: account.payerRails.map(rail => transformRailToDisplay(rail, true, account.address)),
+      payeeRails: (account.payeeRails || []).map(rail => transformRailToDisplay(rail, false, account.address)),
     };
   } catch (error) {
     console.error('Error fetching account detail:', error);

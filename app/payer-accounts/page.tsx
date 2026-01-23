@@ -14,7 +14,10 @@ import {
   PayerDisplayExtended,
   formatChartDate,
   formatChartCurrency,
+  RailDisplay,
 } from "@/lib/graphql/fetchers";
+import { SettleRailDialog, RailForSettle } from "@/components/settle/SettleRailDialog";
+import { useAccount } from "wagmi";
 import {
   FILECOIN_PAY_CONTRACT,
   GOLDSKY_ENDPOINT,
@@ -172,6 +175,35 @@ function PayerDetailView({ address }: { address: string }) {
   const [error, setError] = useState<string | null>(null);
   const [ensName, setEnsName] = useState<string | null>(null);
   const [counterpartyEnsNames, setCounterpartyEnsNames] = useState<Map<string, string | null>>(new Map());
+
+  // Settle dialog state
+  const [settleDialogOpen, setSettleDialogOpen] = useState(false);
+  const [selectedRail, setSelectedRail] = useState<RailForSettle | null>(null);
+  const { isConnected } = useAccount();
+
+  // Helper to convert RailDisplay to RailForSettle
+  const toRailForSettle = (rail: RailDisplay): RailForSettle => ({
+    id: rail.id,
+    railId: rail.railId,
+    payerAddress: rail.payerAddress,
+    payeeAddress: rail.payeeAddress,
+    tokenSymbol: rail.tokenSymbol,
+    tokenDecimals: rail.tokenDecimals,
+    paymentRate: rail.paymentRate,
+    totalSettledAmount: rail.settledRaw.toString(),
+    state: rail.state.toUpperCase(),
+    settledUpto: rail.settledUpto,
+  });
+
+  // Handle settle button click
+  const handleSettleClick = (rail: RailDisplay) => {
+    if (!isConnected) {
+      alert("Please connect your wallet first");
+      return;
+    }
+    setSelectedRail(toRailForSettle(rail));
+    setSettleDialogOpen(true);
+  };
 
   // My Data state
   const [dataSets, setDataSets] = useState<PDPDataSetWithRoots[]>([]);
@@ -421,6 +453,18 @@ function PayerDetailView({ address }: { address: string }) {
             )}
           </div>
         </div>
+        {account.payerRails.length > 0 && account.payerRails.some(r => r.stateCode === 0) && (
+          <button
+            onClick={() => {
+              const activeRail = account.payerRails.find(r => r.stateCode === 0);
+              if (activeRail) handleSettleClick(activeRail);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+            disabled={!isConnected}
+          >
+            {isConnected ? "Settle Now" : "Connect Wallet to Settle"}
+          </button>
+        )}
       </div>
 
       {/* Summary Cards */}
@@ -769,6 +813,15 @@ function PayerDetailView({ address }: { address: string }) {
       <div className="text-xs text-gray-400 text-right">
         Data from Goldsky subgraph
       </div>
+
+      {/* Settle Dialog */}
+      {selectedRail && (
+        <SettleRailDialog
+          rail={selectedRail}
+          open={settleDialogOpen}
+          onOpenChange={setSettleDialogOpen}
+        />
+      )}
     </div>
   );
 }

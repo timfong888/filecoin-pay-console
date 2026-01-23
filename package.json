@@ -24,6 +24,7 @@
   "dependencies": {
     "@filecoin-foundation/ui-filecoin": "^0.7.1",
     "@radix-ui/react-slot": "^1.2.4",
+    "@tanstack/react-query": "^5.90.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "ethers": "^6.16.0",
@@ -35,7 +36,8 @@
     "react-dom": "19.2.3",
     "recharts": "^3.6.0",
     "tailwind-merge": "^3.4.0",
-    "viem": "^2.44.0"
+    "viem": "^2.44.0",
+    "wagmi": "^3.4.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.57.0",

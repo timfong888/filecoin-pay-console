@@ -33,12 +33,18 @@ export const TOP_PAYERS_QUERY = gql`
       }
       payerRails(first: 100, orderBy: createdAt, orderDirection: desc) {
         id
+        railId
         totalSettledAmount
+        settledUpto
         createdAt
         state
         paymentRate
         payee {
           address
+        }
+        token {
+          symbol
+          decimals
         }
       }
     }
@@ -119,13 +125,20 @@ export const TOP_PAYEES_QUERY = gql`
       }
       payeeRails(first: 100, orderBy: createdAt, orderDirection: desc) {
         id
+        railId
         totalSettledAmount
         totalNetPayeeAmount
         totalCommission
+        settledUpto
         createdAt
         state
+        paymentRate
         payer {
           address
+        }
+        token {
+          symbol
+          decimals
         }
       }
     }
@@ -152,26 +165,38 @@ export const ACCOUNT_DETAIL_QUERY = gql`
       }
       payerRails {
         id
+        railId
         totalSettledAmount
         totalNetPayeeAmount
         totalCommission
+        settledUpto
         paymentRate
         state
         createdAt
         payee {
           address
         }
+        token {
+          symbol
+          decimals
+        }
       }
       payeeRails {
         id
+        railId
         totalSettledAmount
         totalNetPayeeAmount
         totalCommission
+        settledUpto
         paymentRate
         state
         createdAt
         payer {
           address
+        }
+        token {
+          symbol
+          decimals
         }
       }
     }
@@ -202,14 +227,17 @@ export interface UserToken {
 
 export interface Rail {
   id: string;
+  railId?: string;
   totalSettledAmount: string;
   totalNetPayeeAmount?: string;
   totalCommission?: string;
+  settledUpto?: string;
   createdAt: string;
   state: number | string;
   paymentRate?: string;
   payee?: { address: string };
   payer?: { address: string };
+  token?: { symbol: string; decimals: string };
 }
 
 export interface Account {
