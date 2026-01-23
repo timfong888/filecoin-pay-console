@@ -1,5 +1,28 @@
 # Deployment History
 
+## v0.35.0-prototype / v0.32.0-ga - 2026-01-23
+
+**Changes:**
+- Add four placeholder auction stats charts with mock data:
+  - Number of Bidders (bar chart)
+  - Auction Price vs Target Price (line comparison chart)
+  - Number of Pieces Settled (line chart)
+  - Duration from Published to Settlement (bar chart)
+- Charts display "Mock Data" badge to indicate placeholder status
+- Shown in both GA and prototype modes
+
+**Deployment:**
+- GA: https://filpay-ga.pinit.eth.limo (CID: `bafybeif37x67ozst3wf2orycdznach6wohwiewu4kfhfmqr6dce72wxcmy`)
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeihqynoym25orhkmyv4fgokkr3rbvjtnvdgrhmdk3vpqqjbcyyghay`)
+- Git Tags: [v0.32.0-ga](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.32.0-ga), [v0.35.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.35.0-prototype)
+- Commits: [16eaa48](https://github.com/timfong888/filecoin-pay-console/commit/16eaa48) (main), [162409d](https://github.com/timfong888/filecoin-pay-console/commit/162409d) (prototype)
+
+**Related Issues:**
+- [#58](https://github.com/timfong888/filecoin-pay-console/issues/58) - Add auction stats placeholder charts
+- Ref: [FilOzone/filecoin-pay-explorer#80](https://github.com/FilOzone/filecoin-pay-explorer/issues/80) - Auction stats for GA
+
+---
+
 ## v0.31.0-ga / v0.34.0-prototype - 2026-01-23
 
 **Changes:**
