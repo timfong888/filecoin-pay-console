@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { features } from "@/lib/config/mode";
+import { features, isGAMode } from "@/lib/config/mode";
 
 // Build navigation items based on mode
 const getNavItems = () => {
@@ -29,6 +29,11 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-14 items-center justify-between">
           <nav className="flex items-center space-x-6">
+            {isGAMode && (
+              <span className="text-sm font-medium text-muted-foreground cursor-not-allowed">
+                Console
+              </span>
+            )}
             {navItems.map((item) => (
               <Link
                 key={item.href}
