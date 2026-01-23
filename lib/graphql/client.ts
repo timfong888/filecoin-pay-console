@@ -3,11 +3,32 @@ import { withRetry, RetryOptions } from '../retry';
 import { SubgraphError, RateLimitError, logError } from '../errors';
 
 // Data source configuration - Filecoin Mainnet
-export const GOLDSKY_ENDPOINT = 'https://api.goldsky.com/api/public/project_cmj7soo5uf4no01xw0tij21a1/subgraphs/filecoin-pay-mainnet/1.1.0/gn';
-export const FILECOIN_PAY_CONTRACT = '0x23b1e018F08BB982348b15a86ee926eEBf7F4DAa';
-export const SUBGRAPH_VERSION = '1.1.0';
-export const SUBGRAPH_NAME = 'filecoin-pay-mainnet';
 export const NETWORK = 'Filecoin Mainnet';
+
+// Goldsky Project ID for FilOz subgraphs
+const GOLDSKY_PROJECT_ID = 'project_cmb9tuo8r1xdw01ykb8uidk7h';
+
+// Subgraph configurations
+export const SUBGRAPHS = {
+  FILECOIN_PAY: {
+    name: 'filecoin-pay-mainnet-tim',
+    version: '1.2.0',
+    endpoint: `https://api.goldsky.com/api/public/${GOLDSKY_PROJECT_ID}/subgraphs/filecoin-pay-mainnet-tim/1.2.0/gn`,
+  },
+  FWSS: {
+    name: 'fwss-mainnet-tim',
+    version: '1.0.0',
+    endpoint: `https://api.goldsky.com/api/public/${GOLDSKY_PROJECT_ID}/subgraphs/fwss-mainnet-tim/1.0.0/gn`,
+  },
+};
+
+// Primary endpoint for dashboard queries (Filecoin Pay subgraph)
+export const GOLDSKY_ENDPOINT = SUBGRAPHS.FILECOIN_PAY.endpoint;
+export const SUBGRAPH_VERSION = SUBGRAPHS.FILECOIN_PAY.version;
+export const SUBGRAPH_NAME = SUBGRAPHS.FILECOIN_PAY.name;
+
+// Legacy export for backward compatibility
+export const FILECOIN_PAY_CONTRACT = '0x23b1e018F08BB982348b15a86ee926eEBf7F4DAa';
 
 // Contract addresses with names
 export const CONTRACTS = {
