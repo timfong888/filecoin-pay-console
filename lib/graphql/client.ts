@@ -6,7 +6,20 @@ import { SubgraphError, RateLimitError, logError } from '../errors';
 export const GOLDSKY_ENDPOINT = 'https://api.goldsky.com/api/public/project_cmj7soo5uf4no01xw0tij21a1/subgraphs/filecoin-pay-mainnet/1.1.0/gn';
 export const FILECOIN_PAY_CONTRACT = '0x23b1e018F08BB982348b15a86ee926eEBf7F4DAa';
 export const SUBGRAPH_VERSION = '1.1.0';
+export const SUBGRAPH_NAME = 'filecoin-pay-mainnet';
 export const NETWORK = 'Filecoin Mainnet';
+
+// Contract addresses with names
+export const CONTRACTS = {
+  FILECOIN_PAY: {
+    name: 'Filecoin Pay',
+    address: '0x23b1e018F08BB982348b15a86ee926eEBf7F4DAa',
+  },
+  FWSS: {
+    name: 'FWSS',
+    address: '0x8408502033C418E1bbC97cE9ac48E5528F371A9f',
+  },
+};
 
 // Filecoin epoch constants
 // Filecoin epochs are 30 seconds each

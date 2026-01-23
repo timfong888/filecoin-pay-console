@@ -1,9 +1,10 @@
 'use client';
 
 import {
-  FILECOIN_PAY_CONTRACT,
+  CONTRACTS,
   GOLDSKY_ENDPOINT,
   SUBGRAPH_VERSION,
+  SUBGRAPH_NAME,
   NETWORK,
   DASHBOARD_VERSION,
 } from '@/lib/graphql/client';
@@ -33,19 +34,33 @@ export function DataSourcePanel({
           <dl className="space-y-1 text-gray-600">
             <DataSourceRow label="Network:" value={NETWORK} />
             <div className="flex gap-2">
-              <dt className="w-32 flex-shrink-0">Contract:</dt>
-              <dd className="font-mono text-xs">
-                <a
-                  href={`https://filfox.info/en/address/${FILECOIN_PAY_CONTRACT}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  {FILECOIN_PAY_CONTRACT}
-                </a>
+              <dt className="w-32 flex-shrink-0">Contracts:</dt>
+              <dd className="font-mono text-xs space-y-1">
+                <div>
+                  <span className="text-gray-600">{CONTRACTS.FILECOIN_PAY.name}: </span>
+                  <a
+                    href={`https://filfox.info/en/address/${CONTRACTS.FILECOIN_PAY.address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {CONTRACTS.FILECOIN_PAY.address}
+                  </a>
+                </div>
+                <div>
+                  <span className="text-gray-600">{CONTRACTS.FWSS.name}: </span>
+                  <a
+                    href={`https://filfox.info/en/address/${CONTRACTS.FWSS.address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {CONTRACTS.FWSS.address}
+                  </a>
+                </div>
               </dd>
             </div>
-            <DataSourceRow label="Subgraph Version:" value={SUBGRAPH_VERSION} />
+            <DataSourceRow label="Subgraph:" value={`${SUBGRAPH_NAME} v${SUBGRAPH_VERSION}`} />
             {showSubgraphUrl && (
               <div className="flex gap-2">
                 <dt className="w-32 flex-shrink-0">Subgraph URL:</dt>

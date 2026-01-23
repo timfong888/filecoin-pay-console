@@ -35,6 +35,15 @@ The dashboard displays different metrics depending on build mode.
   - Has created at least 1 rail (was previously active)
   - ALL rails have `state = "Terminated"` (no active or finalized rails)
 
+#### FIL Burned
+- **Definition:** Total FIL burned from three sources:
+  1. Settling USDFC
+  2. Settling FIL
+  3. Auction
+- **Status:** Coming soon (placeholder metric)
+- **Source:** Engineering will drive implementation
+- **Note:** Non-functional in current release - displays placeholder value
+
 ### Prototype Mode Metrics
 
 #### Unique Payers
@@ -58,6 +67,15 @@ The dashboard displays different metrics depending on build mode.
 - **Source:** `Settlement` events from Goldsky subgraph filtered by timestamp
 - **Formula:** `Σ(settlement.totalSettledAmount)` where `settlement.settledUpto >= (now - 7 days)`
 - **Note:** This is actual settlement activity, not projected
+
+#### FIL Burned
+- **Definition:** Total FIL burned from three sources:
+  1. Settling USDFC
+  2. Settling FIL
+  3. Auction
+- **Status:** Coming soon (placeholder metric)
+- **Source:** Engineering will drive implementation
+- **Note:** Same metric as GA Mode. Non-functional in current release - displays placeholder value.
 
 ---
 

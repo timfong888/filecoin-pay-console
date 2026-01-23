@@ -201,8 +201,8 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="h-40 bg-gray-100 rounded-lg animate-pulse" />
           ))}
         </div>
@@ -226,6 +226,11 @@ export default function Dashboard() {
           <HeroMetricCard title="Locked USDFC" value="--" subtitle="Total locked across all accounts" />
           <HeroMetricCard title="USDFC Settled" value="--" />
           <HeroMetricCard title={isGAMode ? "Churned Wallets" : "Settled (7d)"} value="--" />
+          <HeroMetricCard
+            title="FIL Burned"
+            value="--"
+            subtitle="From USDFC/FIL settlements + auction (coming soon)"
+          />
         </div>
         {/* Top Payers Section - Prototype mode only */}
         {features.showTop10Tables && (
@@ -302,6 +307,11 @@ export default function Dashboard() {
             subtitle="USDFC actually settled in the last 7 days"
           />
         )}
+        <HeroMetricCard
+          title="FIL Burned"
+          value="--"
+          subtitle="From USDFC/FIL settlements + auction (coming soon)"
+        />
       </div>
 
       {/* Cumulative Line Charts - Prototype mode only, dynamically loaded */}
