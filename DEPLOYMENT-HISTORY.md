@@ -1,5 +1,21 @@
 # Deployment History
 
+## v0.32.1-prototype - 2026-01-23
+
+**Changes:**
+- Replace unreliable hover tooltip with visible caption text for settle button
+- Shows "(Connect wallet)" text next to disabled Settle button when wallet not connected
+- More accessible and works on touch devices
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeifp4js4hlsl2g7j23fcsylfd3ccvsm4xmyepawobxbh6wa7lulmja`)
+- Commit: [319781a](https://github.com/timfong888/filecoin-pay-console/commit/319781a)
+
+**Related Issues:**
+- [#57](https://github.com/timfong888/filecoin-pay-console/issues/57) - Settle button UX improvement
+
+---
+
 ## v0.32.0-prototype - 2026-01-23
 
 **Changes:**
