@@ -1,5 +1,26 @@
 # Deployment History
 
+## v0.32.0-prototype - 2026-01-23
+
+**Changes:**
+- Add settle functionality for both payers and payees
+- Implement wallet connection via wagmi + react-query
+- Create SettleRailDialog component with transaction handling
+- Add Connect Wallet button to header with disconnect dropdown
+- Update GraphQL queries to include railId and settledUpto fields
+- Wire up settle in payee detail view
+- Add settle button to payer detail view
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeifqxqklsiislkaews75z5vttqjd6cow4yyje3znq7e5qpd55xgsfu`)
+- Git Tag: [v0.32.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.32.0-prototype)
+- Commit: [f6c4daa](https://github.com/timfong888/filecoin-pay-console/commit/f6c4daa)
+
+**Related Issues:**
+- [#57](https://github.com/timfong888/filecoin-pay-console/issues/57) - Expose the same Settle Funds via the UI for Payers
+
+---
+
 ## v0.31.0-prototype - 2026-01-22
 
 **Changes:**
