@@ -1,5 +1,43 @@
 # Deployment History
 
+## v0.33.0-prototype - 2026-01-23
+
+**Changes:**
+- Add non-functional "FIL Burned" hero metric (placeholder for future implementation)
+- FIL Burned will track: USDFC settlements, FIL settlements, and auctions
+- Show both Filecoin Pay and FWSS contracts with names in DataSourcePanel
+- Display subgraph name (filecoin-pay-mainnet) alongside version
+- Updated METRIC-DEFINITIONS.md to document FIL Burned metric
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeiahvennodd5krgjd4is7lf5visr6rltxhlnnbs4jt3zd4nl2ru44e`)
+- Git Tag: [v0.33.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.33.0-prototype)
+- Commit: [319781a](https://github.com/timfong888/filecoin-pay-console/commit/319781a)
+
+**Related Issues:**
+- [#59](https://github.com/timfong888/filecoin-pay-console/issues/59) - Add FIL Burned hero metric
+
+---
+
+## v0.30.0-ga - 2026-01-23
+
+**Changes:**
+- Add non-functional "FIL Burned" hero metric (placeholder for future implementation)
+- FIL Burned will track: USDFC settlements, FIL settlements, and auctions
+- Show both Filecoin Pay and FWSS contracts with names in DataSourcePanel
+- Display subgraph name (filecoin-pay-mainnet) alongside version
+- Updated METRIC-DEFINITIONS.md to document FIL Burned metric
+
+**Deployment:**
+- GA: https://filpay-ga.pinit.eth.limo (CID: `bafybeihyhouwcwobfrwbxy2t7n6mpphlwcsj46pz7ez7jndsroo4od3zai`)
+- Git Tag: [v0.30.0-ga](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.30.0-ga)
+- Commit: [218ee92](https://github.com/timfong888/filecoin-pay-console/commit/218ee92)
+
+**Related Issues:**
+- [#59](https://github.com/timfong888/filecoin-pay-console/issues/59) - Add FIL Burned hero metric
+
+---
+
 ## v0.32.1-prototype - 2026-01-23
 
 **Changes:**
