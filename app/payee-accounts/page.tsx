@@ -236,16 +236,26 @@ function PayeeDetailView({ address }: { address: string }) {
           </div>
         </div>
         {account.payeeRails.length > 0 && account.payeeRails.some(r => r.stateCode === 0) && (
-          <button
-            onClick={() => {
-              const activeRail = account.payeeRails.find(r => r.stateCode === 0);
-              if (activeRail) handleSettleClick(activeRail);
-            }}
-            className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
-            disabled={!isConnected}
-          >
-            {isConnected ? "Settle Now" : "Connect Wallet to Settle"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const activeRail = account.payeeRails.find(r => r.stateCode === 0);
+                if (activeRail) handleSettleClick(activeRail);
+              }}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!isConnected}
+            >
+              Settle
+            </button>
+            {!isConnected && (
+              <span
+                className="text-gray-400 cursor-help"
+                title="Connect wallet to settle"
+              >
+                ⓘ
+              </span>
+            )}
+          </div>
         )}
       </div>
 
