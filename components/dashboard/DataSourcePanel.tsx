@@ -2,9 +2,7 @@
 
 import {
   CONTRACTS,
-  GOLDSKY_ENDPOINT,
-  SUBGRAPH_VERSION,
-  SUBGRAPH_NAME,
+  SUBGRAPHS,
   NETWORK,
   DASHBOARD_VERSION,
 } from '@/lib/graphql/client';
@@ -13,7 +11,6 @@ import { CONSOLE_MODE, isGAMode } from '@/lib/config/mode';
 interface DataSourcePanelProps {
   hostname?: string;
   showDeploymentInfo?: boolean;
-  showSubgraphUrl?: boolean;
 }
 
 /**
@@ -23,7 +20,6 @@ interface DataSourcePanelProps {
 export function DataSourcePanel({
   hostname,
   showDeploymentInfo = true,
-  showSubgraphUrl = false,
 }: DataSourcePanelProps) {
   return (
     <div className="bg-gray-50 border rounded-lg p-4 text-sm">
@@ -60,22 +56,33 @@ export function DataSourcePanel({
                 </div>
               </dd>
             </div>
-            <DataSourceRow label="Subgraph:" value={`${SUBGRAPH_NAME} v${SUBGRAPH_VERSION}`} />
-            {showSubgraphUrl && (
-              <div className="flex gap-2">
-                <dt className="w-32 flex-shrink-0">Subgraph URL:</dt>
-                <dd className="font-mono text-xs break-all">
+            <div className="flex gap-2">
+              <dt className="w-32 flex-shrink-0">Subgraphs:</dt>
+              <dd className="font-mono text-xs space-y-1">
+                <div>
+                  <span className="text-gray-600">{SUBGRAPHS.FILECOIN_PAY.name}: </span>
                   <a
-                    href={GOLDSKY_ENDPOINT}
+                    href={SUBGRAPHS.FILECOIN_PAY.endpoint}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-blue-600 hover:underline"
                   >
-                    {GOLDSKY_ENDPOINT}
+                    v{SUBGRAPHS.FILECOIN_PAY.version}
                   </a>
-                </dd>
-              </div>
-            )}
+                </div>
+                <div>
+                  <span className="text-gray-600">{SUBGRAPHS.FWSS.name}: </span>
+                  <a
+                    href={SUBGRAPHS.FWSS.endpoint}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    v{SUBGRAPHS.FWSS.version}
+                  </a>
+                </div>
+              </dd>
+            </div>
             <DataSourceRow label="Last Updated:" value={new Date().toLocaleString()} />
           </dl>
         </div>
