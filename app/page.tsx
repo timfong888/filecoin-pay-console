@@ -22,6 +22,25 @@ const DashboardCharts = dynamic(
   }
 );
 
+// Dynamic import for auction stats charts
+const AuctionStatsCharts = dynamic(
+  () => import("@/components/dashboard/AuctionStatsCharts").then(mod => mod.AuctionStatsCharts),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="space-y-6">
+        <div className="h-8 w-48 bg-gray-100 rounded animate-pulse" />
+        <div className="grid grid-cols-2 gap-6">
+          <div className="bg-gray-100 rounded-lg h-80 animate-pulse" />
+          <div className="bg-gray-100 rounded-lg h-80 animate-pulse" />
+          <div className="bg-gray-100 rounded-lg h-80 animate-pulse" />
+          <div className="bg-gray-100 rounded-lg h-80 animate-pulse" />
+        </div>
+      </div>
+    ),
+  }
+);
+
 interface DashboardData {
   globalMetrics: {
     uniquePayers: number;
@@ -227,6 +246,10 @@ export default function Dashboard() {
             subtitle="From USDFC/FIL settlements + auction (coming soon)"
           />
         </div>
+
+        {/* Auction Stats Charts - Placeholder mockups (both modes) */}
+        {features.showAuctionStats && <AuctionStatsCharts />}
+
         {/* Top Payers Section - Prototype mode only */}
         {features.showTop10Tables && (
           <div className="space-y-4">
@@ -300,6 +323,9 @@ export default function Dashboard() {
           subtitle="From USDFC/FIL settlements + auction (coming soon)"
         />
       </div>
+
+      {/* Auction Stats Charts - Placeholder mockups (both modes) */}
+      {features.showAuctionStats && <AuctionStatsCharts />}
 
       {/* Cumulative Line Charts - Prototype mode only, dynamically loaded */}
       {features.showCharts && chartData.length > 0 && (
