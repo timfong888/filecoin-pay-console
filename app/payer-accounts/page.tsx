@@ -466,11 +466,8 @@ function PayerDetailView({ address }: { address: string }) {
               Settle
             </button>
             {!isConnected && (
-              <span
-                className="text-gray-400 cursor-help"
-                title="Connect wallet to settle"
-              >
-                ⓘ
+              <span className="text-xs text-gray-500">
+                (Connect wallet)
               </span>
             )}
           </div>

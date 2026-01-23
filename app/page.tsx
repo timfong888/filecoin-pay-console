@@ -211,7 +211,7 @@ export default function Dashboard() {
 
   // Show loading state
   if (loading) {
-    const cardCount = isGAMode ? 4 : 5; // Prototype mode shows 5 metrics
+    const cardCount = isGAMode ? 5 : 6; // +1 for FIL Burned in both modes
     return (
       <div className="space-y-6">
         <div className={`grid grid-cols-1 md:grid-cols-${cardCount} gap-4`}>
@@ -265,6 +265,12 @@ export default function Dashboard() {
             value="--"
             subtitle="All rails = TERMINATED"
             definitionAnchor="churned-wallets"
+          />
+          <HeroMetricCard
+            title="FIL Burned"
+            value="--"
+            subtitle="From USDFC/FIL settlements + auction (coming soon)"
+            definitionAnchor="fil-burned"
           />
         </div>
         {/* Top Payers Section - Prototype mode only */}
@@ -345,6 +351,12 @@ export default function Dashboard() {
           value={churnedWallets.toLocaleString()}
           subtitle="All rails = TERMINATED"
           definitionAnchor="churned-wallets"
+        />
+        <HeroMetricCard
+          title="FIL Burned"
+          value="--"
+          subtitle="From USDFC/FIL settlements + auction (coming soon)"
+          definitionAnchor="fil-burned"
         />
       </div>
 

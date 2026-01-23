@@ -35,6 +35,15 @@ The dashboard displays different metrics depending on build mode.
   - Has created at least 1 rail (was previously active)
   - ALL rails have `state = "Terminated"` (no active or finalized rails)
 
+#### FIL Burned
+- **Definition:** Total FIL burned from three sources:
+  1. Settling USDFC
+  2. Settling FIL
+  3. Auction
+- **Status:** Coming soon (placeholder metric)
+- **Source:** Engineering will drive implementation
+- **Note:** Non-functional in current release - displays placeholder value
+
 ### Prototype Mode Metrics
 
 #### Unique Payers
@@ -67,6 +76,15 @@ The dashboard displays different metrics depending on build mode.
   - Has created at least 1 rail (was previously active)
   - ALL rails have `state = "Terminated"` (no active or finalized rails)
 - **Note:** Same metric as GA Mode. Added to Prototype mode for complete visibility.
+
+#### FIL Burned
+- **Definition:** Total FIL burned from three sources:
+  1. Settling USDFC
+  2. Settling FIL
+  3. Auction
+- **Status:** Coming soon (placeholder metric)
+- **Source:** Engineering will drive implementation
+- **Note:** Same metric as GA Mode. Non-functional in current release - displays placeholder value.
 
 ---
 
