@@ -16,7 +16,6 @@ describe('fetchDashboardData', () => {
 
     expect(result).toHaveProperty('globalMetrics');
     expect(result).toHaveProperty('totalSettled');
-    expect(result).toHaveProperty('settled7d');
     expect(result).toHaveProperty('topPayers');
     expect(result).toHaveProperty('runRate');
     expect(result).toHaveProperty('activePayers');
@@ -81,8 +80,6 @@ describe('fetchDashboardData', () => {
 
     expect(result.totalSettled).toHaveProperty('total');
     expect(result.totalSettled).toHaveProperty('totalFormatted');
-    expect(result.settled7d).toHaveProperty('total');
-    expect(result.settled7d).toHaveProperty('formatted');
   });
 
   it('includes run rate metrics', async () => {
@@ -110,8 +107,6 @@ describe('fetchPayerListMetrics', () => {
     expect(result).toHaveProperty('payersWoWChange');
     expect(result).toHaveProperty('settledTotal');
     expect(result).toHaveProperty('settledFormatted');
-    expect(result).toHaveProperty('settled7d');
-    expect(result).toHaveProperty('settled7dFormatted');
     expect(result).toHaveProperty('monthlyRunRate');
     expect(result).toHaveProperty('annualizedRunRate');
   });
@@ -166,7 +161,6 @@ describe('fetchPayerListMetrics', () => {
     const result = await fetchPayerListMetrics();
 
     expect(result.settledFormatted).toMatch(/^\$/);
-    expect(result.settled7dFormatted).toMatch(/^\$/);
     expect(result.monthlyRunRateFormatted).toMatch(/^\$/);
   });
 

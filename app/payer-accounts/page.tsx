@@ -10,7 +10,6 @@ import {
   fetchAccountDetail,
   fetchPayerListMetrics,
   enrichPayersWithPDP,
-  enrichPayersWithSettled7d,
   AccountDetail,
   PayerDisplayExtended,
 } from "@/lib/graphql/fetchers";
@@ -69,9 +68,6 @@ interface PayerListMetrics {
   settledTotal: number;
   settledFormatted: string;
   settledGoalProgress: number;
-  // Settled in last 7 days
-  settled7d: number;
-  settled7dFormatted: string;
   // Monthly run rate (kept for reference but not displayed in hero)
   monthlyRunRate: number;
   monthlyRunRateFormatted: string;
@@ -795,7 +791,7 @@ function PayerListView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortField, setSortField] = useState<"settled" | "settled7d" | "dataSize" | "locked" | "rails" | "runway" | "start">("settled");
+  const [sortField, setSortField] = useState<"settled" | "dataSize" | "locked" | "rails" | "runway" | "start">("settled");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [pdpLoading, setPdpLoading] = useState(false);
   const [fromDate, setFromDate] = useState(defaultDates.fromDate);
@@ -815,20 +811,15 @@ function PayerListView() {
         setMetrics(metricsData);
         setError(null);
 
-        // Progressively load PDP and settled7d data
+        // Progressively load PDP data
         setPdpLoading(true);
         try {
-          const [enrichedWithPDP, enrichedWithSettled7d] = await Promise.all([
-            enrichPayersWithPDP(payersData),
-            enrichPayersWithSettled7d(payersData),
-          ]);
+          const enrichedWithPDP = await enrichPayersWithPDP(payersData);
 
           // Merge enrichments
           const mergedPayers = payersData.map((payer, i) => ({
             ...payer,
             ...enrichedWithPDP[i],
-            settled7d: enrichedWithSettled7d[i].settled7d,
-            settled7dFormatted: enrichedWithSettled7d[i].settled7dFormatted,
           }));
           setPayers(mergedPayers);
         } catch (err) {
@@ -906,10 +897,6 @@ function PayerListView() {
         aVal = a.settledRaw || 0;
         bVal = b.settledRaw || 0;
         break;
-      case "settled7d":
-        aVal = a.settled7d || 0;
-        bVal = b.settled7d || 0;
-        break;
       case "dataSize":
         aVal = a.totalDataSizeGB || 0;
         bVal = b.totalDataSizeGB || 0;
@@ -944,7 +931,7 @@ function PayerListView() {
     currentPage * itemsPerPage
   );
 
-  const handleSort = (field: "settled" | "settled7d" | "dataSize" | "locked" | "rails" | "runway" | "start") => {
+  const handleSort = (field: "settled" | "dataSize" | "locked" | "rails" | "runway" | "start") => {
     if (sortField === field) {
       setSortDirection(sortDirection === "desc" ? "asc" : "desc");
     } else {
@@ -997,11 +984,6 @@ function PayerListView() {
             title="Total Settled (USDFC)"
             value="--"
           />
-          <HeroMetricCard
-            title="Settled (7d)"
-            value="--"
-            subtitle="USDFC settled in the last 7 days"
-          />
         </div>
 
         {/* Data source indicator */}
@@ -1050,11 +1032,6 @@ function PayerListView() {
           <HeroMetricCard
             title="Total Settled (USDFC)"
             value={metrics.settledFormatted}
-          />
-          <HeroMetricCard
-            title="Settled (7d)"
-            value={metrics.settled7dFormatted}
-            subtitle="USDFC settled in the last 7 days"
           />
         </div>
       )}
@@ -1129,12 +1106,6 @@ function PayerListView() {
               </TableHead>
               <TableHead
                 className="font-medium cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort("settled7d")}
-              >
-                Settled (7d) {sortField === "settled7d" && (sortDirection === "desc" ? "↓" : "↑")}
-              </TableHead>
-              <TableHead
-                className="font-medium cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort("locked")}
               >
                 Locked {sortField === "locked" && (sortDirection === "desc" ? "↓" : "↑")}
@@ -1156,7 +1127,7 @@ function PayerListView() {
           <TableBody>
             {paginatedPayers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
                   No payers found
                 </TableCell>
               </TableRow>
@@ -1209,7 +1180,6 @@ function PayerListView() {
                     )}
                   </TableCell>
                   <TableCell>{payer.settled}</TableCell>
-                  <TableCell>{payer.settled7dFormatted || "-"}</TableCell>
                   <TableCell>{payer.locked}</TableCell>
                   <TableCell>{payer.runway}</TableCell>
                   <TableCell>{payer.start}</TableCell>

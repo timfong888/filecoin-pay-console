@@ -21,6 +21,5 @@ export const features = {
   showCharts: isPrototypeMode,
 
   // Metrics
-  showSettled7d: isPrototypeMode,      // Prototype shows "Settled (7d)"
-  showChurnedWallets: isGAMode,        // GA shows "Churned Wallets" instead
+  showChurnedWallets: true,            // Always show "Churned Wallets"
 } as const;

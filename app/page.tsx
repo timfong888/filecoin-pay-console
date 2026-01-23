@@ -43,11 +43,6 @@ interface DashboardData {
     annualizedFormatted: string;
     activeRailsCount: number;
   };
-  // Settled in last 7 days (actual fund flow)
-  settled7d: {
-    total: number;
-    formatted: string;
-  };
   // Total locked USDFC across all accounts
   totalLockedUSDFC: {
     total: number;
@@ -225,7 +220,7 @@ export default function Dashboard() {
           <HeroMetricCard title="Active Payers" value="--" subtitle="At least 1 ACTIVE rail AND lockup rate > 0" />
           <HeroMetricCard title="Locked USDFC" value="--" subtitle="Total locked across all accounts" />
           <HeroMetricCard title="USDFC Settled" value="--" />
-          <HeroMetricCard title={isGAMode ? "Churned Wallets" : "Settled (7d)"} value="--" />
+          <HeroMetricCard title="Churned Wallets" value="--" subtitle="All rails = TERMINATED" />
           <HeroMetricCard
             title="FIL Burned"
             value="--"
@@ -274,7 +269,7 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { totalSettled, topPayers, settled7d, activePayers, churnedWallets, totalLockedUSDFC } = data;
+  const { totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC } = data;
 
   return (
     <div className="space-y-6">
@@ -294,19 +289,11 @@ export default function Dashboard() {
           title="USDFC Settled"
           value={totalSettled.totalFormatted}
         />
-        {isGAMode ? (
-          <HeroMetricCard
-            title="Churned Wallets"
-            value={churnedWallets.toLocaleString()}
-            subtitle="All rails = TERMINATED"
-          />
-        ) : (
-          <HeroMetricCard
-            title="Settled (7d)"
-            value={settled7d.formatted}
-            subtitle="USDFC actually settled in the last 7 days"
-          />
-        )}
+        <HeroMetricCard
+          title="Churned Wallets"
+          value={churnedWallets.toLocaleString()}
+          subtitle="All rails = TERMINATED"
+        />
         <HeroMetricCard
           title="FIL Burned"
           value="--"

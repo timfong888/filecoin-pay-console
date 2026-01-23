@@ -48,8 +48,6 @@ export interface PayerDisplayExtended extends PayerDisplay {
   settledRaw: number;
   lockedRaw: number;
   runwayDays: number;
-  settled7d: number;
-  settled7dFormatted: string;
   isActive: boolean;
   hasActiveRail: boolean;
   hasPositiveLockupRate: boolean;
@@ -164,8 +162,6 @@ function transformAccountToPayerExtended(account: Account): PayerDisplayExtended
     isActive,
     hasActiveRail,
     hasPositiveLockupRate,
-    settled7d: 0,
-    settled7dFormatted: '-',
     totalDataSizeGB: 0,
     totalDataSizeFormatted: '-',
     proofStatus: 'none',
@@ -368,14 +364,4 @@ export async function enrichPayersWithPDP(payers: PayerDisplayExtended[]): Promi
       proofStatus,
     };
   });
-}
-
-/**
- * Enrich payers with settled 7d data.
- * Note: Per-payer 7d breakdown is not available in the current subgraph schema.
- */
-export async function enrichPayersWithSettled7d(payers: PayerDisplayExtended[]): Promise<PayerDisplayExtended[]> {
-  // Per-payer 7d data would require a timestamp field on Settlement type
-  // which is not currently available in the subgraph schema
-  return payers;
 }

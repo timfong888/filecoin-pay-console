@@ -7,7 +7,6 @@ import { generateDateRange } from './utils';
 import {
   fetchGlobalMetrics,
   fetchTotalSettled,
-  fetchSettled7d,
   fetchMonthlyRunRate,
   fetchDailySettled,
   fetchTotalLockedUSDFC,
@@ -23,10 +22,9 @@ import {
  */
 export async function fetchDashboardData() {
   // Use fetchActivePayersByDate() for chart to match hero metric definition
-  const [globalMetrics, totalSettled, settled7d, topPayers, runRate, activePayersByDate, dailySettledMap, activePayersData, totalLockedUSDFC] = await Promise.all([
+  const [globalMetrics, totalSettled, topPayers, runRate, activePayersByDate, dailySettledMap, activePayersData, totalLockedUSDFC] = await Promise.all([
     fetchGlobalMetrics(),
     fetchTotalSettled(),
-    fetchSettled7d(),
     fetchTopPayers(10),
     fetchMonthlyRunRate(),
     fetchActivePayersByDate(),
@@ -75,7 +73,6 @@ export async function fetchDashboardData() {
   return {
     globalMetrics,
     totalSettled,
-    settled7d,
     topPayers,
     runRate,
     // Active Payers: at least one ACTIVE rail AND lockupRate > 0
@@ -103,10 +100,9 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
     const effectiveEnd = endDate || now;
 
     // Use fetchActivePayersByDate() for chart to match hero metric definition
-    const [globalMetrics, totalSettled, settled7d, runRate, activePayersByDate, dailySettledMap, activePayersData] = await Promise.all([
+    const [globalMetrics, totalSettled, runRate, activePayersByDate, dailySettledMap, activePayersData] = await Promise.all([
       fetchGlobalMetrics(),
       fetchTotalSettled(),
-      fetchSettled7d(),
       fetchMonthlyRunRate(),
       fetchActivePayersByDate(),
       fetchDailySettled(),
@@ -182,8 +178,6 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
       settledTotal: totalSettled.total,
       settledFormatted: totalSettled.totalFormatted,
       settledGoalProgress,
-      settled7d: settled7d.total,
-      settled7dFormatted: settled7d.formatted,
       monthlyRunRate: runRate.monthly,
       monthlyRunRateFormatted: runRate.monthlyFormatted,
       annualizedRunRate: runRate.annualized,

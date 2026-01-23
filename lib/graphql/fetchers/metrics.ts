@@ -91,34 +91,6 @@ export async function fetchTotalSettled() {
 }
 
 /**
- * Fetch settled amount from the last 7 days using DailyTokenMetric.
- */
-export async function fetchSettled7d() {
-  // Calculate timestamp for 7 days ago (in seconds for BigInt)
-  const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
-
-  const data = await executeQuery<DailyTokenMetricsResponse>(
-    DAILY_TOKEN_METRICS_QUERY,
-    { first: 14, since: sevenDaysAgo.toString() },
-    { operation: 'fetchSettled7d' }
-  );
-
-  let totalSettled7d = BigInt(0);
-
-  for (const metric of data.dailyTokenMetrics) {
-    totalSettled7d += BigInt(metric.settledAmount);
-  }
-
-  const settled7dValue = weiToUSDC(totalSettled7d.toString());
-
-  return {
-    total: settled7dValue,
-    formatted: formatCurrency(settled7dValue),
-    settlementCount: data.dailyTokenMetrics.length,
-  };
-}
-
-/**
  * Fetch monthly run rate from active rails.
  * Monthly Run Rate = Σ(activeRails.paymentRate) × epochs/month
  */
