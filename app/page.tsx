@@ -6,6 +6,7 @@ import { DataSourcePanel } from "@/components/dashboard/DataSourcePanel";
 import { fetchDashboardData, fetchChurnedWalletsCount, formatChartDate, formatChartCurrency } from "@/lib/graphql/fetchers";
 import { batchResolveENS } from "@/lib/ens";
 import { isGAMode, features } from "@/lib/config/mode";
+import { AuctionStatsCharts } from "@/components/dashboard/AuctionStatsCharts";
 import {
   LineChart,
   Line,
@@ -273,6 +274,10 @@ export default function Dashboard() {
             definitionAnchor="fil-burned"
           />
         </div>
+
+        {/* Auction Stats Charts - Placeholder mockups (both modes) */}
+        {features.showAuctionStats && <AuctionStatsCharts />}
+
         {/* Top Payers Section - Prototype mode only */}
         {features.showTop10Tables && (
           <div className="space-y-4">
@@ -359,6 +364,9 @@ export default function Dashboard() {
           definitionAnchor="fil-burned"
         />
       </div>
+
+      {/* Auction Stats Charts - Placeholder mockups (both modes) */}
+      {features.showAuctionStats && <AuctionStatsCharts />}
 
       {/* Cumulative Line Charts - Prototype mode only */}
       {features.showCharts && chartData.length > 0 && (

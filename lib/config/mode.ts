@@ -20,6 +20,9 @@ export const features = {
   showTop10Tables: isPrototypeMode,
   showCharts: isPrototypeMode,
 
+  // Auction stats (placeholder charts) - show in both GA and prototype
+  showAuctionStats: true,
+
   // Metrics
   showSettled7d: isPrototypeMode,      // Prototype shows "Settled (7d)"
   showChurnedWallets: isGAMode,        // GA shows "Churned Wallets" instead
