@@ -881,14 +881,25 @@ function PayerListView() {
             enrichPayersWithSettled7d(payersData),
           ]);
 
-          // Merge enrichments
-          const mergedPayers = payersData.map((payer, i) => ({
-            ...payer,
-            ...enrichedWithPDP[i],
-            settled7d: enrichedWithSettled7d[i].settled7d,
-            settled7dFormatted: enrichedWithSettled7d[i].settled7dFormatted,
-          }));
-          setPayers(mergedPayers);
+          // Merge enrichments while preserving any resolved ENS names
+          // Note: We explicitly copy only PDP-specific fields to avoid overwriting ensName
+          // because spreading the whole object might have ensName: undefined which would overwrite
+          setPayers((currentPayers) =>
+            currentPayers.map((payer, i) => {
+              const pdpData = enrichedWithPDP[i];
+              const settled7dData = enrichedWithSettled7d[i];
+              return {
+                ...payer,
+                // Explicitly copy only PDP-specific fields
+                totalDataSizeGB: pdpData.totalDataSizeGB,
+                totalDataSizeFormatted: pdpData.totalDataSizeFormatted,
+                proofStatus: pdpData.proofStatus,
+                // Settled 7d data
+                settled7d: settled7dData.settled7d,
+                settled7dFormatted: settled7dData.settled7dFormatted,
+              };
+            })
+          );
         } catch (err) {
           console.error("Failed to enrich payers:", err);
         } finally {
