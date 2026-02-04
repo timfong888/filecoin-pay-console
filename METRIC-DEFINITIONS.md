@@ -153,11 +153,12 @@ The dashboard displays different metrics depending on build mode.
 - **Display:** Formatted as currency (e.g., "$1.23K", "$456.78")
 - **Sortable:** Yes
 
-### Settled (7d)
-- **Definition:** USDFC settled by this payer in the last 7 days
-- **Source:** `Settlement` events filtered by payer address and timestamp
-- **Formula:** `Σ(settlement.totalSettledAmount)` where `settlement.rail.payer.address == payerAddress AND timestamp >= now - 7 days`
-- **Display:** Formatted as currency
+### Claimable
+- **Definition:** USDFC that has accrued but hasn't been collected yet
+- **Source:** `Σ(userToken.payout)` from Goldsky subgraph
+- **Formula:** `Σ(account.userTokens.payout)` converted from wei (18 decimals) to USDFC
+- **Note:** This represents funds that payees can claim from their incoming rails. The subgraph pre-computes this value in the `payout` field.
+- **Display:** Formatted as currency (e.g., "$0.10", "$1.23")
 - **Sortable:** Yes
 
 ### Locked

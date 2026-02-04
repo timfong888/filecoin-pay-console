@@ -853,7 +853,7 @@ function PayerListView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortField, setSortField] = useState<"settled" | "settled7d" | "dataSize" | "locked" | "rails" | "runway" | "start">("settled");
+  const [sortField, setSortField] = useState<"settled" | "claimable" | "dataSize" | "locked" | "rails" | "runway" | "start">("settled");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [pdpLoading, setPdpLoading] = useState(false);
   const [fromDate, setFromDate] = useState(defaultDates.fromDate);
@@ -975,9 +975,9 @@ function PayerListView() {
         aVal = a.settledRaw || 0;
         bVal = b.settledRaw || 0;
         break;
-      case "settled7d":
-        aVal = a.settled7d || 0;
-        bVal = b.settled7d || 0;
+      case "claimable":
+        aVal = a.claimableRaw || 0;
+        bVal = b.claimableRaw || 0;
         break;
       case "dataSize":
         aVal = a.totalDataSizeGB || 0;
@@ -1013,7 +1013,7 @@ function PayerListView() {
     currentPage * itemsPerPage
   );
 
-  const handleSort = (field: "settled" | "settled7d" | "dataSize" | "locked" | "rails" | "runway" | "start") => {
+  const handleSort = (field: "settled" | "claimable" | "dataSize" | "locked" | "rails" | "runway" | "start") => {
     if (sortField === field) {
       setSortDirection(sortDirection === "desc" ? "asc" : "desc");
     } else {
@@ -1265,9 +1265,10 @@ function PayerListView() {
               </TableHead>
               <TableHead
                 className="font-medium cursor-pointer hover:bg-gray-100"
-                onClick={() => handleSort("settled7d")}
+                onClick={() => handleSort("claimable")}
+                title="Σ(payout) - Funds accrued, not yet collected"
               >
-                Settled (7d) {sortField === "settled7d" && (sortDirection === "desc" ? "↓" : "↑")}
+                Claimable {sortField === "claimable" && (sortDirection === "desc" ? "↓" : "↑")}
               </TableHead>
               <TableHead
                 className="font-medium cursor-pointer hover:bg-gray-100"
@@ -1345,7 +1346,7 @@ function PayerListView() {
                     )}
                   </TableCell>
                   <TableCell>{payer.settled}</TableCell>
-                  <TableCell>{payer.settled7dFormatted || "-"}</TableCell>
+                  <TableCell>{payer.claimable || "-"}</TableCell>
                   <TableCell>{payer.locked}</TableCell>
                   <TableCell>{payer.runway}</TableCell>
                   <TableCell>{payer.start}</TableCell>
