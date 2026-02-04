@@ -27,7 +27,9 @@ export {
   fetchDailyMetrics,
   fetchDailySettled,
   fetchTotalLockedUSDFC,
+  fetchARR,
 } from './metrics';
+export type { ARRResult } from './metrics';
 
 // Payer functions
 export {

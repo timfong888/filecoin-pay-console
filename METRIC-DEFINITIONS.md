@@ -27,6 +27,18 @@ The dashboard displays different metrics depending on build mode.
 - **Source:** Sum of `Rail.totalSettledAmount` across all rails with settlements
 - **Formula:** `Σ(rail.totalSettledAmount)` converted from wei (18 decimals) to USDFC
 
+#### ARR (Annualized Run Rate)
+- **Definition:** Annualized projection based on 4-week rolling average of settled USDFC
+- **Source:** `WeeklyTokenMetric.settledAmount` from Goldsky subgraph (last 4 complete weeks)
+- **Formula:** `(Week1 + Week2 + Week3 + Week4) / 4 * 52`
+- **Calculation Details:**
+  - Fetches last 5 weeks of `WeeklyTokenMetric` for USDFC
+  - Skips the most recent (potentially incomplete) week
+  - Sums the 4 preceding complete weeks
+  - Divides by 4 to get weekly average
+  - Multiplies by 52 to annualize
+- **Display:** Shows ARR value with weekly average in subtitle (e.g., "4-week avg: $39.25/wk")
+
 #### Churned Wallets
 - **Definition:** Count of payer wallets where ALL rails have been terminated
 - **Source:** `Account` entities from Goldsky subgraph
@@ -61,6 +73,19 @@ The dashboard displays different metrics depending on build mode.
 - **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
 - **Source:** Sum of `Rail.totalSettledAmount` across all rails with settlements
 - **Formula:** `Σ(rail.totalSettledAmount)` converted from wei (18 decimals) to USDFC
+
+#### ARR (Annualized Run Rate)
+- **Definition:** Annualized projection based on 4-week rolling average of settled USDFC
+- **Source:** `WeeklyTokenMetric.settledAmount` from Goldsky subgraph (last 4 complete weeks)
+- **Formula:** `(Week1 + Week2 + Week3 + Week4) / 4 * 52`
+- **Calculation Details:**
+  - Fetches last 5 weeks of `WeeklyTokenMetric` for USDFC
+  - Skips the most recent (potentially incomplete) week
+  - Sums the 4 preceding complete weeks
+  - Divides by 4 to get weekly average
+  - Multiplies by 52 to annualize
+- **Display:** Shows ARR value with weekly average in subtitle (e.g., "4-week avg: $39.25/wk")
+- **Note:** Same metric in both GA and Prototype modes. Useful for executive reporting and growth tracking.
 
 #### Settled (7d)
 - **Definition:** Total USDFC settled in the last 7 days (rolling window)

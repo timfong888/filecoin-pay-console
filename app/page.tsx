@@ -48,6 +48,16 @@ interface DashboardData {
     total: number;
     formatted: string;
   };
+  // ARR (Annualized Run Rate) based on 4-week rolling average
+  arr: {
+    fourWeekTotal: number;
+    weeklyAverage: number;
+    annualized: number;
+    annualizedFormatted: string;
+    weeklyAverageFormatted: string;
+    weeklyBreakdown: number[];
+    weeksUsed: number;
+  };
   // Active Payers: at least one ACTIVE rail AND lockupRate > 0
   activePayers: number;
   // Churned wallets (GA mode): payers where ALL rails are TERMINATED
@@ -253,6 +263,12 @@ export default function Dashboard() {
             value="--"
             definitionAnchor={isGAMode ? "usdfc-settled-cumulative" : "total-settled-usdfc"}
           />
+          <HeroMetricCard
+            title="ARR"
+            value="--"
+            subtitle="4-week avg: --/wk"
+            definitionAnchor="arr-annualized-run-rate"
+          />
           {!isGAMode && (
             <HeroMetricCard
               title="Settled (7d)"
@@ -320,7 +336,7 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { totalSettled, topPayers, settled7d, activePayers, churnedWallets, totalLockedUSDFC } = data;
+  const { totalSettled, topPayers, settled7d, activePayers, churnedWallets, totalLockedUSDFC, arr } = data;
 
   return (
     <div className="space-y-6">
@@ -342,6 +358,12 @@ export default function Dashboard() {
           title="USDFC Settled"
           value={totalSettled.totalFormatted}
           definitionAnchor={isGAMode ? "usdfc-settled-cumulative" : "total-settled-usdfc"}
+        />
+        <HeroMetricCard
+          title="ARR"
+          value={arr.annualizedFormatted}
+          subtitle={`4-week avg: ${arr.weeklyAverageFormatted}/wk`}
+          definitionAnchor="arr-annualized-run-rate"
         />
         {!isGAMode && (
           <HeroMetricCard

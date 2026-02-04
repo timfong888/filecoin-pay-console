@@ -365,3 +365,38 @@ export interface TotalLockedResponse {
     }>;
   }>;
 }
+
+// Weekly token metrics query (for ARR calculation)
+// Fetches weekly settled amounts for 4-week rolling average
+export const WEEKLY_TOKEN_METRICS_QUERY = gql`
+  query WeeklyTokenMetrics($first: Int!) {
+    weeklyTokenMetrics(
+      first: $first
+      where: { token_: { symbol: "USDFC" } }
+      orderBy: timestamp
+      orderDirection: desc
+    ) {
+      id
+      week
+      timestamp
+      settledAmount
+      token {
+        symbol
+      }
+    }
+  }
+`;
+
+export interface WeeklyTokenMetric {
+  id: string;
+  week: string;
+  timestamp: string;
+  settledAmount: string;
+  token: {
+    symbol: string;
+  };
+}
+
+export interface WeeklyTokenMetricsResponse {
+  weeklyTokenMetrics: WeeklyTokenMetric[];
+}

@@ -12,12 +12,14 @@ import {
   DAILY_TOKEN_METRICS_QUERY,
   ALL_DAILY_TOKEN_METRICS_QUERY,
   TOTAL_LOCKED_QUERY,
+  WEEKLY_TOKEN_METRICS_QUERY,
   GlobalMetricsResponse,
   TotalSettledResponse,
   ActiveRailsResponse,
   DailyMetricsResponse,
   DailyTokenMetricsResponse,
   TotalLockedResponse,
+  WeeklyTokenMetricsResponse,
 } from '../queries';
 import { weiToUSDC, formatCurrency, secondsToMs } from './utils';
 import { logError } from '../../errors';
@@ -237,5 +239,66 @@ export async function fetchTotalLockedUSDFC() {
   return {
     total: totalLockedValue,
     formatted: formatCurrency(totalLockedValue),
+  };
+}
+
+/**
+ * ARR (Annualized Run Rate) result interface.
+ */
+export interface ARRResult {
+  fourWeekTotal: number;
+  weeklyAverage: number;
+  annualized: number;
+  annualizedFormatted: string;
+  weeklyAverageFormatted: string;
+  weeklyBreakdown: number[];
+  weeksUsed: number;
+}
+
+/**
+ * Fetch ARR (Annualized Run Rate) based on 4-week rolling average.
+ * ARR = (sum of last 4 complete weeks) / 4 * 52
+ *
+ * Skips the most recent week as it may be incomplete, then takes the next 4 weeks.
+ */
+export async function fetchARR(): Promise<ARRResult> {
+  const data = await executeQuery<WeeklyTokenMetricsResponse>(
+    WEEKLY_TOKEN_METRICS_QUERY,
+    { first: 6 }, // Fetch 6 to ensure we have 4 complete weeks after skipping incomplete
+    { operation: 'fetchARR' }
+  );
+
+  const weeks = data.weeklyTokenMetrics;
+
+  // Skip the first (most recent/potentially incomplete) week, take next 4
+  const completeWeeks = weeks.slice(1, 5);
+
+  // Calculate 4-week total
+  let fourWeekTotal = BigInt(0);
+  const weeklyBreakdown: number[] = [];
+
+  for (const week of completeWeeks) {
+    const amount = BigInt(week.settledAmount);
+    fourWeekTotal += amount;
+    weeklyBreakdown.push(weiToUSDC(amount.toString()));
+  }
+
+  const weeksUsed = completeWeeks.length;
+  const fourWeekTotalUSDC = weiToUSDC(fourWeekTotal.toString());
+
+  // Calculate weekly average (handle case where we have fewer than 4 weeks)
+  const weeklyAverage = weeksUsed > 0 ? fourWeekTotalUSDC / weeksUsed : 0;
+
+  // Annualize: weekly average * 52 weeks
+  const annualized = weeklyAverage * 52;
+
+  return {
+    fourWeekTotal: fourWeekTotalUSDC,
+    weeklyAverage,
+    annualized,
+    annualizedFormatted: formatCurrency(annualized),
+    weeklyAverageFormatted: formatCurrency(weeklyAverage),
+    weeklyBreakdown,
+    weeksUsed,
   };
 }
