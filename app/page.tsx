@@ -269,14 +269,6 @@ export default function Dashboard() {
             subtitle="4-week avg: --/wk"
             definitionAnchor="arr-annualized-run-rate"
           />
-          {!isGAMode && (
-            <HeroMetricCard
-              title="Settled (7d)"
-              value="--"
-              subtitle="USDFC actually settled in the last 7 days"
-              definitionAnchor="settled-7d"
-            />
-          )}
           <HeroMetricCard
             title="Churned Wallets"
             value="--"
@@ -336,7 +328,7 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { totalSettled, topPayers, settled7d, activePayers, churnedWallets, totalLockedUSDFC, arr } = data;
+  const { totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC, arr } = data;
 
   return (
     <div className="space-y-6">
@@ -365,14 +357,6 @@ export default function Dashboard() {
           subtitle={`4-week avg: ${arr.weeklyAverageFormatted}/wk`}
           definitionAnchor="arr-annualized-run-rate"
         />
-        {!isGAMode && (
-          <HeroMetricCard
-            title="Settled (7d)"
-            value={settled7d.formatted}
-            subtitle="USDFC actually settled in the last 7 days"
-            definitionAnchor="settled-7d"
-          />
-        )}
         <HeroMetricCard
           title="Churned Wallets"
           value={churnedWallets.toLocaleString()}
