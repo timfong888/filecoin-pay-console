@@ -186,12 +186,190 @@ The dashboard displays different metrics depending on build mode.
 
 ---
 
+## Storage Metrics (FWSS Subgraph)
+
+These metrics track storage activity on the Filecoin Warm Storage Service (FWSS) contract. They are analogous to metrics shown on [numbers.filecoindataportal.xyz](https://numbers.filecoindataportal.xyz/).
+
+### Total Active Datasets
+- **Definition:** Count of storage datasets currently in "Active" status
+- **Source:** `GlobalMetric.totalActiveDataSets` from FWSS subgraph
+- **Formula:** Count of `DataSet` entities where `status = "Active"`
+- **Note:** A dataset becomes active when registered via `DataSetRegistered` event and transitions to inactive on `DataSetRemoved`
+
+### Total Pieces
+- **Definition:** Count of all data pieces across all datasets
+- **Source:** `GlobalMetric.totalPieces` from FWSS subgraph
+- **Formula:** `Σ(dataSet.totalPieces)` across all datasets
+- **Note:** Pieces are added via `PieceAdded` events and represent individual data chunks with CIDs
+
+### Total Data Stored
+- **Definition:** Cumulative size of all pieces in bytes
+- **Source:** `GlobalMetric.totalStorageBytes` from FWSS subgraph
+- **Formula:** `Σ(piece.size)` across all pieces
+- **Display:** Convert to human-readable format (KB, MB, GB, TB)
+- **Conversion:** `totalStorageBytes / 1024³` for GB, `/ 1024⁴` for TB
+
+### Total Faults
+- **Definition:** Count of proving fault events recorded
+- **Source:** `GlobalMetric.totalFaults` from FWSS subgraph
+- **Formula:** Count of `Fault` entities
+- **Note:** Faults are recorded when storage providers miss proving deadlines
+
+---
+
+## FWSS Entity Definitions
+
+### DataSet
+Represents a storage dataset registered on FWSS, linking a payer (client) to a payee (storage provider).
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `dataSetId` | BigInt | On-chain dataset identifier |
+| `payer` | Account | Client paying for storage |
+| `payee` | Account | Storage provider receiving payment |
+| `pdpRailId` | BigInt | Linked Filecoin Pay rail for PDP payments |
+| `cacheMissRailId` | BigInt? | Optional rail for cache miss fees |
+| `cdnRailId` | BigInt? | Optional rail for CDN fees |
+| `totalPieces` | Int | Count of pieces in dataset |
+| `totalSize` | BigInt | Total bytes stored |
+| `withCDN` | Boolean | CDN service enabled |
+| `withIPFSIndexing` | Boolean | IPFS indexing enabled |
+| `status` | Enum | Active, Removed |
+| `createdAt` | BigInt | Creation timestamp |
+
+### Piece
+Represents an individual data chunk within a dataset.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `pieceId` | BigInt | Index within dataset |
+| `pieceCID` | String | Piece commitment (CAR CID) |
+| `ipfsRootCID` | String? | IPFS root for lookups |
+| `size` | BigInt | Piece size in bytes |
+| `dataSet` | DataSet | Parent dataset |
+| `status` | Enum | Active, Removed |
+
+### GlobalMetric
+Singleton entity (id="global") containing aggregate metrics.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `totalDataSets` | Int | All datasets ever created |
+| `totalActiveDataSets` | Int | Currently active datasets |
+| `totalPieces` | Int | All pieces across datasets |
+| `totalStorageBytes` | BigInt | Sum of all piece sizes |
+| `totalFaults` | Int | Fault events recorded |
+| `uniquePayers` | Int | Distinct payer addresses |
+| `uniquePayees` | Int | Distinct payee addresses |
+
+### DailyMetric
+Time-series metrics for trending analysis.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `date` | String | Date in YYYY-MM-DD format |
+| `datasetsCreated` | Int | New datasets that day |
+| `piecesAdded` | Int | New pieces that day |
+| `storageAddedBytes` | BigInt | Bytes added that day |
+| `faultsRecorded` | Int | Faults recorded that day |
+
+---
+
+## FWSS Sample Queries
+
+### Global Storage Metrics
+```graphql
+{
+  globalMetric(id: "global") {
+    totalDataSets
+    totalActiveDataSets
+    totalPieces
+    totalStorageBytes
+    totalFaults
+    uniquePayers
+    uniquePayees
+  }
+}
+```
+
+### Recent Datasets
+```graphql
+{
+  dataSets(first: 10, orderBy: createdAt, orderDirection: desc) {
+    dataSetId
+    payer { id }
+    payee { id }
+    totalPieces
+    totalSize
+    status
+    pdpRailId
+    withCDN
+    withIPFSIndexing
+  }
+}
+```
+
+### Storage by Payer
+```graphql
+query PayerStorage($payer: ID!) {
+  account(id: $payer) {
+    totalStorageAsPayer
+    totalPiecesAsPayer
+    datasetCountAsPayer
+    datasetsAsPayer(first: 10, orderBy: createdAt, orderDirection: desc) {
+      dataSetId
+      totalPieces
+      totalSize
+      status
+    }
+  }
+}
+```
+
+### IPFS CID to Piece CID Lookup
+```graphql
+query FindByIPFS($ipfsCid: String!) {
+  pieces(where: { ipfsRootCID: $ipfsCid }) {
+    pieceCID
+    ipfsRootCID
+    size
+    dataSet {
+      dataSetId
+      payer { id }
+      payee { id }
+    }
+  }
+}
+```
+
+### Daily Storage Trends
+```graphql
+{
+  dailyMetrics(first: 30, orderBy: timestamp, orderDirection: desc) {
+    date
+    datasetsCreated
+    piecesAdded
+    storageAddedBytes
+    faultsRecorded
+  }
+}
+```
+
+---
+
 ## Data Sources
 
 ### Filecoin Pay Subgraph (Goldsky)
 - **Endpoint:** `https://api.goldsky.com/api/public/project_cmj7soo5uf4no01xw0tij21a1/subgraphs/filecoin-pay-mainnet/1.1.0/gn`
 - **Entities Used:** Account, Rail, Settlement, PaymentsMetric, UserToken, Token
 - **Purpose:** Payment rails, settlements, account balances
+
+### FWSS Subgraph (Goldsky)
+- **Endpoint:** `https://api.goldsky.com/api/public/project_cmb9tuo8r1xdw01ykb8uidk7h/subgraphs/fwss-mainnet-tim/1.0.0/gn`
+- **Contract:** `0x8408502033C418E1bbC97cE9ac48E5528F371A9f` (FilecoinWarmStorageService)
+- **Entities Used:** DataSet, Piece, Account, Fault, GlobalMetric, DailyMetric
+- **Purpose:** Storage datasets, pieces, and aggregate storage metrics
+- **Source Code:** [timfong888/fwss-subgraph](https://github.com/timfong888/fwss-subgraph)
 
 ### PDP Explorer Subgraph (Goldsky)
 - **Endpoint:** `https://api.goldsky.com/api/public/project_cmdfaaxeuz6us01u359yjdctw/subgraphs/pdp-explorer/mainnet311/gn`
@@ -210,7 +388,10 @@ The dashboard displays different metrics depending on build mode.
 | `EPOCHS_PER_24_HOURS` | 2880 | Used for proof freshness check |
 | `FILECOIN_GENESIS_TIMESTAMP` | 1598306400 | 2020-08-25 00:00:00 UTC |
 | `TOKEN_DECIMALS` | 18 | USDFC decimal places |
+| `BYTES_PER_KB` | 1024 | 1024¹ |
+| `BYTES_PER_MB` | 1048576 | 1024² |
 | `BYTES_PER_GB` | 1073741824 | 1024³ |
+| `BYTES_PER_TB` | 1099511627776 | 1024⁴ |
 
 ---
 
