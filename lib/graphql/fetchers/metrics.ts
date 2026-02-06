@@ -12,14 +12,14 @@ import {
   DAILY_TOKEN_METRICS_QUERY,
   ALL_DAILY_TOKEN_METRICS_QUERY,
   TOTAL_LOCKED_QUERY,
-  WEEKLY_TOKEN_METRICS_QUERY,
+  DAILY_TOKEN_METRICS_FOR_ARR_QUERY,
   GlobalMetricsResponse,
   TotalSettledResponse,
   ActiveRailsResponse,
   DailyMetricsResponse,
   DailyTokenMetricsResponse,
   TotalLockedResponse,
-  WeeklyTokenMetricsResponse,
+  DailyTokenMetricsForARRResponse,
 } from '../queries';
 import { weiToUSDC, formatCurrency, secondsToMs } from './utils';
 import { logError } from '../../errors';
@@ -259,31 +259,37 @@ export interface ARRResult {
  * Fetch ARR (Annualized Run Rate) based on 4-week rolling average.
  * ARR = (sum of last 4 complete weeks) / 4 * 52
  *
+ * Uses dailyTokenMetrics and aggregates by week client-side.
  * Skips the most recent week as it may be incomplete, then takes the next 4 weeks.
  */
 export async function fetchARR(): Promise<ARRResult> {
-  const data = await executeQuery<WeeklyTokenMetricsResponse>(
-    WEEKLY_TOKEN_METRICS_QUERY,
-    { first: 6 }, // Fetch 6 to ensure we have 4 complete weeks after skipping incomplete
+  // Fetch 35 days to ensure we have 4 complete weeks + buffer
+  const data = await executeQuery<DailyTokenMetricsForARRResponse>(
+    DAILY_TOKEN_METRICS_FOR_ARR_QUERY,
+    { first: 35 },
     { operation: 'fetchARR' }
   );
 
-  const weeks = data.weeklyTokenMetrics;
+  const days = data.dailyTokenMetrics;
 
-  // Skip the first (most recent/potentially incomplete) week, take next 4
-  const completeWeeks = weeks.slice(1, 5);
+  // Group by week number (using Unix timestamp / seconds per week)
+  const SECONDS_PER_WEEK = 7 * 24 * 60 * 60;
+  const weeklyTotals = new Map<number, bigint>();
 
-  // Calculate 4-week total
-  let fourWeekTotal = BigInt(0);
-  const weeklyBreakdown: number[] = [];
-
-  for (const week of completeWeeks) {
-    const amount = BigInt(week.settledAmount);
-    fourWeekTotal += amount;
-    weeklyBreakdown.push(weiToUSDC(amount.toString()));
+  for (const day of days) {
+    const weekNum = Math.floor(parseInt(day.timestamp) / SECONDS_PER_WEEK);
+    const current = weeklyTotals.get(weekNum) || BigInt(0);
+    weeklyTotals.set(weekNum, current + BigInt(day.settledAmount));
   }
 
-  const weeksUsed = completeWeeks.length;
+  // Sort weeks descending, skip most recent (potentially incomplete), take next 4
+  const sortedWeeks = Array.from(weeklyTotals.entries())
+    .sort((a, b) => b[0] - a[0])
+    .slice(1, 5);
+
+  // Calculate 4-week total
+  const fourWeekTotal = sortedWeeks.reduce((sum, [, amt]) => sum + amt, BigInt(0));
+  const weeksUsed = sortedWeeks.length;
   const fourWeekTotalUSDC = weiToUSDC(fourWeekTotal.toString());
 
   // Calculate weekly average (handle case where we have fewer than 4 weeks)
@@ -291,6 +297,9 @@ export async function fetchARR(): Promise<ARRResult> {
 
   // Annualize: weekly average * 52 weeks
   const annualized = weeklyAverage * 52;
+
+  // Build weekly breakdown for display
+  const weeklyBreakdown = sortedWeeks.map(([, amt]) => weiToUSDC(amt.toString()));
 
   return {
     fourWeekTotal: fourWeekTotalUSDC,

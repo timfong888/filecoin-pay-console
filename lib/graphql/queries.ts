@@ -366,18 +366,18 @@ export interface TotalLockedResponse {
   }>;
 }
 
-// Weekly token metrics query (for ARR calculation)
-// Fetches weekly settled amounts for 4-week rolling average
-export const WEEKLY_TOKEN_METRICS_QUERY = gql`
-  query WeeklyTokenMetrics($first: Int!) {
-    weeklyTokenMetrics(
+// Daily token metrics query (for ARR calculation)
+// Fetches daily settled amounts for 4-week rolling average, aggregated client-side
+export const DAILY_TOKEN_METRICS_FOR_ARR_QUERY = gql`
+  query DailyTokenMetricsForARR($first: Int!) {
+    dailyTokenMetrics(
       first: $first
       where: { token_: { symbol: "USDFC" } }
       orderBy: timestamp
       orderDirection: desc
     ) {
       id
-      week
+      date
       timestamp
       settledAmount
       token {
@@ -387,9 +387,9 @@ export const WEEKLY_TOKEN_METRICS_QUERY = gql`
   }
 `;
 
-export interface WeeklyTokenMetric {
+export interface DailyTokenMetricForARR {
   id: string;
-  week: string;
+  date: string;
   timestamp: string;
   settledAmount: string;
   token: {
@@ -397,6 +397,6 @@ export interface WeeklyTokenMetric {
   };
 }
 
-export interface WeeklyTokenMetricsResponse {
-  weeklyTokenMetrics: WeeklyTokenMetric[];
+export interface DailyTokenMetricsForARRResponse {
+  dailyTokenMetrics: DailyTokenMetricForARR[];
 }
