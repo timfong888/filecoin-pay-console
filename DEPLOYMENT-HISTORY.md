@@ -1,5 +1,22 @@
 # Deployment History
 
+## v0.37.1-prototype - 2026-02-06
+
+**Changes:**
+- Fix: Use `dailyTokenMetrics` for ARR calculation instead of non-existent `weeklyTokenMetrics`
+- Dashboard now loads real data instead of falling back to mock data
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeigcanhqijvvtxiw4w7bb4p5yzq62rruycaalnmezacwoqray6kbuq`)
+- Preview: https://bafybeigcanhqijvvtxiw4w7bb4p5yzq62rruycaalnmezacwoqray6kbuq.ipfs.dweb.link
+- Git Tag: [v0.37.1-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.37.1-prototype)
+- Commit: [bd4a653](https://github.com/timfong888/filecoin-pay-console/commit/bd4a653)
+
+**Related Issues:**
+- [#61](https://github.com/timfong888/filecoin-pay-console/issues/61) - Debug subgraph query error
+
+---
+
 ## v0.35.0-prototype / v0.32.0-ga - 2026-01-23
 
 **Changes:**
