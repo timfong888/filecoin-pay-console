@@ -113,6 +113,137 @@ The dashboard displays different metrics depending on build mode.
 
 ---
 
+## Payment Types
+
+Filecoin Pay supports two distinct payment mechanisms: **Rate-Based (Ratable)** payments for ongoing services and **One-Time** payments for fixed amounts.
+
+### Rate-Based (Ratable) Payments
+
+Continuous streaming payments calculated per Filecoin epoch. Used for ongoing services like storage.
+
+| Field | Description |
+|-------|-------------|
+| `paymentRate` | Tokens per epoch (> 0) |
+| `lockupFixed` | Always 0 |
+| `state` | `ACTIVE` while streaming |
+
+- **Mechanism:** Operator sets `paymentRate` via `modifyRailPayment`. Funds stream continuously from payer's locked balance to payee based on elapsed epochs.
+- **Settlement:** `totalSettledAmount` grows over time as: `paymentRate × elapsed_epochs`
+- **Lockup:** Dynamic lockup calculated as `paymentRate × lockupPeriod`, securing future payments
+
+### One-Time Payments
+
+Fixed, pre-allocated payments for single transactions. Used for termination fees, cache miss fees, or other discrete charges.
+
+| Field | Description |
+|-------|-------------|
+| `paymentRate` | Always 0 |
+| `lockupFixed` | Pre-allocated fixed amount (> 0) |
+| `state` | `ZERORATE` |
+
+- **Mechanism:** Operator allocates funds via `modifyRailLockup` by setting `lockupFixed`, then executes payment via `modifyRailPayment` with `oneTimePayment` parameter
+- **Settlement:** `totalSettledAmount` reflects the one-time payment when claimed
+- **Lockup:** Fixed amount (`lockupFixed`) reserved for the one-time payment
+
+### Rail States
+
+| State | Description | Payment Type |
+|-------|-------------|--------------|
+| `ACTIVE` | Rail actively streaming payments | Rate-Based |
+| `ZERORATE` | Rail with zero rate, holds fixed lockup | One-Time |
+| `TERMINATED` | Rail ended, no more payments | Either |
+| `FINALIZED` | Final settlement complete | Either |
+
+### Schema: Rail Entity (Payment Fields)
+
+```graphql
+type Rail {
+  railId: BigInt!
+  paymentRate: BigInt!      # Tokens per epoch (0 for one-time)
+  lockupFixed: BigInt!      # Fixed lockup amount (0 for rate-based)
+  lockupPeriod: BigInt!     # Lockup window in epochs
+  totalSettledAmount: BigInt! # Cumulative settled (both types)
+  state: RailState!         # ACTIVE, ZERORATE, TERMINATED, FINALIZED
+  # ... other fields
+}
+```
+
+### Queries
+
+#### All One-Time Payment Rails (ZERORATE)
+```graphql
+{
+  rails(where: { paymentRate: "0" }, first: 100) {
+    railId
+    lockupFixed
+    totalSettledAmount
+    state
+    payer { address }
+    payee { address }
+  }
+}
+```
+
+#### Active Rate-Based Rails
+```graphql
+{
+  rails(where: { paymentRate_gt: "0", state: ACTIVE }, first: 100) {
+    railId
+    paymentRate
+    totalSettledAmount
+    payer { address }
+    payee { address }
+  }
+}
+```
+
+#### Summary Statistics (Current Mainnet)
+```graphql
+# One-time payments summary
+{
+  zeroRateRails: rails(where: { paymentRate: "0" }) {
+    lockupFixed
+    totalSettledAmount
+    state
+  }
+}
+```
+
+### Current State (Mainnet)
+
+| Metric | Value |
+|--------|-------|
+| Total ZERORATE Rails | 122 |
+| Active ZERORATE Rails | 98 |
+| Terminated ZERORATE Rails | 24 |
+| Total lockupFixed | ~51.62 USDFC |
+| Total Settled (One-Time) | 0 USDFC |
+
+**Note:** One-time payments are set up but not yet claimed/settled. The `lockupFixed` amount represents pending one-time payments that will move to `totalSettledAmount` when executed.
+
+### Impact on Total Settled
+
+The **USDFC Settled (Cumulative)** metric already captures BOTH payment types:
+
+```
+Total Settled = Σ(rail.totalSettledAmount) for ALL rails
+             = Rate-Based Settled + One-Time Settled
+```
+
+Currently, all settled amounts come from rate-based payments since no one-time payments have been claimed yet. When one-time payments are executed, they will automatically be included in the total.
+
+### Proposed Breakdown Metric
+
+To provide visibility into payment composition, consider adding:
+
+| Metric | Definition | Query |
+|--------|------------|-------|
+| **One-Time Pending** | Total lockupFixed in ZERORATE rails | `Σ(rail.lockupFixed) where paymentRate = 0` |
+| **One-Time Settled** | Settled from ZERORATE rails | `Σ(rail.totalSettledAmount) where paymentRate = 0` |
+| **Rate-Based Settled** | Settled from ACTIVE rails | `Σ(rail.totalSettledAmount) where paymentRate > 0` |
+
+---
+
 ## Payer Accounts Table Columns
 
 ### Address
@@ -360,7 +491,7 @@ query FindByIPFS($ipfsCid: String!) {
 ## Data Sources
 
 ### Filecoin Pay Subgraph (Goldsky)
-- **Endpoint:** `https://api.goldsky.com/api/public/project_cmj7soo5uf4no01xw0tij21a1/subgraphs/filecoin-pay-mainnet/1.1.0/gn`
+- **Endpoint:** `https://api.goldsky.com/api/public/project_cmb9tuo8r1xdw01ykb8uidk7h/subgraphs/filecoin-pay-mainnet-tim/1.2.0/gn`
 - **Entities Used:** Account, Rail, Settlement, PaymentsMetric, UserToken, Token
 - **Purpose:** Payment rails, settlements, account balances
 
