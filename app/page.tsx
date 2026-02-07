@@ -262,7 +262,7 @@ export default function Dashboard() {
           <HeroMetricCard
             title="Locked USDFC"
             value="--"
-            subtitle="Total locked across all accounts"
+            subtitle="Streaming + fixed lockup"
             definitionAnchor="locked-usdfc"
           />
           <HeroMetricCard
@@ -281,12 +281,6 @@ export default function Dashboard() {
             value="--"
             subtitle="All rails = TERMINATED"
             definitionAnchor="churned-wallets"
-          />
-          <HeroMetricCard
-            title="Fixed Lockup Pending"
-            value="--"
-            subtitle="One-time payment rails"
-            definitionAnchor="fixed-lockup-pending"
           />
         </div>
 
@@ -350,7 +344,7 @@ export default function Dashboard() {
         <HeroMetricCard
           title="Locked USDFC"
           value={totalLockedUSDFC.formatted}
-          subtitle="Total locked across all accounts"
+          subtitle="Streaming + fixed lockup"
           definitionAnchor="locked-usdfc"
         />
         <HeroMetricCard
@@ -369,12 +363,6 @@ export default function Dashboard() {
           value={churnedWallets.toLocaleString()}
           subtitle="All rails = TERMINATED"
           definitionAnchor="churned-wallets"
-        />
-        <HeroMetricCard
-          title="Fixed Lockup Pending"
-          value={fixedLockupPending.formatted}
-          subtitle={`${fixedLockupPending.railCount} one-time rails`}
-          definitionAnchor="fixed-lockup-pending"
         />
       </div>
 

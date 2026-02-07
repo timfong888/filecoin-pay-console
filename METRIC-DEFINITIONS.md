@@ -6,31 +6,6 @@ This document defines the metrics displayed in the Filecoin Pay Console dashboar
 
 The dashboard displays different metrics depending on build mode.
 
-### Metric Relationships
-
-**Locked USDFC** and **Fixed Lockup Pending** are related but queried differently:
-
-```
-Locked USDFC (contract-level)
-├── Streaming: Σ(paymentRate × lockupPeriod) for ACTIVE rails
-└── Fixed: Σ(lockupFixed) for ZERORATE rails ← conceptually = Fixed Lockup Pending
-```
-
-| Metric | Data Source | Updated When |
-|--------|-------------|--------------|
-| Locked USDFC | Contract event (`AccountLockupSettled`) | On settlement, lockup modification |
-| Fixed Lockup Pending | Rail entity query | Real-time from indexed rails |
-
-**Why they may not match exactly:**
-- Locked USDFC reflects contract state at last settlement event
-- Fixed Lockup Pending queries current rail data directly
-- Terminated rails may have unreleased lockup still in account-level total
-- Timing: account-level updates lag behind rail-level changes until next settlement
-
-**Expected relationship:** Fixed Lockup Pending ≤ Locked USDFC (it's the one-time portion of total lockup)
-
----
-
 ### GA Mode Metrics
 
 #### Active Wallets
@@ -46,12 +21,13 @@ Locked USDFC (contract-level)
 - **Source:** `Account.userTokens.lockupCurrent` from Goldsky subgraph (emitted by Payments contract `AccountLockupSettled` event)
 - **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals)
 - **Contract Formula:** `lockupCurrent = Σ(rail.lockupFixed + rail.paymentRate × rail.lockupPeriod)` per account
-- **Note:** This is the canonical on-chain value. Fixed Lockup Pending queries rail-level `lockupFixed` directly, which may have minor timing differences.
+- **Includes:** Both streaming lockup (rate-based rails) AND fixed lockup (one-time payment rails)
 
 #### USDFC Settled (Cumulative)
 - **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
 - **Source:** Sum of `Rail.totalSettledAmount` across all rails with settlements
 - **Formula:** `Σ(rail.totalSettledAmount)` converted from wei (18 decimals) to USDFC
+- **Includes:** Both streaming settlements (rate-based rails) AND one-time payment settlements
 
 #### ARR (Annualized Run Rate)
 - **Definition:** Annualized projection based on 4-week rolling average of settled USDFC
@@ -73,24 +49,6 @@ Locked USDFC (contract-level)
   - Has created at least 1 rail (was previously active)
   - ALL rails have `state = "Terminated"` (no active or finalized rails)
 
-#### Fixed Lockup Pending
-- **Definition:** Total USDFC pre-allocated in one-time payment rails awaiting settlement
-- **Source:** `Rail.lockupFixed` and `Rail.totalSettledAmount` where `Rail.paymentRate = 0` from Goldsky subgraph
-- **Formula:** `Σ(rail.lockupFixed - rail.totalSettledAmount)` where `rail.paymentRate = "0"` and `rail.lockupFixed > 0`
-- **Relationship to Locked USDFC:** Queries rail-level data directly. Locked USDFC uses contract-emitted `lockupCurrent` which includes `lockupFixed` in its calculation.
-- **Subtitle:** Shows count of one-time rails (e.g., "122 one-time rails")
-
-**Subgraph Query:**
-```graphql
-{
-  rails(first: 1000, where: { paymentRate: "0", lockupFixed_gt: "0" }) {
-    id
-    lockupFixed
-    totalSettledAmount
-  }
-}
-```
-
 ### Prototype Mode Metrics
 
 #### Unique Payers
@@ -103,12 +61,14 @@ Locked USDFC (contract-level)
 - **Source:** `Account.userTokens.lockupCurrent` from Goldsky subgraph (emitted by Payments contract `AccountLockupSettled` event)
 - **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals)
 - **Contract Formula:** `lockupCurrent = Σ(rail.lockupFixed + rail.paymentRate × rail.lockupPeriod)` per account
+- **Includes:** Both streaming lockup (rate-based rails) AND fixed lockup (one-time payment rails)
 - **Note:** Same metric as GA Mode.
 
 #### Total Settled (USDFC)
 - **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
 - **Source:** Sum of `Rail.totalSettledAmount` across all rails with settlements
 - **Formula:** `Σ(rail.totalSettledAmount)` converted from wei (18 decimals) to USDFC
+- **Includes:** Both streaming settlements (rate-based rails) AND one-time payment settlements
 
 #### ARR (Annualized Run Rate)
 - **Definition:** Annualized projection based on 4-week rolling average of settled USDFC
@@ -137,14 +97,6 @@ Locked USDFC (contract-level)
   - Has created at least 1 rail (was previously active)
   - ALL rails have `state = "Terminated"` (no active or finalized rails)
 - **Note:** Same metric as GA Mode. Added to Prototype mode for complete visibility.
-
-#### Fixed Lockup Pending
-- **Definition:** Total USDFC pre-allocated in one-time payment rails awaiting settlement
-- **Source:** `Rail.lockupFixed` and `Rail.totalSettledAmount` where `Rail.paymentRate = 0` from Goldsky subgraph
-- **Formula:** `Σ(rail.lockupFixed - rail.totalSettledAmount)` where `rail.paymentRate = "0"` and `rail.lockupFixed > 0`
-- **Relationship to Locked USDFC:** Queries rail-level data directly. Locked USDFC uses contract-emitted `lockupCurrent` which includes `lockupFixed` in its calculation.
-- **Subtitle:** Shows count of one-time rails (e.g., "122 one-time rails")
-- **Note:** Same metric as GA Mode.
 
 ---
 
