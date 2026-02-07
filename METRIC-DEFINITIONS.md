@@ -62,12 +62,6 @@ The dashboard displays different metrics depending on build mode.
 - **Source:** Sum of `Rail.totalSettledAmount` across all rails with settlements
 - **Formula:** `Σ(rail.totalSettledAmount)` converted from wei (18 decimals) to USDFC
 
-#### Settled (7d)
-- **Definition:** Total USDFC settled in the last 7 days (rolling window)
-- **Source:** `Settlement` events from Goldsky subgraph filtered by timestamp
-- **Formula:** `Σ(settlement.totalSettledAmount)` where `settlement.settledUpto >= (now - 7 days)`
-- **Note:** This is actual settlement activity, not projected
-
 #### FIL Burned
 - **Definition:** Total FIL burned from three sources:
   1. Settling USDFC
@@ -85,10 +79,6 @@ The dashboard displays different metrics depending on build mode.
 - **Definition:** The wallet address of the payer account
 - **Display:** Truncated address (`0x1234...abcd`) or ENS name if resolved
 
-### Rails
-- **Definition:** Count of payment rails created by this payer
-- **Source:** `account.payerRails.length`
-- **Sortable:** Yes
 
 ### Data Size
 - **Definition:** Total data size in GB across all payees' PDP proof sets
@@ -119,12 +109,8 @@ The dashboard displays different metrics depending on build mode.
 - **Display:** Formatted as currency (e.g., "$1.23K", "$456.78")
 - **Sortable:** Yes
 
-### Settled (7d)
-- **Definition:** USDFC settled by this payer in the last 7 days
-- **Source:** `Settlement` events filtered by payer address and timestamp
-- **Formula:** `Σ(settlement.totalSettledAmount)` where `settlement.rail.payer.address == payerAddress AND timestamp >= now - 7 days`
-- **Display:** Formatted as currency
-- **Sortable:** Yes
+### Total Claimable
+{replace this with the formal definition from code}
 
 ### Locked
 - **Definition:** Total USDFC currently locked in the payer's account for future payments
@@ -163,6 +149,9 @@ The dashboard displays different metrics depending on build mode.
 - **Entities Used:** Provider
 - **Purpose:** Storage provider proof status and data sizes
 - **Correlation Key:** `Provider.address` matches `Rail.payee.address`
+
+### FWSS (Goldsky)
+{fill this in based on code}
 
 ---
 
