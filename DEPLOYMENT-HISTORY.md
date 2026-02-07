@@ -1,5 +1,24 @@
 # Deployment History
 
+## v0.37.2-prototype - 2026-02-07
+
+**Changes:**
+- Fix: Payee page hero section now shows actual values instead of "--"
+- Calculate payee-specific total from loaded data instead of global query
+- Rename metric to "Total Received (USDFC)" for clarity (net amount after fees)
+- Remove dependency on `fetchTotalSettled()` which was failing
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeic7pfmecysf7f6w7zbq2cnswkb4zdyzgr45nkrbufvtchcbuz7sie`)
+- Preview: https://bafybeic7pfmecysf7f6w7zbq2cnswkb4zdyzgr45nkrbufvtchcbuz7sie.ipfs.dweb.link
+- Git Tag: [v0.37.2-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.37.2-prototype)
+- Commit: [9af1a9f](https://github.com/timfong888/filecoin-pay-console/commit/9af1a9f)
+
+**Related Issues:**
+- [#66](https://github.com/timfong888/filecoin-pay-console/issues/66) - Debug: why are the values in the Payee Page hero section empty
+
+---
+
 ## v0.37.1-prototype - 2026-02-06
 
 **Changes:**
