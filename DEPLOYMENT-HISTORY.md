@@ -1,5 +1,24 @@
 # Deployment History
 
+## v0.38.0-prototype - 2026-02-06
+
+**Changes:**
+- Feature: Add "Fixed Lockup Pending" hero metric showing USDFC pre-allocated in one-time payment rails
+- Replace "FIL Burned" placeholder with new metric
+- New metric displays value and subtitle with one-time rail count
+- Update METRIC-DEFINITIONS.md with metric documentation
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeidsxozl54c4vvk4itmr6mpmxknzyygr47kxp5kuw7kbgeblycs7ta`)
+- Preview: https://bafybeidsxozl54c4vvk4itmr6mpmxknzyygr47kxp5kuw7kbgeblycs7ta.ipfs.dweb.link
+- Git Tag: [v0.38.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.38.0-prototype)
+- Commit: [2d26501](https://github.com/timfong888/filecoin-pay-console/commit/2d26501)
+
+**Related Issues:**
+- [#65](https://github.com/timfong888/filecoin-pay-console/issues/65) - Review the Filecoin Pay Subgraph for how one-time payment are processed
+
+---
+
 ## v0.37.2-prototype - 2026-02-07
 
 **Changes:**
