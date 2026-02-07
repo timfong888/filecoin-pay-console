@@ -102,6 +102,7 @@ export interface PDPDataSetWithRoots {
   isActive: boolean;
   totalDataSize: string;
   totalRoots: string;
+  totalFaultedPeriods?: string;
   lastProvenEpoch: string | null;
   createdAt: string;
   owner: {
@@ -124,6 +125,52 @@ export interface PieceDisplayData {
   provider: string;         // SP address
   providerFormatted: string; // Truncated or ENS
   isActive: boolean;
+}
+
+/**
+ * DataSet display data for expandable cards in "My Data" section.
+ * Groups pieces by DataSet with payment and proving metrics.
+ */
+export interface DataSetDisplayData {
+  /** DataSet ID from PDP */
+  setId: string;
+  /** Storage Provider address */
+  providerAddress: string;
+  /** Resolved ENS name for provider (null if not resolved) */
+  providerENS: string | null;
+  /** Formatted provider address (truncated) */
+  providerFormatted: string;
+  /** Total size in bytes */
+  totalSizeBytes: bigint;
+  /** Formatted size (e.g., "1.23 GiB") */
+  totalSizeFormatted: string;
+  /** Number of pieces in this DataSet */
+  pieceCount: number;
+  /** Whether the DataSet is active */
+  isActive: boolean;
+  /** Last proven epoch (from PDP) */
+  lastProvenEpoch: string | null;
+  /** Formatted "time ago" for last proven (e.g., "2h ago") */
+  lastProvenFormatted: string | null;
+  /** Whether DataSet has any faulted periods */
+  hasFaults: boolean;
+  /** Total faulted periods */
+  faultedPeriods: number;
+  /** DataSet creation timestamp (Unix seconds) */
+  createdAt: string;
+  // Payment correlation from Rails
+  /** Correlated Rail ID (null if no match) */
+  railId: string | null;
+  /** Payment rate in wei per second */
+  paymentRatePerSecond: bigint;
+  /** Rail creation timestamp (Unix ms) */
+  railCreatedAtMs: number;
+  /** Total amount paid since rail creation (in USDFC) */
+  totalPaidUSDFC: number;
+  /** Cost per GB per month (in USDFC) */
+  costPerGBMonth: number | null;
+  /** Pieces belonging to this DataSet */
+  pieces: PieceDisplayData[];
 }
 
 /**
