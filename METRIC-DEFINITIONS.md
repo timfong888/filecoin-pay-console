@@ -20,7 +20,10 @@ The dashboard displays different metrics depending on build mode.
 - **Definition:** Total USDFC currently locked across all accounts for future payments
 - **Source:** Sum of `Account.userTokens.lockupCurrent` from Goldsky subgraph
 - **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals) to USDFC
-- **Note:** This represents the total amount of USDFC that has been deposited and is locked to secure active payment rails. Displayed between Active Payers and USDFC Settled.
+- **Includes:**
+  - **Streaming lockup:** `paymentRate × lockupPeriod` for rate-based rails
+  - **Fixed lockup:** `lockupFixed` for one-time payment rails
+- **Note:** This is the total capital commitment securing all payment rails. Fixed Lockup Pending (below) is a subset of this metric, showing only the one-time payment portion.
 
 #### USDFC Settled (Cumulative)
 - **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
@@ -51,6 +54,7 @@ The dashboard displays different metrics depending on build mode.
 - **Definition:** Total USDFC pre-allocated in one-time payment rails awaiting settlement
 - **Source:** Sum of `Rail.lockupFixed - Rail.totalSettledAmount` where `Rail.paymentRate = 0` from Goldsky subgraph
 - **Formula:** `Σ(rail.lockupFixed - rail.totalSettledAmount)` where `rail.paymentRate = "0"` and `rail.lockupFixed > 0`
+- **Relationship to Locked USDFC:** This is a **subset** of Locked USDFC. While Locked USDFC includes both streaming and fixed lockup at the account level, Fixed Lockup Pending shows only the one-time payment portion at the rail level.
 - **Use Case:** Tracks potential one-time payment volume. When these rails are executed via `modifyRailPayment(oneTimePayment)`, funds transfer immediately and move to "USDFC Settled"
 - **Subtitle:** Shows count of one-time rails (e.g., "122 one-time rails")
 
@@ -76,7 +80,10 @@ The dashboard displays different metrics depending on build mode.
 - **Definition:** Total USDFC currently locked across all accounts for future payments
 - **Source:** Sum of `Account.userTokens.lockupCurrent` from Goldsky subgraph
 - **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals) to USDFC
-- **Note:** Same metric as GA Mode. Displayed between Active Payers and USDFC Settled.
+- **Includes:**
+  - **Streaming lockup:** `paymentRate × lockupPeriod` for rate-based rails
+  - **Fixed lockup:** `lockupFixed` for one-time payment rails
+- **Note:** Same metric as GA Mode. Fixed Lockup Pending is a subset showing only one-time payments.
 
 #### Total Settled (USDFC)
 - **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
@@ -115,9 +122,10 @@ The dashboard displays different metrics depending on build mode.
 - **Definition:** Total USDFC pre-allocated in one-time payment rails awaiting settlement
 - **Source:** Sum of `Rail.lockupFixed - Rail.totalSettledAmount` where `Rail.paymentRate = 0` from Goldsky subgraph
 - **Formula:** `Σ(rail.lockupFixed - rail.totalSettledAmount)` where `rail.paymentRate = "0"` and `rail.lockupFixed > 0`
+- **Relationship to Locked USDFC:** This is a **subset** of Locked USDFC (one-time payment portion only)
 - **Use Case:** Tracks potential one-time payment volume. When these rails are executed via `modifyRailPayment(oneTimePayment)`, funds transfer immediately and move to "USDFC Settled"
 - **Subtitle:** Shows count of one-time rails (e.g., "122 one-time rails")
-- **Note:** Same metric as GA Mode. Provides visibility into pending one-time payment rails.
+- **Note:** Same metric as GA Mode.
 
 ---
 
