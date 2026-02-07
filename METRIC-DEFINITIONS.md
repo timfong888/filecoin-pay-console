@@ -18,12 +18,10 @@ The dashboard displays different metrics depending on build mode.
 
 #### Locked USDFC
 - **Definition:** Total USDFC currently locked across all accounts for future payments
-- **Source:** Sum of `Account.userTokens.lockupCurrent` from Goldsky subgraph
-- **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals) to USDFC
-- **Includes:**
-  - **Streaming lockup:** `paymentRate × lockupPeriod` for rate-based rails
-  - **Fixed lockup:** `lockupFixed` for one-time payment rails
-- **Note:** This is the total capital commitment securing all payment rails. Fixed Lockup Pending (below) is a subset of this metric, showing only the one-time payment portion.
+- **Source:** `Account.userTokens.lockupCurrent` from Goldsky subgraph (emitted by Payments contract `AccountLockupSettled` event)
+- **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals)
+- **Contract Formula:** `lockupCurrent = Σ(rail.lockupFixed + rail.paymentRate × rail.lockupPeriod)` per account
+- **Note:** This is the canonical on-chain value. Fixed Lockup Pending queries rail-level `lockupFixed` directly, which may have minor timing differences.
 
 #### USDFC Settled (Cumulative)
 - **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
@@ -52,10 +50,9 @@ The dashboard displays different metrics depending on build mode.
 
 #### Fixed Lockup Pending
 - **Definition:** Total USDFC pre-allocated in one-time payment rails awaiting settlement
-- **Source:** Sum of `Rail.lockupFixed - Rail.totalSettledAmount` where `Rail.paymentRate = 0` from Goldsky subgraph
+- **Source:** `Rail.lockupFixed` and `Rail.totalSettledAmount` where `Rail.paymentRate = 0` from Goldsky subgraph
 - **Formula:** `Σ(rail.lockupFixed - rail.totalSettledAmount)` where `rail.paymentRate = "0"` and `rail.lockupFixed > 0`
-- **Relationship to Locked USDFC:** This is a **subset** of Locked USDFC. While Locked USDFC includes both streaming and fixed lockup at the account level, Fixed Lockup Pending shows only the one-time payment portion at the rail level.
-- **Use Case:** Tracks potential one-time payment volume. When these rails are executed via `modifyRailPayment(oneTimePayment)`, funds transfer immediately and move to "USDFC Settled"
+- **Relationship to Locked USDFC:** Queries rail-level data directly. Locked USDFC uses contract-emitted `lockupCurrent` which includes `lockupFixed` in its calculation.
 - **Subtitle:** Shows count of one-time rails (e.g., "122 one-time rails")
 
 **Subgraph Query:**
@@ -78,12 +75,10 @@ The dashboard displays different metrics depending on build mode.
 
 #### Locked USDFC
 - **Definition:** Total USDFC currently locked across all accounts for future payments
-- **Source:** Sum of `Account.userTokens.lockupCurrent` from Goldsky subgraph
-- **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals) to USDFC
-- **Includes:**
-  - **Streaming lockup:** `paymentRate × lockupPeriod` for rate-based rails
-  - **Fixed lockup:** `lockupFixed` for one-time payment rails
-- **Note:** Same metric as GA Mode. Fixed Lockup Pending is a subset showing only one-time payments.
+- **Source:** `Account.userTokens.lockupCurrent` from Goldsky subgraph (emitted by Payments contract `AccountLockupSettled` event)
+- **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals)
+- **Contract Formula:** `lockupCurrent = Σ(rail.lockupFixed + rail.paymentRate × rail.lockupPeriod)` per account
+- **Note:** Same metric as GA Mode.
 
 #### Total Settled (USDFC)
 - **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
@@ -120,10 +115,9 @@ The dashboard displays different metrics depending on build mode.
 
 #### Fixed Lockup Pending
 - **Definition:** Total USDFC pre-allocated in one-time payment rails awaiting settlement
-- **Source:** Sum of `Rail.lockupFixed - Rail.totalSettledAmount` where `Rail.paymentRate = 0` from Goldsky subgraph
+- **Source:** `Rail.lockupFixed` and `Rail.totalSettledAmount` where `Rail.paymentRate = 0` from Goldsky subgraph
 - **Formula:** `Σ(rail.lockupFixed - rail.totalSettledAmount)` where `rail.paymentRate = "0"` and `rail.lockupFixed > 0`
-- **Relationship to Locked USDFC:** This is a **subset** of Locked USDFC (one-time payment portion only)
-- **Use Case:** Tracks potential one-time payment volume. When these rails are executed via `modifyRailPayment(oneTimePayment)`, funds transfer immediately and move to "USDFC Settled"
+- **Relationship to Locked USDFC:** Queries rail-level data directly. Locked USDFC uses contract-emitted `lockupCurrent` which includes `lockupFixed` in its calculation.
 - **Subtitle:** Shows count of one-time rails (e.g., "122 one-time rails")
 - **Note:** Same metric as GA Mode.
 
