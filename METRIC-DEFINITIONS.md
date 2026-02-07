@@ -6,6 +6,31 @@ This document defines the metrics displayed in the Filecoin Pay Console dashboar
 
 The dashboard displays different metrics depending on build mode.
 
+### Metric Relationships
+
+**Locked USDFC** and **Fixed Lockup Pending** are related but queried differently:
+
+```
+Locked USDFC (contract-level)
+├── Streaming: Σ(paymentRate × lockupPeriod) for ACTIVE rails
+└── Fixed: Σ(lockupFixed) for ZERORATE rails ← conceptually = Fixed Lockup Pending
+```
+
+| Metric | Data Source | Updated When |
+|--------|-------------|--------------|
+| Locked USDFC | Contract event (`AccountLockupSettled`) | On settlement, lockup modification |
+| Fixed Lockup Pending | Rail entity query | Real-time from indexed rails |
+
+**Why they may not match exactly:**
+- Locked USDFC reflects contract state at last settlement event
+- Fixed Lockup Pending queries current rail data directly
+- Terminated rails may have unreleased lockup still in account-level total
+- Timing: account-level updates lag behind rail-level changes until next settlement
+
+**Expected relationship:** Fixed Lockup Pending ≤ Locked USDFC (it's the one-time portion of total lockup)
+
+---
+
 ### GA Mode Metrics
 
 #### Active Wallets
