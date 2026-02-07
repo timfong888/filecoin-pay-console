@@ -1,5 +1,25 @@
 # Deployment History
 
+## v0.39.0-prototype - 2026-02-07
+
+**Changes:**
+- Refactor: Remove redundant "Fixed Lockup Pending" hero metric
+- Fixed Lockup Pending was a subset of Locked USDFC (contract formula: lockupCurrent = lockupFixed + paymentRate × lockupPeriod)
+- Update Locked USDFC subtitle to "Streaming + fixed lockup" for clarity
+- Update USDFC Settled to note it includes both payment types
+- Simplify METRIC-DEFINITIONS.md by removing complex "Metric Relationships" section
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeibe6ekr3xld3ivvb7g4vzhkhnnqsbc2zz3zz22rpcykniovtoq2bi`)
+- Preview: https://bafybeibe6ekr3xld3ivvb7g4vzhkhnnqsbc2zz3zz22rpcykniovtoq2bi.ipfs.dweb.link
+- Git Tag: [v0.39.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.39.0-prototype)
+- Commit: [80f3ef5](https://github.com/timfong888/filecoin-pay-console/commit/80f3ef5)
+
+**Related Issues:**
+- [#65](https://github.com/timfong888/filecoin-pay-console/issues/65) - Review the Filecoin Pay Subgraph for how one-time payment are processed
+
+---
+
 ## v0.38.0-prototype - 2026-02-06
 
 **Changes:**
