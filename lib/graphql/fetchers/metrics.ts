@@ -13,6 +13,7 @@ import {
   ALL_DAILY_TOKEN_METRICS_QUERY,
   TOTAL_LOCKED_QUERY,
   DAILY_TOKEN_METRICS_FOR_ARR_QUERY,
+  FIXED_LOCKUP_PENDING_QUERY,
   GlobalMetricsResponse,
   TotalSettledResponse,
   ActiveRailsResponse,
@@ -20,6 +21,7 @@ import {
   DailyTokenMetricsResponse,
   TotalLockedResponse,
   DailyTokenMetricsForARRResponse,
+  FixedLockupPendingResponse,
 } from '../queries';
 import { weiToUSDC, formatCurrency, secondsToMs } from './utils';
 import { logError } from '../../errors';
@@ -309,5 +311,54 @@ export async function fetchARR(): Promise<ARRResult> {
     weeklyAverageFormatted: formatCurrency(weeklyAverage),
     weeklyBreakdown,
     weeksUsed,
+  };
+}
+
+/**
+ * Fixed Lockup Pending result interface.
+ */
+export interface FixedLockupPendingResult {
+  total: number;
+  formatted: string;
+  railCount: number;
+  settledCount: number;
+}
+
+/**
+ * Fetch fixed lockup pending from one-time payment rails.
+ * Fixed Lockup Pending = Σ(rail.lockupFixed - rail.totalSettledAmount) where paymentRate = 0
+ *
+ * One-time payment rails (ZERORATE) have paymentRate=0 and use lockupFixed
+ * for pre-allocated lump-sum payments executed via modifyRailPayment().
+ */
+export async function fetchFixedLockupPending(): Promise<FixedLockupPendingResult> {
+  const data = await executeQuery<FixedLockupPendingResponse>(
+    FIXED_LOCKUP_PENDING_QUERY,
+    undefined,
+    { operation: 'fetchFixedLockupPending' }
+  );
+
+  let totalPending = BigInt(0);
+  let settledCount = 0;
+
+  for (const rail of data.rails) {
+    const lockupFixed = BigInt(rail.lockupFixed);
+    const settled = BigInt(rail.totalSettledAmount);
+
+    // Pending = lockupFixed minus what's already settled
+    const pending = lockupFixed - settled;
+    if (pending > BigInt(0)) {
+      totalPending += pending;
+    }
+    if (settled > BigInt(0)) {
+      settledCount++;
+    }
+  }
+
+  return {
+    total: weiToUSDC(totalPending.toString()),
+    formatted: formatCurrency(weiToUSDC(totalPending.toString())),
+    railCount: data.rails.length,
+    settledCount,
   };
 }

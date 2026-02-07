@@ -400,3 +400,23 @@ export interface DailyTokenMetricForARR {
 export interface DailyTokenMetricsForARRResponse {
   dailyTokenMetrics: DailyTokenMetricForARR[];
 }
+
+// Fixed lockup pending query (for one-time payment rails)
+// Fetches rails with paymentRate=0 and lockupFixed>0 to sum pending one-time payments
+export const FIXED_LOCKUP_PENDING_QUERY = gql`
+  query FixedLockupPending {
+    rails(first: 1000, where: { paymentRate: "0", lockupFixed_gt: "0" }) {
+      id
+      lockupFixed
+      totalSettledAmount
+    }
+  }
+`;
+
+export interface FixedLockupPendingResponse {
+  rails: Array<{
+    id: string;
+    lockupFixed: string;
+    totalSettledAmount: string;
+  }>;
+}

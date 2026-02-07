@@ -12,6 +12,7 @@ import {
   fetchDailySettled,
   fetchTotalLockedUSDFC,
   fetchARR,
+  fetchFixedLockupPending,
 } from './metrics';
 import {
   fetchTopPayers,
@@ -24,7 +25,7 @@ import {
  */
 export async function fetchDashboardData() {
   // Use fetchActivePayersByDate() for chart to match hero metric definition
-  const [globalMetrics, totalSettled, settled7d, topPayers, runRate, activePayersByDate, dailySettledMap, activePayersData, totalLockedUSDFC, arr] = await Promise.all([
+  const [globalMetrics, totalSettled, settled7d, topPayers, runRate, activePayersByDate, dailySettledMap, activePayersData, totalLockedUSDFC, arr, fixedLockupPending] = await Promise.all([
     fetchGlobalMetrics(),
     fetchTotalSettled(),
     fetchSettled7d(),
@@ -35,6 +36,7 @@ export async function fetchDashboardData() {
     fetchActivePayersCount(),
     fetchTotalLockedUSDFC(),
     fetchARR(),
+    fetchFixedLockupPending(),
   ]);
 
   // Generate chart dates (last 30 days)
@@ -86,6 +88,8 @@ export async function fetchDashboardData() {
     totalLockedUSDFC,
     // ARR (Annualized Run Rate) based on 4-week rolling average
     arr,
+    // Fixed Lockup Pending (one-time payment rails)
+    fixedLockupPending,
     // Cumulative chart data
     cumulativePayers,
     cumulativeSettled,

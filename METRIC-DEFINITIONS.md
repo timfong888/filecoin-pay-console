@@ -47,14 +47,23 @@ The dashboard displays different metrics depending on build mode.
   - Has created at least 1 rail (was previously active)
   - ALL rails have `state = "Terminated"` (no active or finalized rails)
 
-#### FIL Burned
-- **Definition:** Total FIL burned from three sources:
-  1. Settling USDFC
-  2. Settling FIL
-  3. Auction
-- **Status:** Coming soon (placeholder metric)
-- **Source:** Engineering will drive implementation
-- **Note:** Non-functional in current release - displays placeholder value
+#### Fixed Lockup Pending
+- **Definition:** Total USDFC pre-allocated in one-time payment rails awaiting settlement
+- **Source:** Sum of `Rail.lockupFixed - Rail.totalSettledAmount` where `Rail.paymentRate = 0` from Goldsky subgraph
+- **Formula:** `Σ(rail.lockupFixed - rail.totalSettledAmount)` where `rail.paymentRate = "0"` and `rail.lockupFixed > 0`
+- **Use Case:** Tracks potential one-time payment volume. When these rails are executed via `modifyRailPayment(oneTimePayment)`, funds transfer immediately and move to "USDFC Settled"
+- **Subtitle:** Shows count of one-time rails (e.g., "122 one-time rails")
+
+**Subgraph Query:**
+```graphql
+{
+  rails(first: 1000, where: { paymentRate: "0", lockupFixed_gt: "0" }) {
+    id
+    lockupFixed
+    totalSettledAmount
+  }
+}
+```
 
 ### Prototype Mode Metrics
 
@@ -102,14 +111,13 @@ The dashboard displays different metrics depending on build mode.
   - ALL rails have `state = "Terminated"` (no active or finalized rails)
 - **Note:** Same metric as GA Mode. Added to Prototype mode for complete visibility.
 
-#### FIL Burned
-- **Definition:** Total FIL burned from three sources:
-  1. Settling USDFC
-  2. Settling FIL
-  3. Auction
-- **Status:** Coming soon (placeholder metric)
-- **Source:** Engineering will drive implementation
-- **Note:** Same metric as GA Mode. Non-functional in current release - displays placeholder value.
+#### Fixed Lockup Pending
+- **Definition:** Total USDFC pre-allocated in one-time payment rails awaiting settlement
+- **Source:** Sum of `Rail.lockupFixed - Rail.totalSettledAmount` where `Rail.paymentRate = 0` from Goldsky subgraph
+- **Formula:** `Σ(rail.lockupFixed - rail.totalSettledAmount)` where `rail.paymentRate = "0"` and `rail.lockupFixed > 0`
+- **Use Case:** Tracks potential one-time payment volume. When these rails are executed via `modifyRailPayment(oneTimePayment)`, funds transfer immediately and move to "USDFC Settled"
+- **Subtitle:** Shows count of one-time rails (e.g., "122 one-time rails")
+- **Note:** Same metric as GA Mode. Provides visibility into pending one-time payment rails.
 
 ---
 

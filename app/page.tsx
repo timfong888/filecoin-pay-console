@@ -62,6 +62,13 @@ interface DashboardData {
   activePayers: number;
   // Churned wallets (GA mode): payers where ALL rails are TERMINATED
   churnedWallets: number;
+  // Fixed Lockup Pending (one-time payment rails)
+  fixedLockupPending: {
+    total: number;
+    formatted: string;
+    railCount: number;
+    settledCount: number;
+  };
   // Cumulative chart data
   cumulativePayers: number[];
   cumulativeSettled: number[];
@@ -276,10 +283,10 @@ export default function Dashboard() {
             definitionAnchor="churned-wallets"
           />
           <HeroMetricCard
-            title="FIL Burned"
+            title="Fixed Lockup Pending"
             value="--"
-            subtitle="From USDFC/FIL settlements + auction (coming soon)"
-            definitionAnchor="fil-burned"
+            subtitle="One-time payment rails"
+            definitionAnchor="fixed-lockup-pending"
           />
         </div>
 
@@ -328,7 +335,7 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC, arr } = data;
+  const { totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC, arr, fixedLockupPending } = data;
 
   return (
     <div className="space-y-6">
@@ -364,10 +371,10 @@ export default function Dashboard() {
           definitionAnchor="churned-wallets"
         />
         <HeroMetricCard
-          title="FIL Burned"
-          value="--"
-          subtitle="From USDFC/FIL settlements + auction (coming soon)"
-          definitionAnchor="fil-burned"
+          title="Fixed Lockup Pending"
+          value={fixedLockupPending.formatted}
+          subtitle={`${fixedLockupPending.railCount} one-time rails`}
+          definitionAnchor="fixed-lockup-pending"
         />
       </div>
 
