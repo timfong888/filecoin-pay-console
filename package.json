@@ -9,6 +9,8 @@
     "build": "next build",
     "build:ga": "NEXT_PUBLIC_CONSOLE_MODE=ga next build",
     "build:prototype": "NEXT_PUBLIC_CONSOLE_MODE=prototype next build",
+    "dev:calibration": "NEXT_PUBLIC_NETWORK=calibration NEXT_PUBLIC_CONSOLE_MODE=prototype next dev",
+    "build:calibration": "NEXT_PUBLIC_NETWORK=calibration NEXT_PUBLIC_CONSOLE_MODE=prototype next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",

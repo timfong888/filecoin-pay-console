@@ -1,7 +1,7 @@
-// Filecoin Pay Payments Contract
-// Mainnet address: 0x8408502033C418E1bbC97cE9ac48E5528F371A9f
+import { networkConfig } from '../config/network';
 
-export const PAYMENTS_CONTRACT_ADDRESS = "0x8408502033C418E1bbC97cE9ac48E5528F371A9f" as const;
+// Filecoin Pay Payments Contract (FWSS)
+export const PAYMENTS_CONTRACT_ADDRESS = networkConfig.contracts.FWSS as `0x${string}`;
 
 // Settlement fee in wei (~0.0013 FIL)
 export const SETTLEMENT_FEE = BigInt("1300000000000000");
