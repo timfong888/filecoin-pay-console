@@ -1,5 +1,18 @@
 # Deployment History
 
+## v0.40.0-prototype - 2026-03-04
+
+**Changes:**
+- Chore: Add .npmrc with legacy-peer-deps for Vercel builds
+- Deployed via Vercel (PinMe CLI not available)
+
+**Deployment:**
+- Vercel Preview: https://filecoin-pay-console-mevz7be6t-timfong888.vercel.app
+- Git Tag: [v0.40.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.40.0-prototype)
+- Commit: [ad35ff0](https://github.com/timfong888/filecoin-pay-console/commit/ad35ff0)
+
+---
+
 ## v0.39.0-prototype - 2026-02-07
 
 **Changes:**
