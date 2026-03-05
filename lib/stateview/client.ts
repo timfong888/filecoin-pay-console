@@ -3,25 +3,23 @@
  *
  * The StateView contract stores metadata for PDP pieces, including
  * the IPFS CID mapping that links Piece CIDs to original IPFS CIDs.
- *
- * Contract: 0x9e4e6699d8F67dFc883d6b0A7344Bd56F7E80B46 (Filecoin mainnet)
  */
 
 import { createPublicClient, http, parseAbi } from 'viem';
-import { filecoin } from 'viem/chains';
+import { networkConfig } from '../config/network';
 
-// StateView contract address on Filecoin mainnet
-export const STATE_VIEW_CONTRACT = '0x9e4e6699d8F67dFc883d6b0A7344Bd56F7E80B46';
+// StateView contract address from network config
+export const STATE_VIEW_CONTRACT = networkConfig.contracts.STATE_VIEW;
 
 // StateView ABI (partial - only the functions we need)
 const stateViewAbi = parseAbi([
   'function getAllPieceMetadata(uint256 dataSetId, uint256 pieceId) view returns (string[] keys, string[] values)',
 ]);
 
-// Create viem client for Filecoin mainnet
+// Create viem client for the configured network
 const publicClient = createPublicClient({
-  chain: filecoin,
-  transport: http('https://api.node.glif.io/rpc/v1'),
+  chain: networkConfig.chain,
+  transport: http(networkConfig.rpc),
 });
 
 /**

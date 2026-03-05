@@ -7,6 +7,7 @@
 export {
   weiToUSDC,
   formatCurrency,
+  formatFIL,
   formatAddress,
   calculateRunway,
   calculateRunwayDays,
@@ -26,7 +27,9 @@ export {
   fetchDailyMetrics,
   fetchDailySettled,
   fetchTotalLockedUSDFC,
+  fetchARR,
 } from './metrics';
+export type { ARRResult } from './metrics';
 
 // Payer functions
 export {

@@ -3,7 +3,7 @@ import { gql } from 'graphql-request';
 // Global metrics query
 export const GLOBAL_METRICS_QUERY = gql`
   query GlobalMetrics {
-    paymentsMetrics(first: 1) {
+    paymentsMetrics(first: 1, subgraphError: allow) {
       id
       totalRails
       totalAccounts
@@ -20,7 +20,7 @@ export const GLOBAL_METRICS_QUERY = gql`
 // Fetches all payer rails (not just first 10) to determine Active status
 export const TOP_PAYERS_QUERY = gql`
   query TopPayers($first: Int!) {
-    accounts(first: $first, orderBy: totalRails, orderDirection: desc) {
+    accounts(first: $first, orderBy: totalRails, orderDirection: desc, subgraphError: allow) {
       id
       address
       totalRails
@@ -33,12 +33,18 @@ export const TOP_PAYERS_QUERY = gql`
       }
       payerRails(first: 100, orderBy: createdAt, orderDirection: desc) {
         id
+        railId
         totalSettledAmount
+        settledUpto
         createdAt
         state
         paymentRate
         payee {
           address
+        }
+        token {
+          symbol
+          decimals
         }
       }
     }
@@ -48,7 +54,7 @@ export const TOP_PAYERS_QUERY = gql`
 // Total settled from all rails
 export const TOTAL_SETTLED_QUERY = gql`
   query TotalSettled {
-    rails(first: 1000, where: { totalSettledAmount_gt: "0" }) {
+    rails(first: 1000, where: { totalSettledAmount_gt: "0" }, subgraphError: allow) {
       id
       totalSettledAmount
       createdAt
@@ -60,7 +66,7 @@ export const TOTAL_SETTLED_QUERY = gql`
 // Note: Subgraph uses RailState enum: ACTIVE, TERMINATED, FINALIZED, ZERORATE
 export const ACTIVE_RAILS_QUERY = gql`
   query ActiveRails {
-    rails(first: 1000, where: { state: ACTIVE }) {
+    rails(first: 1000, where: { state: ACTIVE }, subgraphError: allow) {
       id
       paymentRate
       state
@@ -71,7 +77,7 @@ export const ACTIVE_RAILS_QUERY = gql`
 // Payer accounts with their first rail creation date (for cumulative chart)
 export const PAYER_FIRST_ACTIVITY_QUERY = gql`
   query PayerFirstActivity {
-    accounts(first: 1000, where: { payerRails_: { id_not: null } }) {
+    accounts(first: 1000, where: { payerRails_: { id_not: null } }, subgraphError: allow) {
       id
       payerRails(first: 1, orderBy: createdAt, orderDirection: asc) {
         createdAt
@@ -90,7 +96,7 @@ export interface PayerFirstActivityResponse {
 // Daily metrics for sparklines
 export const DAILY_METRICS_QUERY = gql`
   query DailyMetrics($first: Int!) {
-    dailyMetrics(first: $first, orderBy: timestamp, orderDirection: desc) {
+    dailyMetrics(first: $first, orderBy: timestamp, orderDirection: desc, subgraphError: allow) {
       id
       timestamp
       date
@@ -106,7 +112,7 @@ export const DAILY_METRICS_QUERY = gql`
 // Top payees query - accounts ordered by total rails received
 export const TOP_PAYEES_QUERY = gql`
   query TopPayees($first: Int!) {
-    accounts(first: $first, orderBy: totalRails, orderDirection: desc) {
+    accounts(first: $first, orderBy: totalRails, orderDirection: desc, subgraphError: allow) {
       id
       address
       totalRails
@@ -119,13 +125,20 @@ export const TOP_PAYEES_QUERY = gql`
       }
       payeeRails(first: 100, orderBy: createdAt, orderDirection: desc) {
         id
+        railId
         totalSettledAmount
         totalNetPayeeAmount
         totalCommission
+        settledUpto
         createdAt
         state
+        paymentRate
         payer {
           address
+        }
+        token {
+          symbol
+          decimals
         }
       }
     }
@@ -135,7 +148,7 @@ export const TOP_PAYEES_QUERY = gql`
 // Single account detail
 export const ACCOUNT_DETAIL_QUERY = gql`
   query AccountDetail($id: ID!) {
-    account(id: $id) {
+    account(id: $id, subgraphError: allow) {
       id
       address
       totalRails
@@ -152,26 +165,38 @@ export const ACCOUNT_DETAIL_QUERY = gql`
       }
       payerRails {
         id
+        railId
         totalSettledAmount
         totalNetPayeeAmount
         totalCommission
+        settledUpto
         paymentRate
         state
         createdAt
         payee {
           address
         }
+        token {
+          symbol
+          decimals
+        }
       }
       payeeRails {
         id
+        railId
         totalSettledAmount
         totalNetPayeeAmount
         totalCommission
+        settledUpto
         paymentRate
         state
         createdAt
         payer {
           address
+        }
+        token {
+          symbol
+          decimals
         }
       }
     }
@@ -202,14 +227,17 @@ export interface UserToken {
 
 export interface Rail {
   id: string;
+  railId?: string;
   totalSettledAmount: string;
   totalNetPayeeAmount?: string;
   totalCommission?: string;
+  settledUpto?: string;
   createdAt: string;
   state: number | string;
   paymentRate?: string;
   payee?: { address: string };
   payer?: { address: string };
+  token?: { symbol: string; decimals: string };
 }
 
 export interface Account {
@@ -269,6 +297,7 @@ export const DAILY_TOKEN_METRICS_QUERY = gql`
       where: { timestamp_gte: $since, token_: { symbol: "USDFC" } }
       orderBy: timestamp
       orderDirection: desc
+      subgraphError: allow
     ) {
       id
       date
@@ -304,6 +333,7 @@ export const ALL_DAILY_TOKEN_METRICS_QUERY = gql`
       where: { token_: { symbol: "USDFC" } }
       orderBy: timestamp
       orderDirection: desc
+      subgraphError: allow
     ) {
       id
       date
@@ -320,7 +350,7 @@ export const ALL_DAILY_TOKEN_METRICS_QUERY = gql`
 // Fetches all accounts with userTokens to sum lockupCurrent
 export const TOTAL_LOCKED_QUERY = gql`
   query TotalLocked {
-    accounts(first: 1000) {
+    accounts(first: 1000, subgraphError: allow) {
       id
       userTokens {
         lockupCurrent
@@ -336,4 +366,41 @@ export interface TotalLockedResponse {
       lockupCurrent: string;
     }>;
   }>;
+}
+
+
+// Daily token metrics query (for ARR calculation)
+// Fetches daily settled amounts for 4-week rolling average, aggregated client-side
+export const DAILY_TOKEN_METRICS_FOR_ARR_QUERY = gql`
+  query DailyTokenMetricsForARR($first: Int!) {
+    dailyTokenMetrics(
+      first: $first
+      where: { token_: { symbol: "USDFC" } }
+      orderBy: timestamp
+      orderDirection: desc
+      subgraphError: allow
+    ) {
+      id
+      date
+      timestamp
+      settledAmount
+      token {
+        symbol
+      }
+    }
+  }
+`;
+
+export interface DailyTokenMetricForARR {
+  id: string;
+  date: string;
+  timestamp: string;
+  settledAmount: string;
+  token: {
+    symbol: string;
+  };
+}
+
+export interface DailyTokenMetricsForARRResponse {
+  dailyTokenMetrics: DailyTokenMetricForARR[];
 }

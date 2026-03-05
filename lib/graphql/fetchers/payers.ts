@@ -48,6 +48,11 @@ export interface PayerDisplayExtended extends PayerDisplay {
   settledRaw: number;
   lockedRaw: number;
   runwayDays: number;
+  settled7d: number;
+  settled7dFormatted: string;
+  // Claimable: funds accrued but not yet collected (from userToken.payout)
+  claimable: string;
+  claimableRaw: number;
   isActive: boolean;
   hasActiveRail: boolean;
   hasPositiveLockupRate: boolean;
@@ -113,6 +118,7 @@ function transformAccountToPayerExtended(account: Account): PayerDisplayExtended
   let totalLocked = BigInt(0);
   let totalFunds = BigInt(0);
   let totalLockupRate = BigInt(0);
+  let totalPayout = BigInt(0);
   const payeeAddresses: string[] = [];
   const railCorrelations: { payeeAddress: string; railCreatedAt: string }[] = [];
 
@@ -121,6 +127,10 @@ function transformAccountToPayerExtended(account: Account): PayerDisplayExtended
     totalLocked += BigInt(token.lockupCurrent);
     if (token.lockupRate) {
       totalLockupRate += BigInt(token.lockupRate);
+    }
+    // Sum payout (claimable funds)
+    if (token.payout) {
+      totalPayout += BigInt(token.payout);
     }
   }
 
@@ -153,6 +163,9 @@ function transformAccountToPayerExtended(account: Account): PayerDisplayExtended
   // Calculate runway days for sorting
   const runwayDays = calculateRunwayDays(totalFunds, totalLockupRate);
 
+  // Calculate claimable from payout
+  const claimableRaw = weiToUSDC(totalPayout.toString());
+
   return {
     ...base,
     railsCount: account.payerRails.length,
@@ -162,6 +175,10 @@ function transformAccountToPayerExtended(account: Account): PayerDisplayExtended
     isActive,
     hasActiveRail,
     hasPositiveLockupRate,
+    settled7d: 0,
+    settled7dFormatted: '-',
+    claimable: formatCurrency(claimableRaw),
+    claimableRaw,
     totalDataSizeGB: 0,
     totalDataSizeFormatted: '-',
     proofStatus: 'none',

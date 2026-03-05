@@ -12,7 +12,12 @@ import {
   enrichPayersWithPDP,
   AccountDetail,
   PayerDisplayExtended,
+  formatChartDate,
+  formatChartCurrency,
+  RailDisplay,
 } from "@/lib/graphql/fetchers";
+import { SettleRailDialog, RailForSettle } from "@/components/settle/SettleRailDialog";
+import { useAccount } from "wagmi";
 import {
   FILECOIN_PAY_CONTRACT,
   GOLDSKY_ENDPOINT,
@@ -170,6 +175,35 @@ function PayerDetailView({ address }: { address: string }) {
   const [error, setError] = useState<string | null>(null);
   const [ensName, setEnsName] = useState<string | null>(null);
   const [counterpartyEnsNames, setCounterpartyEnsNames] = useState<Map<string, string | null>>(new Map());
+
+  // Settle dialog state
+  const [settleDialogOpen, setSettleDialogOpen] = useState(false);
+  const [selectedRail, setSelectedRail] = useState<RailForSettle | null>(null);
+  const { isConnected } = useAccount();
+
+  // Helper to convert RailDisplay to RailForSettle
+  const toRailForSettle = (rail: RailDisplay): RailForSettle => ({
+    id: rail.id,
+    railId: rail.railId,
+    payerAddress: rail.payerAddress,
+    payeeAddress: rail.payeeAddress,
+    tokenSymbol: rail.tokenSymbol,
+    tokenDecimals: rail.tokenDecimals,
+    paymentRate: rail.paymentRate,
+    totalSettledAmount: rail.settledRaw.toString(),
+    state: rail.state.toUpperCase(),
+    settledUpto: rail.settledUpto,
+  });
+
+  // Handle settle button click
+  const handleSettleClick = (rail: RailDisplay) => {
+    if (!isConnected) {
+      alert("Please connect your wallet first");
+      return;
+    }
+    setSelectedRail(toRailForSettle(rail));
+    setSettleDialogOpen(true);
+  };
 
   // My Data state
   const [dataSets, setDataSets] = useState<PDPDataSetWithRoots[]>([]);
@@ -358,10 +392,16 @@ function PayerDetailView({ address }: { address: string }) {
     setCidSearching(false);
   }, [cidSearchQuery, pieceData]);
 
-  // Calculate storage summary
+  // Calculate storage summary with runway
   const storageSummary = useMemo(() => {
-    return calculateStorageSummary(dataSets);
-  }, [dataSets]);
+    // Sum lockup rates from active rails (rateRaw is USDFC per epoch, 1 epoch = 30s)
+    const totalRatePerEpoch = account?.payerRails
+      .filter(r => r.stateCode === 0)
+      .reduce((sum, r) => sum + r.rateRaw, 0) ?? 0;
+    const lockupRatePerSecond = totalRatePerEpoch / 30;
+
+    return calculateStorageSummary(dataSets, account?.totalFundsRaw, lockupRatePerSecond);
+  }, [dataSets, account]);
 
   if (loading) {
     return (
@@ -372,7 +412,18 @@ function PayerDetailView({ address }: { address: string }) {
           </Link>
         </div>
         <h1 className="text-2xl font-bold">Payer Details</h1>
-        <div className="h-96 bg-gray-100 rounded-lg animate-pulse" />
+        <p className="text-sm text-gray-500 font-mono">{address}</p>
+
+        {/* Loading stage indicator */}
+        <div className="py-12">
+          <div className="flex flex-col items-center gap-4">
+            <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <p className="text-sm text-gray-500">Loading account data from subgraph&hellip;</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -419,10 +470,29 @@ function PayerDetailView({ address }: { address: string }) {
             )}
           </div>
         </div>
+        {account.payerRails.length > 0 && account.payerRails.some(r => r.stateCode === 0) && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                const activeRail = account.payerRails.find(r => r.stateCode === 0);
+                if (activeRail) handleSettleClick(activeRail);
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!isConnected}
+            >
+              Settle
+            </button>
+            {!isConnected && (
+              <span className="text-xs text-gray-500">
+                (Connect wallet)
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-4 gap-4">
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500 flex items-center gap-1">
             Available Funds
@@ -434,6 +504,7 @@ function PayerDetailView({ address }: { address: string }) {
             </span>
           </p>
           <p className="text-2xl font-bold">{account.totalFunds}</p>
+          <p className="text-xs text-gray-400 font-mono mt-1">&Sigma;(userToken.funds) &minus; &Sigma;(userToken.lockupCurrent)</p>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500 flex items-center gap-1">
@@ -446,6 +517,7 @@ function PayerDetailView({ address }: { address: string }) {
             </span>
           </p>
           <p className="text-2xl font-bold">{account.totalLocked}</p>
+          <p className="text-xs text-gray-400 font-mono mt-1">&Sigma;(userToken.lockupCurrent)</p>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500">Total Storage</p>
@@ -455,6 +527,7 @@ function PayerDetailView({ address }: { address: string }) {
           <p className="text-xs text-gray-400 mt-1">
             {dataLoading ? "" : `across ${storageSummary.totalPieces} CIDs`}
           </p>
+          <p className="text-xs text-gray-400 font-mono mt-1">&Sigma;(root.rawSize)</p>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500">Runway</p>
@@ -462,10 +535,7 @@ function PayerDetailView({ address }: { address: string }) {
             {storageSummary.runwayDays !== null ? `${storageSummary.runwayDays} days` : "-"}
           </p>
           <p className="text-xs text-gray-400 mt-1">at current rate</p>
-        </div>
-        <div className="bg-white border rounded-lg p-4">
-          <p className="text-sm text-gray-500">Bandwidth</p>
-          <p className="text-2xl font-bold text-gray-400">Coming Soon</p>
+          <p className="text-xs text-gray-400 font-mono mt-1">funds &divide; (&Sigma; lockupRate &times; EPOCHS_PER_DAY)</p>
         </div>
       </div>
 
@@ -527,7 +597,15 @@ function PayerDetailView({ address }: { address: string }) {
 
         {/* My Data Table */}
         {dataLoading ? (
-          <div className="h-48 bg-gray-100 rounded-lg animate-pulse" />
+          <div className="py-6">
+            <div className="flex flex-col items-center gap-3">
+              <svg className="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <p className="text-sm text-gray-500">Fetching storage data&hellip;</p>
+            </div>
+          </div>
         ) : pieceData.length === 0 ? (
           <div className="bg-gray-50 border rounded-lg p-8 text-center text-gray-500">
             No data sets found for this payer
@@ -767,6 +845,15 @@ function PayerDetailView({ address }: { address: string }) {
       <div className="text-xs text-gray-400 text-right">
         Data from Goldsky subgraph
       </div>
+
+      {/* Settle Dialog */}
+      {selectedRail && (
+        <SettleRailDialog
+          rail={selectedRail}
+          open={settleDialogOpen}
+          onOpenChange={setSettleDialogOpen}
+        />
+      )}
     </div>
   );
 }
@@ -791,7 +878,7 @@ function PayerListView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortField, setSortField] = useState<"settled" | "dataSize" | "locked" | "rails" | "runway" | "start">("settled");
+  const [sortField, setSortField] = useState<"settled" | "claimable" | "dataSize" | "locked" | "rails" | "runway" | "start">("settled");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [pdpLoading, setPdpLoading] = useState(false);
   const [fromDate, setFromDate] = useState(defaultDates.fromDate);
@@ -816,12 +903,20 @@ function PayerListView() {
         try {
           const enrichedWithPDP = await enrichPayersWithPDP(payersData);
 
-          // Merge enrichments
-          const mergedPayers = payersData.map((payer, i) => ({
-            ...payer,
-            ...enrichedWithPDP[i],
-          }));
-          setPayers(mergedPayers);
+          // Merge enrichments while preserving any resolved ENS names
+          // Note: We explicitly copy only PDP-specific fields to avoid overwriting ensName
+          setPayers((currentPayers) =>
+            currentPayers.map((payer, i) => {
+              const pdpData = enrichedWithPDP[i];
+              return {
+                ...payer,
+                // Explicitly copy only PDP-specific fields
+                totalDataSizeGB: pdpData.totalDataSizeGB,
+                totalDataSizeFormatted: pdpData.totalDataSizeFormatted,
+                proofStatus: pdpData.proofStatus,
+              };
+            })
+          );
         } catch (err) {
           console.error("Failed to enrich payers:", err);
         } finally {
@@ -897,6 +992,10 @@ function PayerListView() {
         aVal = a.settledRaw || 0;
         bVal = b.settledRaw || 0;
         break;
+      case "claimable":
+        aVal = a.claimableRaw || 0;
+        bVal = b.claimableRaw || 0;
+        break;
       case "dataSize":
         aVal = a.totalDataSizeGB || 0;
         bVal = b.totalDataSizeGB || 0;
@@ -931,7 +1030,7 @@ function PayerListView() {
     currentPage * itemsPerPage
   );
 
-  const handleSort = (field: "settled" | "dataSize" | "locked" | "rails" | "runway" | "start") => {
+  const handleSort = (field: "settled" | "claimable" | "dataSize" | "locked" | "rails" | "runway" | "start") => {
     if (sortField === field) {
       setSortDirection(sortDirection === "desc" ? "asc" : "desc");
     } else {
@@ -1106,6 +1205,13 @@ function PayerListView() {
               </TableHead>
               <TableHead
                 className="font-medium cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("claimable")}
+                title="Σ(payout) - Funds accrued, not yet collected"
+              >
+                Claimable {sortField === "claimable" && (sortDirection === "desc" ? "↓" : "↑")}
+              </TableHead>
+              <TableHead
+                className="font-medium cursor-pointer hover:bg-gray-100"
                 onClick={() => handleSort("locked")}
               >
                 Locked {sortField === "locked" && (sortDirection === "desc" ? "↓" : "↑")}
@@ -1180,6 +1286,7 @@ function PayerListView() {
                     )}
                   </TableCell>
                   <TableCell>{payer.settled}</TableCell>
+                  <TableCell>{payer.claimable || "-"}</TableCell>
                   <TableCell>{payer.locked}</TableCell>
                   <TableCell>{payer.runway}</TableCell>
                   <TableCell>{payer.start}</TableCell>

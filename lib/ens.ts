@@ -1,5 +1,6 @@
 import { createPublicClient, http } from 'viem';
 import { mainnet } from 'viem/chains';
+import { getKnownWalletName } from './wallet-registry';
 
 // Create a public client for Ethereum mainnet (for ENS resolution)
 const publicClient = createPublicClient({
@@ -12,10 +13,17 @@ const ensCache = new Map<string, string | null>();
 
 /**
  * Resolve ENS name for an Ethereum address
- * Returns the ENS name if found, null otherwise
+ * First checks the wallet registry for known names, then falls back to ENS resolution.
+ * Returns the name if found, null otherwise
  */
 export async function resolveENS(address: string): Promise<string | null> {
-  // Check cache first
+  // Check wallet registry first (instant, no network call)
+  const knownName = getKnownWalletName(address);
+  if (knownName) {
+    return knownName;
+  }
+
+  // Check cache next
   if (ensCache.has(address.toLowerCase())) {
     return ensCache.get(address.toLowerCase()) || null;
   }

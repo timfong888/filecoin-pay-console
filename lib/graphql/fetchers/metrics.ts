@@ -12,14 +12,16 @@ import {
   DAILY_TOKEN_METRICS_QUERY,
   ALL_DAILY_TOKEN_METRICS_QUERY,
   TOTAL_LOCKED_QUERY,
+  DAILY_TOKEN_METRICS_FOR_ARR_QUERY,
   GlobalMetricsResponse,
   TotalSettledResponse,
   ActiveRailsResponse,
   DailyMetricsResponse,
   DailyTokenMetricsResponse,
   TotalLockedResponse,
+  DailyTokenMetricsForARRResponse,
 } from '../queries';
-import { weiToUSDC, formatCurrency, secondsToMs } from './utils';
+import { weiToUSDC, formatCurrency, formatFIL, secondsToMs } from './utils';
 import { logError } from '../../errors';
 
 // Monthly run rate calculation constants
@@ -44,6 +46,8 @@ export async function fetchGlobalMetrics() {
       uniquePayees: 0,
       totalTerminations: 0,
       totalActiveRails: 0,
+      totalFilBurned: '0',
+      totalFilBurnedFormatted: '0.00 FIL',
     };
   }
 
@@ -52,6 +56,8 @@ export async function fetchGlobalMetrics() {
     uniquePayees: parseInt(metrics.uniquePayees),
     totalTerminations: parseInt(metrics.totalTerminatedRails),
     totalActiveRails: parseInt(metrics.totalActiveRails),
+    totalFilBurned: metrics.totalFilBurned,
+    totalFilBurnedFormatted: formatFIL(metrics.totalFilBurned),
   };
 }
 
@@ -209,5 +215,75 @@ export async function fetchTotalLockedUSDFC() {
   return {
     total: totalLockedValue,
     formatted: formatCurrency(totalLockedValue),
+  };
+}
+
+/**
+ * ARR (Annualized Run Rate) result interface.
+ */
+export interface ARRResult {
+  fourWeekTotal: number;
+  weeklyAverage: number;
+  annualized: number;
+  annualizedFormatted: string;
+  weeklyAverageFormatted: string;
+  weeklyBreakdown: number[];
+  weeksUsed: number;
+}
+
+/**
+ * Fetch ARR (Annualized Run Rate) based on 4-week rolling average.
+ * ARR = (sum of last 4 complete weeks) / 4 * 52
+ *
+ * Uses dailyTokenMetrics and aggregates by week client-side.
+ * Skips the most recent week as it may be incomplete, then takes the next 4 weeks.
+ */
+export async function fetchARR(): Promise<ARRResult> {
+  // Fetch 35 days to ensure we have 4 complete weeks + buffer
+  const data = await executeQuery<DailyTokenMetricsForARRResponse>(
+    DAILY_TOKEN_METRICS_FOR_ARR_QUERY,
+    { first: 35 },
+    { operation: 'fetchARR' }
+  );
+
+  const days = data.dailyTokenMetrics;
+
+  // Group by week number (using Unix timestamp / seconds per week)
+  const SECONDS_PER_WEEK = 7 * 24 * 60 * 60;
+  const weeklyTotals = new Map<number, bigint>();
+
+  for (const day of days) {
+    const weekNum = Math.floor(parseInt(day.timestamp) / SECONDS_PER_WEEK);
+    const current = weeklyTotals.get(weekNum) || BigInt(0);
+    weeklyTotals.set(weekNum, current + BigInt(day.settledAmount));
+  }
+
+  // Sort weeks descending, skip most recent (potentially incomplete), take next 4
+  const sortedWeeks = Array.from(weeklyTotals.entries())
+    .sort((a, b) => b[0] - a[0])
+    .slice(1, 5);
+
+  // Calculate 4-week total
+  const fourWeekTotal = sortedWeeks.reduce((sum, [, amt]) => sum + amt, BigInt(0));
+  const weeksUsed = sortedWeeks.length;
+  const fourWeekTotalUSDC = weiToUSDC(fourWeekTotal.toString());
+
+  // Calculate weekly average (handle case where we have fewer than 4 weeks)
+  const weeklyAverage = weeksUsed > 0 ? fourWeekTotalUSDC / weeksUsed : 0;
+
+  // Annualize: weekly average * 52 weeks
+  const annualized = weeklyAverage * 52;
+
+  // Build weekly breakdown for display
+  const weeklyBreakdown = sortedWeeks.map(([, amt]) => weiToUSDC(amt.toString()));
+
+  return {
+    fourWeekTotal: fourWeekTotalUSDC,
+    weeklyAverage,
+    annualized,
+    annualizedFormatted: formatCurrency(annualized),
+    weeklyAverageFormatted: formatCurrency(weeklyAverage),
+    weeklyBreakdown,
+    weeksUsed,
   };
 }

@@ -22,6 +22,20 @@ export function weiToUSDC(wei: string): number {
 }
 
 /**
+ * Convert wei (18 decimals) to human readable FIL string.
+ * @param wei - Amount in wei as string
+ * @returns Formatted string (e.g., "0.27 FIL")
+ */
+export function formatFIL(wei: string): string {
+  const value = BigInt(wei);
+  const divisor = BigInt(10 ** 18);
+  const wholePart = Number(value / divisor);
+  const fractionalPart = Number((value % divisor) * BigInt(100) / divisor);
+  const num = wholePart + fractionalPart / 100;
+  return `${num.toFixed(2)} FIL`;
+}
+
+/**
  * Format number as currency string.
  * @param value - Number to format
  * @returns Formatted string (e.g., "$1.23K", "$4.56M")

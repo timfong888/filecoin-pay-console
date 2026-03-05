@@ -1,5 +1,41 @@
 # Deployment History
 
+## v0.37.2-prototype - 2026-02-07
+
+**Changes:**
+- Fix: Payee page hero section now shows actual values instead of "--"
+- Calculate payee-specific total from loaded data instead of global query
+- Rename metric to "Total Received (USDFC)" for clarity (net amount after fees)
+- Remove dependency on `fetchTotalSettled()` which was failing
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeic7pfmecysf7f6w7zbq2cnswkb4zdyzgr45nkrbufvtchcbuz7sie`)
+- Preview: https://bafybeic7pfmecysf7f6w7zbq2cnswkb4zdyzgr45nkrbufvtchcbuz7sie.ipfs.dweb.link
+- Git Tag: [v0.37.2-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.37.2-prototype)
+- Commit: [9af1a9f](https://github.com/timfong888/filecoin-pay-console/commit/9af1a9f)
+
+**Related Issues:**
+- [#66](https://github.com/timfong888/filecoin-pay-console/issues/66) - Debug: why are the values in the Payee Page hero section empty
+
+---
+
+## v0.37.1-prototype - 2026-02-06
+
+**Changes:**
+- Fix: Use `dailyTokenMetrics` for ARR calculation instead of non-existent `weeklyTokenMetrics`
+- Dashboard now loads real data instead of falling back to mock data
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeigcanhqijvvtxiw4w7bb4p5yzq62rruycaalnmezacwoqray6kbuq`)
+- Preview: https://bafybeigcanhqijvvtxiw4w7bb4p5yzq62rruycaalnmezacwoqray6kbuq.ipfs.dweb.link
+- Git Tag: [v0.37.1-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.37.1-prototype)
+- Commit: [bd4a653](https://github.com/timfong888/filecoin-pay-console/commit/bd4a653)
+
+**Related Issues:**
+- [#61](https://github.com/timfong888/filecoin-pay-console/issues/61) - Debug subgraph query error
+
+---
+
 ## v0.36.0-prototype / v0.33.0-ga - 2026-01-23
 
 **Changes:**
@@ -19,13 +55,104 @@
 
 **Related Issues:**
 - [#58](https://github.com/timfong888/filecoin-pay-console/issues/58) - Add auction stats placeholder (corrected implementation)
+
+---
+
+## v0.35.0-prototype / v0.32.0-ga - 2026-01-23
+
+**Changes:**
+- Add four placeholder auction stats charts with mock data:
+  - Number of Bidders (bar chart)
+  - Auction Price vs Target Price (line comparison chart)
+  - Number of Pieces Settled (line chart)
+  - Duration from Published to Settlement (bar chart)
+- Charts display "Mock Data" badge to indicate placeholder status
+- Shown in both GA and prototype modes
+
+**Deployment:**
+- GA: https://filpay-ga.pinit.eth.limo (CID: `bafybeif37x67ozst3wf2orycdznach6wohwiewu4kfhfmqr6dce72wxcmy`)
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeihqynoym25orhkmyv4fgokkr3rbvjtnvdgrhmdk3vpqqjbcyyghay`)
+- Git Tags: [v0.32.0-ga](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.32.0-ga), [v0.35.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.35.0-prototype)
+- Commits: [16eaa48](https://github.com/timfong888/filecoin-pay-console/commit/16eaa48) (main), [162409d](https://github.com/timfong888/filecoin-pay-console/commit/162409d) (prototype)
+
+**Related Issues:**
+- [#58](https://github.com/timfong888/filecoin-pay-console/issues/58) - Add auction stats placeholder charts
 - Ref: [FilOzone/filecoin-pay-explorer#80](https://github.com/FilOzone/filecoin-pay-explorer/issues/80) - Auction stats for GA
 
 ---
 
-## v0.35.0-prototype / v0.32.0-ga - 2026-01-23 (superseded)
+## v0.33.0-prototype - 2026-01-23
 
-**Note:** This version had incorrect implementation (time-series charts instead of metric cards). Superseded by v0.36.0-prototype / v0.33.0-ga.
+**Changes:**
+- Add non-functional "FIL Burned" hero metric (placeholder for future implementation)
+- FIL Burned will track: USDFC settlements, FIL settlements, and auctions
+- Show both Filecoin Pay and FWSS contracts with names in DataSourcePanel
+- Display subgraph name (filecoin-pay-mainnet) alongside version
+- Updated METRIC-DEFINITIONS.md to document FIL Burned metric
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeiahvennodd5krgjd4is7lf5visr6rltxhlnnbs4jt3zd4nl2ru44e`)
+- Git Tag: [v0.33.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.33.0-prototype)
+- Commit: [319781a](https://github.com/timfong888/filecoin-pay-console/commit/319781a)
+
+**Related Issues:**
+- [#59](https://github.com/timfong888/filecoin-pay-console/issues/59) - Add FIL Burned hero metric
+
+---
+
+## v0.30.0-ga - 2026-01-23
+
+**Changes:**
+- Add non-functional "FIL Burned" hero metric (placeholder for future implementation)
+- FIL Burned will track: USDFC settlements, FIL settlements, and auctions
+- Show both Filecoin Pay and FWSS contracts with names in DataSourcePanel
+- Display subgraph name (filecoin-pay-mainnet) alongside version
+- Updated METRIC-DEFINITIONS.md to document FIL Burned metric
+
+**Deployment:**
+- GA: https://filpay-ga.pinit.eth.limo (CID: `bafybeihyhouwcwobfrwbxy2t7n6mpphlwcsj46pz7ez7jndsroo4od3zai`)
+- Git Tag: [v0.30.0-ga](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.30.0-ga)
+- Commit: [218ee92](https://github.com/timfong888/filecoin-pay-console/commit/218ee92)
+
+**Related Issues:**
+- [#59](https://github.com/timfong888/filecoin-pay-console/issues/59) - Add FIL Burned hero metric
+
+---
+
+## v0.32.1-prototype - 2026-01-23
+
+**Changes:**
+- Replace unreliable hover tooltip with visible caption text for settle button
+- Shows "(Connect wallet)" text next to disabled Settle button when wallet not connected
+- More accessible and works on touch devices
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeifp4js4hlsl2g7j23fcsylfd3ccvsm4xmyepawobxbh6wa7lulmja`)
+- Commit: [319781a](https://github.com/timfong888/filecoin-pay-console/commit/319781a)
+
+**Related Issues:**
+- [#57](https://github.com/timfong888/filecoin-pay-console/issues/57) - Settle button UX improvement
+
+---
+
+## v0.32.0-prototype - 2026-01-23
+
+**Changes:**
+- Add settle functionality for both payers and payees
+- Implement wallet connection via wagmi + react-query
+- Create SettleRailDialog component with transaction handling
+- Add Connect Wallet button to header with disconnect dropdown
+- Update GraphQL queries to include railId and settledUpto fields
+- Wire up settle in payee detail view
+- Add settle button to payer detail view
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeifqxqklsiislkaews75z5vttqjd6cow4yyje3znq7e5qpd55xgsfu`)
+- Git Tag: [v0.32.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.32.0-prototype)
+- Commit: [f6c4daa](https://github.com/timfong888/filecoin-pay-console/commit/f6c4daa)
+
+**Related Issues:**
+- [#57](https://github.com/timfong888/filecoin-pay-console/issues/57) - Expose the same Settle Funds via the UI for Payers
 
 ---
 
@@ -48,6 +175,24 @@
 
 **Related Issues:**
 - [#59](https://github.com/timfong888/filecoin-pay-console/issues/59) - Add FIL Burned hero metric and fix subgraph display
+
+---
+
+## v0.31.0-prototype - 2026-01-22
+
+**Changes:**
+- Add "Churned Wallets" metric to Prototype mode (now shows 5 hero metrics instead of 4)
+- Each metric caption now links to its definition in METRIC-DEFINITIONS.md
+- Prototype mode metrics: Active Payers, Locked USDFC, USDFC Settled, Settled (7d), Churned Wallets
+- Updated METRIC-DEFINITIONS.md to document Churned Wallets in Prototype section
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeif7szputtv4csxdrfvoahugllqo7z55nebpkkcugwzyzfl6ayc4ca`)
+- Git Tag: [v0.31.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.31.0-prototype)
+- Commit: [227d0a5](https://github.com/timfong888/filecoin-pay-console/commit/227d0a5)
+
+**Related Issues:**
+- Churned Wallets was missing from Prototype mode after previous GA-focused updates
 
 ---
 
