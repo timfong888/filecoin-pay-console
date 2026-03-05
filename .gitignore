@@ -42,3 +42,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# spec-kit (local-only spec-driven development)
+.claude/
+.specify/
+specs/
+scripts/

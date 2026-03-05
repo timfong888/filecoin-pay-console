@@ -23,6 +23,8 @@ interface DashboardData {
     uniquePayees: number;
     totalTerminations: number;
     totalActiveRails: number;
+    totalFilBurned: string;
+    totalFilBurnedFormatted: string;
   };
   totalSettled: {
     total: number;
@@ -278,8 +280,18 @@ export default function Dashboard() {
           <HeroMetricCard
             title="FIL Burned"
             value="--"
-            subtitle="From USDFC/FIL settlements + auction (coming soon)"
+            subtitle="Cumulative FIL burned from settlements"
             definitionAnchor="fil-burned"
+          />
+          <HeroMetricCard
+            title="Locked FIL"
+            value="--"
+            subtitle="Not yet available (FIL is not a payment token)"
+          />
+          <HeroMetricCard
+            title="Settled FIL"
+            value="--"
+            subtitle="Not yet available (FIL is not a payment token)"
           />
         </div>
 
@@ -328,7 +340,7 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC, arr } = data;
+  const { globalMetrics, totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC, arr } = data;
 
   return (
     <div className="space-y-6">
@@ -365,9 +377,19 @@ export default function Dashboard() {
         />
         <HeroMetricCard
           title="FIL Burned"
-          value="--"
-          subtitle="From USDFC/FIL settlements + auction (coming soon)"
+          value={globalMetrics.totalFilBurnedFormatted}
+          subtitle="Cumulative FIL burned from settlements"
           definitionAnchor="fil-burned"
+        />
+        <HeroMetricCard
+          title="Locked FIL"
+          value="--"
+          subtitle="Not yet available (FIL is not a payment token)"
+        />
+        <HeroMetricCard
+          title="Settled FIL"
+          value="--"
+          subtitle="Not yet available (FIL is not a payment token)"
         />
       </div>
 

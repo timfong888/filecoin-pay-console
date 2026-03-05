@@ -7,6 +7,7 @@
 export {
   weiToUSDC,
   formatCurrency,
+  formatFIL,
   formatAddress,
   calculateRunway,
   calculateRunwayDays,

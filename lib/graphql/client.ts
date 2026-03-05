@@ -1,4 +1,4 @@
-import { GraphQLClient, RequestDocument, Variables } from 'graphql-request';
+import { RequestDocument, Variables } from 'graphql-request';
 import { withRetry, RetryOptions } from '../retry';
 import { SubgraphError, RateLimitError, logError } from '../errors';
 import { networkConfig, goldskyEndpoint } from '../config/network';
@@ -50,8 +50,37 @@ export const EPOCHS_PER_DAY = (24 * 60 * 60) / EPOCH_DURATION_SECONDS; // 2880 e
 // URL is determined dynamically at runtime via window.location.hostname
 export const DASHBOARD_VERSION = '0.37.0';
 
-// Base GraphQL client
-const baseClient = new GraphQLClient(GOLDSKY_ENDPOINT);
+/**
+ * Execute a raw GraphQL request via fetch, tolerating partial errors.
+ * graphql-request v7 throws when the response contains an `errors` field,
+ * even if `data` is present (common with Goldsky indexing errors).
+ * This bypasses the library to return data when available.
+ */
+async function rawGraphQLRequest<T>(
+  endpoint: string,
+  query: RequestDocument,
+  variables?: Variables
+): Promise<T> {
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: String(query), variables }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+
+  const json = await response.json();
+
+  if (json.data) {
+    return json.data as T;
+  }
+
+  // No data — throw the errors
+  const errorMessage = json.errors?.map((e: { message: string }) => e.message).join('; ') || 'Unknown GraphQL error';
+  throw new Error(errorMessage);
+}
 
 // Default retry options for subgraph queries
 const DEFAULT_RETRY_OPTIONS: RetryOptions = {
@@ -99,7 +128,7 @@ export async function executeQuery<T>(
   return withRetry(
     async () => {
       try {
-        return await baseClient.request<T>(query, variables);
+        return await rawGraphQLRequest<T>(GOLDSKY_ENDPOINT, query, variables);
       } catch (error) {
         throw wrapGraphQLError(error, String(query), variables);
       }
@@ -119,7 +148,7 @@ export async function executeQuery<T>(
 export const graphqlClient = {
   request: async <T>(query: RequestDocument, variables?: Variables): Promise<T> => {
     try {
-      return await baseClient.request<T>(query, variables);
+      return await rawGraphQLRequest<T>(GOLDSKY_ENDPOINT, query, variables);
     } catch (error) {
       const wrappedError = wrapGraphQLError(error, String(query), variables);
       logError(wrappedError, 'graphqlClient.request');

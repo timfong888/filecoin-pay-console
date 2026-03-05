@@ -21,7 +21,7 @@ import {
   TotalLockedResponse,
   DailyTokenMetricsForARRResponse,
 } from '../queries';
-import { weiToUSDC, formatCurrency, secondsToMs } from './utils';
+import { weiToUSDC, formatCurrency, formatFIL, secondsToMs } from './utils';
 import { logError } from '../../errors';
 
 // Monthly run rate calculation constants
@@ -46,6 +46,8 @@ export async function fetchGlobalMetrics() {
       uniquePayees: 0,
       totalTerminations: 0,
       totalActiveRails: 0,
+      totalFilBurned: '0',
+      totalFilBurnedFormatted: '0.00 FIL',
     };
   }
 
@@ -54,6 +56,8 @@ export async function fetchGlobalMetrics() {
     uniquePayees: parseInt(metrics.uniquePayees),
     totalTerminations: parseInt(metrics.totalTerminatedRails),
     totalActiveRails: parseInt(metrics.totalActiveRails),
+    totalFilBurned: metrics.totalFilBurned,
+    totalFilBurnedFormatted: formatFIL(metrics.totalFilBurned),
   };
 }
 
