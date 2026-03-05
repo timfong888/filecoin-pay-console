@@ -5,7 +5,6 @@ import {
   fetchAllPayersExtended,
   fetchPayerListMetrics,
   enrichPayersWithPDP,
-  enrichPayersWithSettled7d,
   PayerDisplayExtended,
 } from '@/lib/graphql/fetchers';
 import { batchResolveENS } from '@/lib/ens';
@@ -25,8 +24,6 @@ export interface PayerListMetrics {
   settledTotal: number;
   settledFormatted: string;
   settledGoalProgress: number;
-  settled7d: number;
-  settled7dFormatted: string;
   monthlyRunRate: number;
   monthlyRunRateFormatted: string;
   annualizedRunRate: number;
@@ -102,19 +99,16 @@ export function usePayerListData(): UsePayerListDataResult {
         // Progressive enrichment with PDP and settled7d
         setPdpLoading(true);
         try {
-          const [enrichedWithPDP, enrichedWithSettled7d] = await Promise.all([
-            enrichPayersWithPDP(payersData),
-            enrichPayersWithSettled7d(payersData),
-          ]);
+          const enrichedWithPDP = await enrichPayersWithPDP(payersData);
 
           if (cancelled) return;
 
-          // Merge all enrichments
+          // Merge PDP enrichments
           const mergedPayers = payersData.map((payer, i) => ({
             ...payer,
-            ...enrichedWithPDP[i],
-            settled7d: enrichedWithSettled7d[i].settled7d,
-            settled7dFormatted: enrichedWithSettled7d[i].settled7dFormatted,
+            totalDataSizeGB: enrichedWithPDP[i].totalDataSizeGB,
+            totalDataSizeFormatted: enrichedWithPDP[i].totalDataSizeFormatted,
+            proofStatus: enrichedWithPDP[i].proofStatus,
           }));
           setPayers(mergedPayers);
         } catch (err) {

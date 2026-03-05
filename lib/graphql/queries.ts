@@ -368,6 +368,7 @@ export interface TotalLockedResponse {
   }>;
 }
 
+
 // Daily token metrics query (for ARR calculation)
 // Fetches daily settled amounts for 4-week rolling average, aggregated client-side
 export const DAILY_TOKEN_METRICS_FOR_ARR_QUERY = gql`
