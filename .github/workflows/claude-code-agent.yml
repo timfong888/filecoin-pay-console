@@ -15,6 +15,7 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -28,17 +29,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Setup Vercel project config
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          mkdir -p .vercel
+          echo "{\"projectId\":\"$VERCEL_PROJECT_ID\",\"orgId\":\"$VERCEL_ORG_ID\"}" > .vercel/project.json
+
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          model: claude-haiku-4-5-20251001
-          allowed_tools: "Bash,Read,Write,Edit,Glob,Grep"
-          custom_instructions: |
+          claude_args: "--model claude-haiku-4-5-20251001"
+          prompt: |
             You are a lightweight deployment and review agent for the Filecoin Pay Console.
 
             ## What you CAN do
             1. Build the app: `npm run build:prototype` or `npm run build:ga`
-            2. Deploy to Vercel preview: set up .vercel/project.json, then `npx vercel deploy --prebuilt --token=$VERCEL_TOKEN`
+            2. Deploy to Vercel preview: `npx vercel deploy --prebuilt --token=$VERCEL_TOKEN`
             3. Deploy to Vercel production: `npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN`
             4. Comment deployment URLs on issues
             5. Close issues when explicitly asked
@@ -56,14 +64,11 @@ jobs:
             When asked to deploy:
             1. Determine mode from context (prototype vs ga vs production)
             2. Run the appropriate build command
-            3. Set up .vercel/project.json:
-               ```
-               mkdir -p .vercel
-               echo '{"projectId":"'"$VERCEL_PROJECT_ID"'","orgId":"'"$VERCEL_ORG_ID"'"}' > .vercel/project.json
-               ```
+            3. .vercel/project.json is already configured
             4. Deploy: `npx vercel deploy --prebuilt --token=$VERCEL_TOKEN` (add `--prod` for production)
-            5. Comment the preview/production URL on the issue
-          environment_variables: |
-            VERCEL_TOKEN=${{ secrets.VERCEL_TOKEN }}
-            VERCEL_ORG_ID=${{ secrets.VERCEL_ORG_ID }}
-            VERCEL_PROJECT_ID=${{ secrets.VERCEL_PROJECT_ID }}
+            5. Report the preview/production URL
+
+            ## Environment
+            VERCEL_TOKEN is available as $VERCEL_TOKEN in the shell environment.
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
