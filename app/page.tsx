@@ -285,24 +285,6 @@ export default function Dashboard() {
             definitionAnchor={isGAMode ? "usdfc-settled-cumulative" : "total-settled-usdfc"}
           />
           <HeroMetricCard
-            title="ARR"
-            value="--"
-            subtitle="4-week avg: --/wk"
-            definitionAnchor="arr-annualized-run-rate"
-          />
-          <HeroMetricCard
-            title="Churned Wallets"
-            value="--"
-            subtitle="All rails = TERMINATED"
-            definitionAnchor="churned-wallets"
-          />
-          <HeroMetricCard
-            title="FIL Burned"
-            value="--"
-            subtitle="Cumulative FIL burned from settlements"
-            definitionAnchor="fil-burned"
-          />
-          <HeroMetricCard
             title="Locked FIL"
             value="--"
             subtitle="Not yet available (FIL is not a payment token)"
@@ -312,10 +294,19 @@ export default function Dashboard() {
             value="--"
             subtitle="Not yet available (FIL is not a payment token)"
           />
+          <HeroMetricCard
+            title="FIL Burned"
+            value="--"
+            subtitle="Cumulative FIL burned from settlements"
+            definitionAnchor="fil-burned"
+          />
+          <HeroMetricCard
+            title="Churned Wallets"
+            value="--"
+            subtitle="All rails = TERMINATED"
+            definitionAnchor="churned-wallets"
+          />
         </div>
-
-        {/* Auction Stats Charts - Placeholder mockups (both modes) */}
-        {features.showAuctionStats && <AuctionStatsCharts />}
 
         {/* Top Payers Section - Prototype mode only */}
         {features.showTop10Tables && (
@@ -352,6 +343,9 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Auction Stats Charts - Placeholder mockups (both modes) */}
+        {features.showAuctionStats && <AuctionStatsCharts />}
+
         {/* Data source indicator */}
         <DataSourcePanel hostname={hostname} />
       </div>
@@ -359,7 +353,7 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { globalMetrics, totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC, arr } = data;
+  const { globalMetrics, totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC } = data;
 
   return (
     <div className="space-y-6">
@@ -383,24 +377,6 @@ export default function Dashboard() {
           definitionAnchor={isGAMode ? "usdfc-settled-cumulative" : "total-settled-usdfc"}
         />
         <HeroMetricCard
-          title="ARR"
-          value={arr.annualizedFormatted}
-          subtitle={`4-week avg: ${arr.weeklyAverageFormatted}/wk`}
-          definitionAnchor="arr-annualized-run-rate"
-        />
-        <HeroMetricCard
-          title="Churned Wallets"
-          value={churnedWallets.toLocaleString()}
-          subtitle="All rails = TERMINATED"
-          definitionAnchor="churned-wallets"
-        />
-        <HeroMetricCard
-          title="FIL Burned"
-          value={globalMetrics.totalFilBurnedFormatted}
-          subtitle="Cumulative FIL burned from settlements"
-          definitionAnchor="fil-burned"
-        />
-        <HeroMetricCard
           title="Locked FIL"
           value="--"
           subtitle="Not yet available (FIL is not a payment token)"
@@ -410,10 +386,19 @@ export default function Dashboard() {
           value="--"
           subtitle="Not yet available (FIL is not a payment token)"
         />
+        <HeroMetricCard
+          title="FIL Burned"
+          value={globalMetrics.totalFilBurnedFormatted}
+          subtitle="Cumulative FIL burned from settlements"
+          definitionAnchor="fil-burned"
+        />
+        <HeroMetricCard
+          title="Churned Wallets"
+          value={churnedWallets.toLocaleString()}
+          subtitle="All rails = TERMINATED"
+          definitionAnchor="churned-wallets"
+        />
       </div>
-
-      {/* Auction Stats Charts - Placeholder mockups (both modes) */}
-      {features.showAuctionStats && <AuctionStatsCharts />}
 
       {/* Cumulative Line Charts - Prototype mode only, dynamically loaded */}
       {features.showCharts && chartData.length > 0 && (
@@ -456,6 +441,9 @@ export default function Dashboard() {
           <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} />
         </div>
       )}
+
+      {/* Auction Stats Charts - Placeholder mockups (both modes) */}
+      {features.showAuctionStats && <AuctionStatsCharts />}
 
       {/* Data source indicator */}
       <DataSourcePanel hostname={hostname} />

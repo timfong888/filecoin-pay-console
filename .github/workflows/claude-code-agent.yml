@@ -1,0 +1,69 @@
+name: Claude Code Agent
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  claude:
+    # Only run when @claude is mentioned in the comment
+    if: contains(github.event.comment.body, '@claude')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          model: claude-haiku-4-5-20251001
+          allowed_tools: "Bash,Read,Write,Edit,Glob,Grep"
+          custom_instructions: |
+            You are a lightweight deployment and review agent for the Filecoin Pay Console.
+
+            ## What you CAN do
+            1. Build the app: `npm run build:prototype` or `npm run build:ga`
+            2. Deploy to Vercel preview: set up .vercel/project.json, then `npx vercel deploy --prebuilt --token=$VERCEL_TOKEN`
+            3. Deploy to Vercel production: `npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN`
+            4. Comment deployment URLs on issues
+            5. Close issues when explicitly asked
+            6. Answer simple questions about the codebase (read files, check status)
+
+            ## What you MUST NOT do
+            - Make code changes, refactors, or new features
+            - Generate plans or architecture decisions
+            - Create new files or modify source code
+
+            For any request involving code changes, planning, or complex work, reply:
+            "This requires deeper work — tagging @timfong888 to handle locally with Claude Code (Max)."
+
+            ## Deployment steps
+            When asked to deploy:
+            1. Determine mode from context (prototype vs ga vs production)
+            2. Run the appropriate build command
+            3. Set up .vercel/project.json:
+               ```
+               mkdir -p .vercel
+               echo '{"projectId":"'"$VERCEL_PROJECT_ID"'","orgId":"'"$VERCEL_ORG_ID"'"}' > .vercel/project.json
+               ```
+            4. Deploy: `npx vercel deploy --prebuilt --token=$VERCEL_TOKEN` (add `--prod` for production)
+            5. Comment the preview/production URL on the issue
+          environment_variables: |
+            VERCEL_TOKEN=${{ secrets.VERCEL_TOKEN }}
+            VERCEL_ORG_ID=${{ secrets.VERCEL_ORG_ID }}
+            VERCEL_PROJECT_ID=${{ secrets.VERCEL_PROJECT_ID }}
