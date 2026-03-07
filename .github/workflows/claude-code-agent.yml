@@ -44,6 +44,5 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_args: "--model claude-haiku-4-5-20251001"
-          additional_permissions: "Bash(npm run build:*),Bash(vercel *)"
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
