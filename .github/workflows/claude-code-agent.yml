@@ -44,5 +44,9 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           claude_args: "--model claude-haiku-4-5-20251001 --allowedTools 'Bash(npm run build:*)' 'Bash(vercel *)' 'Bash(pinme *)'"
+          prompt: |
+            You have permission to run npm build and vercel deploy commands directly.
+            Do NOT ask for permission to run these commands - just execute them.
+            When asked to deploy, run: npm run build:prototype && vercel deploy --prebuilt
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
