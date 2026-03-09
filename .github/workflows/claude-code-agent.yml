@@ -44,20 +44,9 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           show_full_output: true
-          allowed_tools: |
-            Bash(npm run build:ga)
-            Bash(npm run build:prototype)
-            Bash(npm run build:calibration)
-            Bash(vercel build)
-            Bash(vercel build --prod)
-            Bash(vercel deploy --prebuilt)
-            Bash(vercel deploy --prebuilt --prod)
-            Bash(pinme upload out *)
-            Read
-            Glob
-            Grep
           claude_args: >-
             --model claude-haiku-4-5-20251001
+            --allowedTools "Bash(npm run build:ga)" "Bash(npm run build:prototype)" "Bash(npm run build:calibration)" "Bash(vercel build)" "Bash(vercel build --prod)" "Bash(vercel deploy --prebuilt)" "Bash(vercel deploy --prebuilt --prod)" "Bash(pinme upload out *)" "Read" "Glob" "Grep"
           prompt: |
             You are a CI deployment agent. You have full permission to run build and deploy commands.
             Do NOT ask for permission - just execute them immediately.
