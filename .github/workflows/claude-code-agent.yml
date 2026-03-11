@@ -1,0 +1,68 @@
+name: Claude Code Agent
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  claude:
+    # Only run when @claude is mentioned in the comment
+    if: contains(github.event.comment.body, '@claude') && github.event.comment.user.login == 'timfong888'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Vercel CLI
+        run: npm i -g vercel
+
+      - name: Setup Vercel project config
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          mkdir -p .vercel
+          echo "{\"projectId\":\"$VERCEL_PROJECT_ID\",\"orgId\":\"$VERCEL_ORG_ID\"}" > .vercel/project.json
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          show_full_output: true
+          claude_args: >-
+            --model claude-haiku-4-5-20251001
+            --allowedTools "Bash(npm run build:ga)" "Bash(npm run build:prototype)" "Bash(npm run build:calibration)" "Bash(vercel build)" "Bash(vercel build --prod)" "Bash(vercel deploy --prebuilt)" "Bash(vercel deploy --prebuilt --prod)" "Bash(pinme upload out *)" "Read" "Glob" "Grep"
+          prompt: |
+            You are a CI deployment agent. You have full permission to run build and deploy commands.
+            Do NOT ask for permission - just execute them immediately.
+
+            When asked to deploy to preview:
+            1. Run: npm run build:prototype
+            2. Run: vercel build
+            3. Run: vercel deploy --prebuilt
+            4. Report the preview URL from the vercel deploy output.
+
+            When asked to deploy to production:
+            1. Run: npm run build:ga
+            2. Run: vercel build --prod
+            3. Run: vercel deploy --prebuilt --prod
+            4. Report the production URL.
+
+            Always include the deployment URL in your response.
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

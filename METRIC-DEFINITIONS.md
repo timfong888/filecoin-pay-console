@@ -8,7 +8,7 @@ The dashboard displays different metrics depending on build mode.
 
 ### GA Mode Metrics
 
-#### Active Wallets
+#### Active Payers
 - **Definition:** Count of payer wallets with at least one active rail AND positive lockup
 - **Source:** `Account` entities from Goldsky subgraph
 - **Formula:** Count where `account.payerRails.some(rail.state == "Active") AND account.userTokens.some(lockupCurrent > 0)`
@@ -237,10 +237,6 @@ To provide visibility into payment composition, consider adding:
 - **Definition:** The wallet address of the payer account
 - **Display:** Truncated address (`0x1234...abcd`) or ENS name if resolved
 
-### Rails
-- **Definition:** Count of payment rails created by this payer
-- **Source:** `account.payerRails.length`
-- **Sortable:** Yes
 
 ### Data Size
 - **Definition:** Total data size in GB across all payees' PDP proof sets
@@ -494,6 +490,9 @@ query FindByIPFS($ipfsCid: String!) {
 - **Entities Used:** Provider
 - **Purpose:** Storage provider proof status and data sizes
 - **Correlation Key:** `Provider.address` matches `Rail.payee.address`
+
+### FWSS (Goldsky)
+{fill this in based on code}
 
 ---
 

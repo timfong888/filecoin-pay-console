@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(npx vercel *)",
+      "Bash(vercel *)",
+      "Bash(pinme *)",
+      "Bash(npm install*)",
+      "Bash(npm ci*)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Read",
+      "Glob",
+      "Grep"
+    ]
+  }
+}

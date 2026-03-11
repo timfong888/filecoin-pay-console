@@ -161,12 +161,12 @@ test.describe('Dashboard - Acceptance Tests', () => {
   });
 
   // AT-D02: GA mode shows correct hero metrics [GA ONLY]
-  test('AT-D02: GA mode shows Active Wallets and Churned Wallets [GA]', async ({ page }) => {
+  test('AT-D02: GA mode shows Active Payers and Churned Wallets [GA]', async ({ page }) => {
     if (currentMode !== 'ga') {
       test.skip();
       return;
     }
-    await expect(page.getByText('Active Wallets', { exact: true })).toBeVisible();
+    await expect(page.getByText('Active Payers', { exact: true })).toBeVisible();
     await expect(page.getByText('Churned Wallets', { exact: true })).toBeVisible();
   });
 

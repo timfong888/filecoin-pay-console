@@ -1,15 +1,17 @@
-import { http, createConfig } from "wagmi";
-import { filecoin } from "wagmi/chains";
+import { http, createConfig, type Transport } from "wagmi";
 import { injected } from "wagmi/connectors";
+import { networkConfig } from "../config/network";
+
+const chain = networkConfig.chain;
 
 export const config = createConfig({
-  chains: [filecoin],
+  chains: [chain],
   connectors: [
     injected(),
   ],
   transports: {
-    [filecoin.id]: http(),
-  },
+    [chain.id]: http(),
+  } as Record<typeof chain.id, Transport>,
 });
 
 declare module "wagmi" {

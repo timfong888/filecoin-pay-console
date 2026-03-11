@@ -88,6 +88,28 @@
 
 ---
 
+## v0.36.0-prototype / v0.33.0-ga - 2026-01-23
+
+**Changes:**
+- Fix auction stats display: replaced time-series charts with simple metric cards
+- Four placeholder metric cards matching the original mockup:
+  - Current Auction Price
+  - Available Quantity (USDFC)
+  - Total Auction Volume
+  - Total Auction Participants
+- All values show "--" with "Mock Data" badge
+
+**Deployment:**
+- GA: https://filpay-ga.pinit.eth.limo (CID: `bafybeibwymx6yvtzzmdhjxawvxzek7e7v326syiaeh4vka6jbl4ecus2iq`)
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeib3vzse6tzlq5pdunrxnx6vwnac7ljsgdk3ehcrjgtw7xk4yx3bky`)
+- Git Tags: [v0.33.0-ga](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.33.0-ga), [v0.36.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.36.0-prototype)
+- Commits: [0821680](https://github.com/timfong888/filecoin-pay-console/commit/0821680) (main), [592f298](https://github.com/timfong888/filecoin-pay-console/commit/592f298) (prototype)
+
+**Related Issues:**
+- [#58](https://github.com/timfong888/filecoin-pay-console/issues/58) - Add auction stats placeholder (corrected implementation)
+
+---
+
 ## v0.35.0-prototype / v0.32.0-ga - 2026-01-23
 
 **Changes:**
@@ -183,6 +205,28 @@
 
 **Related Issues:**
 - [#57](https://github.com/timfong888/filecoin-pay-console/issues/57) - Expose the same Settle Funds via the UI for Payers
+
+---
+
+## v0.31.0-ga / v0.34.0-prototype - 2026-01-23
+
+**Changes:**
+- Update Goldsky subgraph configuration to correct project ID
+- Update Filecoin Pay subgraph to v1.2.0 (filecoin-pay-mainnet-tim)
+- Add FWSS subgraph configuration (fwss-mainnet-tim v1.0.0)
+- Update DataSourcePanel to display both subgraphs with clickable version links
+- Add "FIL Burned" hero metric (placeholder, non-functional)
+
+**Deployment:**
+- GA: https://filpay-ga.pinit.eth.limo (CID: `bafybeibaripwrzjnjtupdcwbn7unaomlv63svjzzsbngmkgbvi6dedqgnu`)
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeibewrsxid6yawka56rqpnlxuwbsipvi2f3u27kxh2cg56emgfxl7q`)
+- Git Commits:
+  - prototype: [a976342](https://github.com/timfong888/filecoin-pay-console/commit/a976342)
+  - main: [e1eeabe](https://github.com/timfong888/filecoin-pay-console/commit/e1eeabe) (cherry-picked)
+- Git Tags: v0.31.0-ga, v0.34.0-prototype
+
+**Related Issues:**
+- [#59](https://github.com/timfong888/filecoin-pay-console/issues/59) - Add FIL Burned hero metric and fix subgraph display
 
 ---
 

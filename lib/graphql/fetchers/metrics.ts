@@ -25,7 +25,7 @@ import {
   FixedLockupPendingResponse,
   FILTokenMetricsResponse,
 } from '../queries';
-import { weiToUSDC, formatCurrency, secondsToMs } from './utils';
+import { weiToUSDC, formatCurrency, formatFIL, secondsToMs } from './utils';
 import { logError } from '../../errors';
 
 // Monthly run rate calculation constants
@@ -50,6 +50,8 @@ export async function fetchGlobalMetrics() {
       uniquePayees: 0,
       totalTerminations: 0,
       totalActiveRails: 0,
+      totalFilBurned: '0',
+      totalFilBurnedFormatted: '0.00 FIL',
     };
   }
 
@@ -58,6 +60,8 @@ export async function fetchGlobalMetrics() {
     uniquePayees: parseInt(metrics.uniquePayees),
     totalTerminations: parseInt(metrics.totalTerminatedRails),
     totalActiveRails: parseInt(metrics.totalActiveRails),
+    totalFilBurned: metrics.totalFilBurned,
+    totalFilBurnedFormatted: formatFIL(metrics.totalFilBurned),
   };
 }
 
@@ -93,34 +97,6 @@ export async function fetchTotalSettled() {
     last30Days: weiToUSDC(last30DaysSettled.toString()),
     totalFormatted: formatCurrency(weiToUSDC(totalSettled.toString())),
     last30DaysFormatted: formatCurrency(weiToUSDC(last30DaysSettled.toString())),
-  };
-}
-
-/**
- * Fetch settled amount from the last 7 days using DailyTokenMetric.
- */
-export async function fetchSettled7d() {
-  // Calculate timestamp for 7 days ago (in seconds for BigInt)
-  const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
-
-  const data = await executeQuery<DailyTokenMetricsResponse>(
-    DAILY_TOKEN_METRICS_QUERY,
-    { first: 14, since: sevenDaysAgo.toString() },
-    { operation: 'fetchSettled7d' }
-  );
-
-  let totalSettled7d = BigInt(0);
-
-  for (const metric of data.dailyTokenMetrics) {
-    totalSettled7d += BigInt(metric.settledAmount);
-  }
-
-  const settled7dValue = weiToUSDC(totalSettled7d.toString());
-
-  return {
-    total: settled7dValue,
-    formatted: formatCurrency(settled7dValue),
-    settlementCount: data.dailyTokenMetrics.length,
   };
 }
 
