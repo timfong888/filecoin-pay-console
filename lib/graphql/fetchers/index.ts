@@ -23,6 +23,7 @@ export {
 export {
   fetchGlobalMetrics,
   fetchTotalSettled,
+  fetchSettled7d,
   fetchMonthlyRunRate,
   fetchDailyMetrics,
   fetchDailySettled,
@@ -41,6 +42,7 @@ export {
   fetchChurnedWalletsCount,
   fetchActivePayersByDate,
   enrichPayersWithPDP,
+  enrichPayersWithSettled7d,
 } from './payers';
 export type { PayerDisplay, PayerDisplayExtended } from './payers';
 
