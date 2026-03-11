@@ -18,14 +18,16 @@ The dashboard displays different metrics depending on build mode.
 
 #### Locked USDFC
 - **Definition:** Total USDFC currently locked across all accounts for future payments
-- **Source:** Sum of `Account.userTokens.lockupCurrent` from Goldsky subgraph
-- **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals) to USDFC
-- **Note:** This represents the total amount of USDFC that has been deposited and is locked to secure active payment rails. Displayed between Active Payers and USDFC Settled.
+- **Source:** `Account.userTokens.lockupCurrent` from Goldsky subgraph (emitted by Payments contract `AccountLockupSettled` event)
+- **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals)
+- **Contract Formula:** `lockupCurrent = Σ(rail.lockupFixed + rail.paymentRate × rail.lockupPeriod)` per account
+- **Includes:** Both streaming lockup (rate-based rails) AND fixed lockup (one-time payment rails)
 
 #### USDFC Settled (Cumulative)
 - **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
 - **Source:** Sum of `Rail.totalSettledAmount` across all rails with settlements
 - **Formula:** `Σ(rail.totalSettledAmount)` converted from wei (18 decimals) to USDFC
+- **Includes:** Both streaming settlements (rate-based rails) AND one-time payment settlements
 
 #### ARR (Annualized Run Rate)
 - **Definition:** Annualized projection based on 4-week rolling average of settled USDFC
@@ -47,15 +49,6 @@ The dashboard displays different metrics depending on build mode.
   - Has created at least 1 rail (was previously active)
   - ALL rails have `state = "Terminated"` (no active or finalized rails)
 
-#### FIL Burned
-- **Definition:** Total FIL burned from three sources:
-  1. Settling USDFC
-  2. Settling FIL
-  3. Auction
-- **Status:** Coming soon (placeholder metric)
-- **Source:** Engineering will drive implementation
-- **Note:** Non-functional in current release - displays placeholder value
-
 ### Prototype Mode Metrics
 
 #### Unique Payers
@@ -65,14 +58,17 @@ The dashboard displays different metrics depending on build mode.
 
 #### Locked USDFC
 - **Definition:** Total USDFC currently locked across all accounts for future payments
-- **Source:** Sum of `Account.userTokens.lockupCurrent` from Goldsky subgraph
-- **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals) to USDFC
-- **Note:** Same metric as GA Mode. Displayed between Active Payers and USDFC Settled.
+- **Source:** `Account.userTokens.lockupCurrent` from Goldsky subgraph (emitted by Payments contract `AccountLockupSettled` event)
+- **Formula:** `Σ(account.userTokens.lockupCurrent)` converted from wei (18 decimals)
+- **Contract Formula:** `lockupCurrent = Σ(rail.lockupFixed + rail.paymentRate × rail.lockupPeriod)` per account
+- **Includes:** Both streaming lockup (rate-based rails) AND fixed lockup (one-time payment rails)
+- **Note:** Same metric as GA Mode.
 
 #### Total Settled (USDFC)
 - **Definition:** Cumulative sum of all USDFC settled across all payment rails since inception
 - **Source:** Sum of `Rail.totalSettledAmount` across all rails with settlements
 - **Formula:** `Σ(rail.totalSettledAmount)` converted from wei (18 decimals) to USDFC
+- **Includes:** Both streaming settlements (rate-based rails) AND one-time payment settlements
 
 #### ARR (Annualized Run Rate)
 - **Definition:** Annualized projection based on 4-week rolling average of settled USDFC
@@ -101,15 +97,6 @@ The dashboard displays different metrics depending on build mode.
   - Has created at least 1 rail (was previously active)
   - ALL rails have `state = "Terminated"` (no active or finalized rails)
 - **Note:** Same metric as GA Mode. Added to Prototype mode for complete visibility.
-
-#### FIL Burned
-- **Definition:** Total FIL burned from three sources:
-  1. Settling USDFC
-  2. Settling FIL
-  3. Auction
-- **Status:** Coming soon (placeholder metric)
-- **Source:** Engineering will drive implementation
-- **Note:** Same metric as GA Mode. Non-functional in current release - displays placeholder value.
 
 ---
 

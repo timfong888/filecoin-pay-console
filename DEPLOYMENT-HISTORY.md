@@ -1,5 +1,57 @@
 # Deployment History
 
+## v0.40.0-prototype - 2026-03-04
+
+**Changes:**
+- Chore: Add .npmrc with legacy-peer-deps for Vercel builds
+- Deployed via Vercel (PinMe CLI not available)
+
+**Deployment:**
+- Vercel Preview: https://filecoin-pay-console-mevz7be6t-timfong888.vercel.app
+- Git Tag: [v0.40.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.40.0-prototype)
+- Commit: [ad35ff0](https://github.com/timfong888/filecoin-pay-console/commit/ad35ff0)
+
+---
+
+## v0.39.0-prototype - 2026-02-07
+
+**Changes:**
+- Refactor: Remove redundant "Fixed Lockup Pending" hero metric
+- Fixed Lockup Pending was a subset of Locked USDFC (contract formula: lockupCurrent = lockupFixed + paymentRate × lockupPeriod)
+- Update Locked USDFC subtitle to "Streaming + fixed lockup" for clarity
+- Update USDFC Settled to note it includes both payment types
+- Simplify METRIC-DEFINITIONS.md by removing complex "Metric Relationships" section
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeibe6ekr3xld3ivvb7g4vzhkhnnqsbc2zz3zz22rpcykniovtoq2bi`)
+- Preview: https://bafybeibe6ekr3xld3ivvb7g4vzhkhnnqsbc2zz3zz22rpcykniovtoq2bi.ipfs.dweb.link
+- Git Tag: [v0.39.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.39.0-prototype)
+- Commit: [80f3ef5](https://github.com/timfong888/filecoin-pay-console/commit/80f3ef5)
+
+**Related Issues:**
+- [#65](https://github.com/timfong888/filecoin-pay-console/issues/65) - Review the Filecoin Pay Subgraph for how one-time payment are processed
+
+---
+
+## v0.38.0-prototype - 2026-02-06
+
+**Changes:**
+- Feature: Add "Fixed Lockup Pending" hero metric showing USDFC pre-allocated in one-time payment rails
+- Replace "FIL Burned" placeholder with new metric
+- New metric displays value and subtitle with one-time rail count
+- Update METRIC-DEFINITIONS.md with metric documentation
+
+**Deployment:**
+- Prototype: https://filpay-prototype.pinit.eth.limo (CID: `bafybeidsxozl54c4vvk4itmr6mpmxknzyygr47kxp5kuw7kbgeblycs7ta`)
+- Preview: https://bafybeidsxozl54c4vvk4itmr6mpmxknzyygr47kxp5kuw7kbgeblycs7ta.ipfs.dweb.link
+- Git Tag: [v0.38.0-prototype](https://github.com/timfong888/filecoin-pay-console/releases/tag/v0.38.0-prototype)
+- Commit: [2d26501](https://github.com/timfong888/filecoin-pay-console/commit/2d26501)
+
+**Related Issues:**
+- [#65](https://github.com/timfong888/filecoin-pay-console/issues/65) - Review the Filecoin Pay Subgraph for how one-time payment are processed
+
+---
+
 ## v0.37.2-prototype - 2026-02-07
 
 **Changes:**

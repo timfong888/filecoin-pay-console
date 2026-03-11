@@ -19,6 +19,7 @@ import {
   PDPDataSetWithRoots,
   PieceDisplayData,
   PayerStorageSummary,
+  DataSetDisplayData,
 } from './types';
 
 // PDP Explorer Subgraph endpoint (mainnet)
@@ -443,6 +444,7 @@ export async function fetchDataSetsWithRoots(
 
 /**
  * GraphQL query to fetch DataSets with roots by owner addresses (batch).
+ * Includes totalFaultedPeriods for reliability indicator.
  */
 const DATASETS_WITH_ROOTS_BY_OWNERS_QUERY = `
   query DataSetsWithRootsByOwners($addresses: [Bytes!]!) {
@@ -451,6 +453,7 @@ const DATASETS_WITH_ROOTS_BY_OWNERS_QUERY = `
       isActive
       totalDataSize
       totalRoots
+      totalFaultedPeriods
       lastProvenEpoch
       createdAt
       owner {
@@ -585,4 +588,178 @@ export function formatBytesSize(bytes: bigint | number): string {
   }
 
   return `${size.toFixed(2)} ${units[unitIndex]}`;
+}
+
+/**
+ * Format a Unix timestamp as "time ago" string.
+ *
+ * @param epochSeconds - Unix timestamp in seconds (or null)
+ * @returns Formatted string like "2h ago", "3d ago", or null
+ */
+export function formatTimeAgo(epochSeconds: string | null): string | null {
+  if (!epochSeconds) return null;
+
+  const epochNum = parseInt(epochSeconds);
+  if (isNaN(epochNum) || epochNum === 0) return null;
+
+  // Filecoin epochs are ~30 seconds each, starting from genesis
+  // Genesis: Nov 15, 2020 00:00:00 UTC = 1605398400
+  const FILECOIN_GENESIS_UNIX = 1605398400;
+  const EPOCH_DURATION_SECONDS = 30;
+
+  const provenUnix = FILECOIN_GENESIS_UNIX + (epochNum * EPOCH_DURATION_SECONDS);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const diffSeconds = nowSeconds - provenUnix;
+
+  if (diffSeconds < 0) return 'just now';
+  if (diffSeconds < 60) return `${diffSeconds}s ago`;
+  if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
+  if (diffSeconds < 86400) return `${Math.floor(diffSeconds / 3600)}h ago`;
+  if (diffSeconds < 604800) return `${Math.floor(diffSeconds / 86400)}d ago`;
+  return `${Math.floor(diffSeconds / 604800)}w ago`;
+}
+
+/**
+ * Format address as truncated string.
+ */
+function formatAddress(address: string): string {
+  if (!address || address.length < 10) return address || '—';
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+/**
+ * Rail info needed for DataSet correlation and payment calculation.
+ */
+export interface RailInfoForDataSet {
+  railId: string;
+  payeeAddress: string;
+  createdAtTimestamp: number; // Unix ms
+  paymentRateWei: string;     // Wei per second as string
+}
+
+/**
+ * Transform DataSets and Rails into DataSetDisplayData for UI.
+ *
+ * Correlates DataSets with Rails by matching owner address and creation timestamp.
+ * Calculates payment metrics based on rail rate × duration.
+ *
+ * @param dataSets - DataSets fetched from PDP subgraph
+ * @param rails - Rail info from Filecoin Pay (payee address, rate, timestamp)
+ * @param hexCidToBase32Fn - Function to convert hex CID to base32
+ * @returns Array of DataSetDisplayData for UI rendering
+ */
+export function transformDataSetsToDisplay(
+  dataSets: PDPDataSetWithRoots[],
+  rails: RailInfoForDataSet[],
+  hexCidToBase32Fn: (hexCid: string) => string
+): DataSetDisplayData[] {
+  const now = Date.now();
+
+  // Build rail lookup by correlation key (address:timestamp in seconds)
+  const railByKey = new Map<string, RailInfoForDataSet>();
+  for (const rail of rails) {
+    const key = `${rail.payeeAddress.toLowerCase()}:${Math.floor(rail.createdAtTimestamp / 1000)}`;
+    railByKey.set(key, rail);
+  }
+
+  return dataSets.map((ds) => {
+    const providerAddress = ds.owner?.address || '';
+    const totalSizeBytes = BigInt(ds.totalDataSize);
+    const pieceCount = parseInt(ds.totalRoots) || ds.roots?.length || 0;
+    const faultedPeriods = parseInt(ds.totalFaultedPeriods || '0') || 0;
+
+    // Find correlated rail
+    const correlationKey = `${providerAddress.toLowerCase()}:${ds.createdAt}`;
+    const rail = railByKey.get(correlationKey);
+
+    // Calculate payment metrics if rail found
+    let totalPaidUSDFC = 0;
+    let costPerGBMonth: number | null = null;
+    let paymentRatePerSecond = BigInt(0);
+    let railCreatedAtMs = 0;
+
+    if (rail) {
+      paymentRatePerSecond = BigInt(rail.paymentRateWei);
+      railCreatedAtMs = rail.createdAtTimestamp;
+
+      // Calculate total paid since rail creation
+      const durationSeconds = Math.floor((now - railCreatedAtMs) / 1000);
+      if (durationSeconds > 0 && paymentRatePerSecond > BigInt(0)) {
+        const totalPaidWei = paymentRatePerSecond * BigInt(durationSeconds);
+        totalPaidUSDFC = Number(totalPaidWei) / 1e18;
+      }
+
+      // Calculate cost per GB per month
+      const sizeGB = Number(totalSizeBytes) / BYTES_PER_GB;
+      if (sizeGB > 0 && paymentRatePerSecond > BigInt(0)) {
+        const SECONDS_PER_MONTH = 30 * 24 * 60 * 60;
+        const monthlyRateWei = paymentRatePerSecond * BigInt(SECONDS_PER_MONTH);
+        const monthlyRateUSDFC = Number(monthlyRateWei) / 1e18;
+        costPerGBMonth = Math.round((monthlyRateUSDFC / sizeGB) * 100) / 100;
+      }
+    }
+
+    // Transform pieces
+    const pieces: PieceDisplayData[] = (ds.roots || []).map((root) => {
+      const pieceCIDBase32 = hexCidToBase32Fn(root.cid);
+      return {
+        dataSetId: ds.setId,
+        pieceId: root.rootId,
+        pieceCID: pieceCIDBase32,
+        pieceCIDHex: root.cid,
+        ipfsCID: null, // Will be enriched separately from StateView
+        size: formatBytesSize(BigInt(root.rawSize)),
+        sizeBytes: BigInt(root.rawSize),
+        provider: providerAddress,
+        providerFormatted: formatAddress(providerAddress),
+        isActive: ds.isActive,
+      };
+    });
+
+    return {
+      setId: ds.setId,
+      providerAddress,
+      providerENS: null, // Will be enriched separately
+      providerFormatted: formatAddress(providerAddress),
+      totalSizeBytes,
+      totalSizeFormatted: formatBytesSize(totalSizeBytes),
+      pieceCount,
+      isActive: ds.isActive,
+      lastProvenEpoch: ds.lastProvenEpoch,
+      lastProvenFormatted: formatTimeAgo(ds.lastProvenEpoch),
+      hasFaults: faultedPeriods > 0,
+      faultedPeriods,
+      createdAt: ds.createdAt,
+      railId: rail?.railId || null,
+      paymentRatePerSecond,
+      railCreatedAtMs,
+      totalPaidUSDFC: Math.round(totalPaidUSDFC * 100) / 100,
+      costPerGBMonth,
+      pieces,
+    };
+  });
+}
+
+/**
+ * Calculate aggregate summary from DataSetDisplayData array.
+ */
+export function calculateDataSetsSummary(
+  dataSets: DataSetDisplayData[]
+): { totalDataSets: number; totalPieces: number; totalPaidUSDFC: number; totalSizeFormatted: string } {
+  let totalPieces = 0;
+  let totalPaidUSDFC = 0;
+  let totalSizeBytes = BigInt(0);
+
+  for (const ds of dataSets) {
+    totalPieces += ds.pieceCount;
+    totalPaidUSDFC += ds.totalPaidUSDFC;
+    totalSizeBytes += ds.totalSizeBytes;
+  }
+
+  return {
+    totalDataSets: dataSets.length,
+    totalPieces,
+    totalPaidUSDFC: Math.round(totalPaidUSDFC * 100) / 100,
+    totalSizeFormatted: formatBytesSize(totalSizeBytes),
+  };
 }

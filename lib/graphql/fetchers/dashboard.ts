@@ -7,10 +7,13 @@ import { generateDateRange } from './utils';
 import {
   fetchGlobalMetrics,
   fetchTotalSettled,
+  fetchSettled7d,
   fetchMonthlyRunRate,
   fetchDailySettled,
   fetchTotalLockedUSDFC,
   fetchARR,
+  fetchFixedLockupPending,
+  fetchFILMetrics,
 } from './metrics';
 import {
   fetchTopPayers,
@@ -23,9 +26,10 @@ import {
  */
 export async function fetchDashboardData() {
   // Use fetchActivePayersByDate() for chart to match hero metric definition
-  const [globalMetrics, totalSettled, topPayers, runRate, activePayersByDate, dailySettledMap, activePayersData, totalLockedUSDFC, arr] = await Promise.all([
+  const [globalMetrics, totalSettled, settled7d, topPayers, runRate, activePayersByDate, dailySettledMap, activePayersData, totalLockedUSDFC, arr, fixedLockupPending, filMetrics] = await Promise.all([
     fetchGlobalMetrics(),
     fetchTotalSettled(),
+    fetchSettled7d(),
     fetchTopPayers(10),
     fetchMonthlyRunRate(),
     fetchActivePayersByDate(),
@@ -33,6 +37,8 @@ export async function fetchDashboardData() {
     fetchActivePayersCount(),
     fetchTotalLockedUSDFC(),
     fetchARR(),
+    fetchFixedLockupPending(),
+    fetchFILMetrics(),
   ]);
 
   // Generate chart dates (last 30 days)
@@ -75,6 +81,7 @@ export async function fetchDashboardData() {
   return {
     globalMetrics,
     totalSettled,
+    settled7d,
     topPayers,
     runRate,
     // Active Payers: at least one ACTIVE rail AND lockupRate > 0
@@ -83,6 +90,10 @@ export async function fetchDashboardData() {
     totalLockedUSDFC,
     // ARR (Annualized Run Rate) based on 4-week rolling average
     arr,
+    // Fixed Lockup Pending (one-time payment rails)
+    fixedLockupPending,
+    // FIL-denominated metrics (Locked FIL, Settled FIL, FIL Burned)
+    filMetrics,
     // Cumulative chart data
     cumulativePayers,
     cumulativeSettled,
@@ -104,9 +115,10 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
     const effectiveEnd = endDate || now;
 
     // Use fetchActivePayersByDate() for chart to match hero metric definition
-    const [globalMetrics, totalSettled, runRate, activePayersByDate, dailySettledMap, activePayersData] = await Promise.all([
+    const [globalMetrics, totalSettled, settled7d, runRate, activePayersByDate, dailySettledMap, activePayersData] = await Promise.all([
       fetchGlobalMetrics(),
       fetchTotalSettled(),
+      fetchSettled7d(),
       fetchMonthlyRunRate(),
       fetchActivePayersByDate(),
       fetchDailySettled(),
@@ -182,6 +194,8 @@ export async function fetchPayerListMetrics(startDate?: Date, endDate?: Date) {
       settledTotal: totalSettled.total,
       settledFormatted: totalSettled.totalFormatted,
       settledGoalProgress,
+      settled7d: settled7d.total,
+      settled7dFormatted: settled7d.formatted,
       monthlyRunRate: runRate.monthly,
       monthlyRunRateFormatted: runRate.monthlyFormatted,
       annualizedRunRate: runRate.annualized,

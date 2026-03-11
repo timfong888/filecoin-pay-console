@@ -382,3 +382,13 @@ export async function enrichPayersWithPDP(payers: PayerDisplayExtended[]): Promi
     };
   });
 }
+
+/**
+ * Enrich payers with settled 7d data.
+ * Note: Per-payer 7d breakdown is not available in the current subgraph schema.
+ */
+export async function enrichPayersWithSettled7d(payers: PayerDisplayExtended[]): Promise<PayerDisplayExtended[]> {
+  // Per-payer 7d data would require a timestamp field on Settlement type
+  // which is not currently available in the subgraph schema
+  return payers;
+}

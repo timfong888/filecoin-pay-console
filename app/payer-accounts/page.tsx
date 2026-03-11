@@ -3,13 +3,13 @@
 import { useEffect, useState, Suspense, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { Payer } from "@/components/dashboard/TopPayersTable";
 import {
   fetchAllPayersExtended,
   fetchAccountDetail,
   fetchPayerListMetrics,
   enrichPayersWithPDP,
+  enrichPayersWithSettled7d,
   AccountDetail,
   PayerDisplayExtended,
   formatChartDate,
@@ -29,8 +29,11 @@ import {
   fetchDataSetsWithRootsByCorrelation,
   calculateStorageSummary,
   formatBytesSize,
+  transformDataSetsToDisplay,
+  calculateDataSetsSummary,
+  RailInfoForDataSet,
 } from "@/lib/pdp/fetchers";
-import { RailDataSetCorrelation } from "@/lib/pdp/types";
+import { RailDataSetCorrelation, DataSetDisplayData } from "@/lib/pdp/types";
 import { PDPDataSetWithRoots, PieceDisplayData } from "@/lib/pdp/types";
 import {
   fetchPieceMetadata,
@@ -45,20 +48,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-// Dynamic import for charts - defers recharts bundle loading
-const PayerListCharts = dynamic(
-  () => import("@/components/dashboard/PayerListCharts").then(mod => mod.PayerListCharts),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-gray-100 rounded-lg h-80 animate-pulse" />
-        <div className="bg-gray-100 rounded-lg h-80 animate-pulse" />
-      </div>
-    ),
-  }
-);
+import { DataSetCard } from "@/components/payer/DataSetCard";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
 // Types
 interface PayerListMetrics {
@@ -73,6 +74,9 @@ interface PayerListMetrics {
   settledTotal: number;
   settledFormatted: string;
   settledGoalProgress: number;
+  // Settled in last 7 days
+  settled7d: number;
+  settled7dFormatted: string;
   // Monthly run rate (kept for reference but not displayed in hero)
   monthlyRunRate: number;
   monthlyRunRateFormatted: string;
@@ -208,14 +212,19 @@ function PayerDetailView({ address }: { address: string }) {
   // My Data state
   const [dataSets, setDataSets] = useState<PDPDataSetWithRoots[]>([]);
   const [pieceData, setPieceData] = useState<PieceDisplayData[]>([]);
+  const [dataSetDisplay, setDataSetDisplay] = useState<DataSetDisplayData[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
-  // Provider ENS names - reserved for future use when we correlate DataSets with Rails
-  // const [providerEnsNames, setProviderEnsNames] = useState<Map<string, string | null>>(new Map());
+  // Provider ENS names for DataSet cards
+  const [providerEnsNames, setProviderEnsNames] = useState<Map<string, string | null>>(new Map());
 
   // CID Lookup state
   const [cidSearchQuery, setCidSearchQuery] = useState("");
   const [cidSearchResult, setCidSearchResult] = useState<PieceDisplayData | null>(null);
   const [cidSearching, setCidSearching] = useState(false);
+  const [matchingDataSetId, setMatchingDataSetId] = useState<string | null>(null);
+
+  // Expand all/collapse all state
+  const [allExpanded, setAllExpanded] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -311,40 +320,46 @@ function PayerDetailView({ address }: { address: string }) {
           railCreatedAt: Math.floor(rail.createdAtTimestamp / 1000).toString(), // Convert ms to seconds
         }));
 
+        // Build rail info for payment calculations
+        const railsInfo: RailInfoForDataSet[] = account.payerRails.map(rail => ({
+          railId: rail.railId,
+          payeeAddress: rail.counterpartyAddress,
+          createdAtTimestamp: rail.createdAtTimestamp,
+          paymentRateWei: rail.paymentRate,
+        }));
+
         // Fetch DataSets with roots using rail correlations
         const fetchedDataSets = await fetchDataSetsWithRootsByCorrelation(railCorrelations);
         setDataSets(fetchedDataSets);
 
-        // Transform to PieceDisplayData
-        // Provider (SP) is the DataSet owner
-        const pieces: PieceDisplayData[] = [];
+        // Transform to DataSetDisplayData using the new function
+        const displayData = transformDataSetsToDisplay(
+          fetchedDataSets,
+          railsInfo,
+          hexCidToBase32
+        );
+        setDataSetDisplay(displayData);
 
-        for (const ds of fetchedDataSets) {
-          const providerAddress = ds.owner?.address || "";
-          for (const root of ds.roots || []) {
-            // Convert hex CID to base32
-            const pieceCIDBase32 = hexCidToBase32(root.cid);
+        // Extract all pieces for legacy pieceData (used by CID search)
+        const allPieces: PieceDisplayData[] = displayData.flatMap(ds => ds.pieces);
+        setPieceData(allPieces);
 
-            pieces.push({
-              dataSetId: ds.setId,
-              pieceId: root.rootId,
-              pieceCID: pieceCIDBase32,
-              pieceCIDHex: root.cid,
-              ipfsCID: null, // Will be fetched from StateView
-              size: formatBytesSize(BigInt(root.rawSize)),
-              sizeBytes: BigInt(root.rawSize),
-              provider: providerAddress,
-              providerFormatted: providerAddress ? `${providerAddress.slice(0, 6)}...${providerAddress.slice(-4)}` : "—",
-              isActive: ds.isActive,
-            });
-          }
+        // Resolve provider ENS names
+        const providerAddresses = [...new Set(displayData.map(ds => ds.providerAddress).filter(Boolean))];
+        if (providerAddresses.length > 0) {
+          const ensNames = await batchResolveENS(providerAddresses);
+          setProviderEnsNames(ensNames);
+
+          // Update dataSetDisplay with ENS names
+          setDataSetDisplay(prev => prev.map(ds => ({
+            ...ds,
+            providerENS: ensNames.get(ds.providerAddress.toLowerCase()) || null,
+          })));
         }
-
-        setPieceData(pieces);
 
         // Fetch IPFS CIDs from StateView (in background, may be slow)
         const enrichedPieces = await Promise.all(
-          pieces.map(async (piece) => {
+          allPieces.map(async (piece) => {
             try {
               const metadata = await fetchPieceMetadata(piece.dataSetId, piece.pieceId);
               return {
@@ -358,6 +373,22 @@ function PayerDetailView({ address }: { address: string }) {
         );
 
         setPieceData(enrichedPieces);
+
+        // Also update pieces in dataSetDisplay with IPFS CIDs
+        const pieceCidMap = new Map<string, string>();
+        for (const p of enrichedPieces) {
+          if (p.ipfsCID) {
+            pieceCidMap.set(`${p.dataSetId}-${p.pieceId}`, p.ipfsCID);
+          }
+        }
+        setDataSetDisplay(prev => prev.map(ds => ({
+          ...ds,
+          pieces: ds.pieces.map(p => ({
+            ...p,
+            ipfsCID: pieceCidMap.get(`${p.dataSetId}-${p.pieceId}`) || p.ipfsCID,
+          })),
+        })));
+
       } catch (err) {
         console.error("Failed to load My Data:", err);
       } finally {
@@ -387,21 +418,23 @@ function PayerDetailView({ address }: { address: string }) {
 
     if (found) {
       setCidSearchResult(found);
+      setMatchingDataSetId(found.dataSetId);
+    } else {
+      setMatchingDataSetId(null);
     }
 
     setCidSearching(false);
   }, [cidSearchQuery, pieceData]);
 
-  // Calculate storage summary with runway
+  // Calculate storage summary
   const storageSummary = useMemo(() => {
-    // Sum lockup rates from active rails (rateRaw is USDFC per epoch, 1 epoch = 30s)
-    const totalRatePerEpoch = account?.payerRails
-      .filter(r => r.stateCode === 0)
-      .reduce((sum, r) => sum + r.rateRaw, 0) ?? 0;
-    const lockupRatePerSecond = totalRatePerEpoch / 30;
+    return calculateStorageSummary(dataSets);
+  }, [dataSets]);
 
-    return calculateStorageSummary(dataSets, account?.totalFundsRaw, lockupRatePerSecond);
-  }, [dataSets, account]);
+  // Calculate DataSets summary with payment info
+  const dataSetsSummary = useMemo(() => {
+    return calculateDataSetsSummary(dataSetDisplay);
+  }, [dataSetDisplay]);
 
   if (loading) {
     return (
@@ -412,18 +445,7 @@ function PayerDetailView({ address }: { address: string }) {
           </Link>
         </div>
         <h1 className="text-2xl font-bold">Payer Details</h1>
-        <p className="text-sm text-gray-500 font-mono">{address}</p>
-
-        {/* Loading stage indicator */}
-        <div className="py-12">
-          <div className="flex flex-col items-center gap-4">
-            <svg className="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-            <p className="text-sm text-gray-500">Loading account data from subgraph&hellip;</p>
-          </div>
-        </div>
+        <div className="h-96 bg-gray-100 rounded-lg animate-pulse" />
       </div>
     );
   }
@@ -492,7 +514,7 @@ function PayerDetailView({ address }: { address: string }) {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-5 gap-4">
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500 flex items-center gap-1">
             Available Funds
@@ -504,7 +526,6 @@ function PayerDetailView({ address }: { address: string }) {
             </span>
           </p>
           <p className="text-2xl font-bold">{account.totalFunds}</p>
-          <p className="text-xs text-gray-400 font-mono mt-1">&Sigma;(userToken.funds) &minus; &Sigma;(userToken.lockupCurrent)</p>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500 flex items-center gap-1">
@@ -517,7 +538,6 @@ function PayerDetailView({ address }: { address: string }) {
             </span>
           </p>
           <p className="text-2xl font-bold">{account.totalLocked}</p>
-          <p className="text-xs text-gray-400 font-mono mt-1">&Sigma;(userToken.lockupCurrent)</p>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500">Total Storage</p>
@@ -527,7 +547,6 @@ function PayerDetailView({ address }: { address: string }) {
           <p className="text-xs text-gray-400 mt-1">
             {dataLoading ? "" : `across ${storageSummary.totalPieces} CIDs`}
           </p>
-          <p className="text-xs text-gray-400 font-mono mt-1">&Sigma;(root.rawSize)</p>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500">Runway</p>
@@ -535,16 +554,50 @@ function PayerDetailView({ address }: { address: string }) {
             {storageSummary.runwayDays !== null ? `${storageSummary.runwayDays} days` : "-"}
           </p>
           <p className="text-xs text-gray-400 mt-1">at current rate</p>
-          <p className="text-xs text-gray-400 font-mono mt-1">funds &divide; (&Sigma; lockupRate &times; EPOCHS_PER_DAY)</p>
+        </div>
+        <div className="bg-white border rounded-lg p-4">
+          <p className="text-sm text-gray-500 flex items-center gap-1">
+            Bandwidth
+            <span
+              className="text-gray-400 cursor-help"
+              title="Bandwidth tracking for data retrieval will be available in a future release."
+            >
+              ⓘ
+            </span>
+          </p>
+          <p className="text-2xl font-bold text-gray-300">—</p>
+          <p className="text-xs text-gray-400 mt-1">Coming Q2 2026</p>
         </div>
       </div>
 
       {/* My Data Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">
-            My Data {storageSummary.totalPieces > 0 && `(${storageSummary.totalPieces.toLocaleString()})`}
-          </h2>
+          <div>
+            <h2 className="text-xl font-semibold">My Data</h2>
+            {dataSetsSummary.totalDataSets > 0 && (
+              <p className="text-sm text-gray-500 mt-1">
+                {dataSetsSummary.totalDataSets} DataSet{dataSetsSummary.totalDataSets !== 1 ? "s" : ""} · {dataSetsSummary.totalPieces.toLocaleString()} pieces · {dataSetsSummary.totalSizeFormatted} · ${dataSetsSummary.totalPaidUSDFC.toFixed(2)} total paid
+              </p>
+            )}
+          </div>
+          {dataSetDisplay.length > 0 && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setAllExpanded(true)}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Expand All
+              </button>
+              <span className="text-gray-300">|</span>
+              <button
+                onClick={() => setAllExpanded(false)}
+                className="text-sm text-blue-600 hover:underline"
+              >
+                Collapse All
+              </button>
+            </div>
+          )}
         </div>
 
         {/* CID Lookup */}
@@ -554,7 +607,13 @@ function PayerDetailView({ address }: { address: string }) {
               type="text"
               placeholder="Enter IPFS CID or Piece CID to lookup..."
               value={cidSearchQuery}
-              onChange={(e) => setCidSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setCidSearchQuery(e.target.value);
+                if (!e.target.value.trim()) {
+                  setCidSearchResult(null);
+                  setMatchingDataSetId(null);
+                }
+              }}
               onKeyDown={(e) => e.key === "Enter" && handleCidSearch()}
               className="flex-1 px-4 py-2 border rounded-md"
             />
@@ -573,7 +632,7 @@ function PayerDetailView({ address }: { address: string }) {
           {/* Search Result */}
           {cidSearchResult && (
             <div className="mt-4 p-3 bg-white border rounded-md">
-              <p className="text-sm font-medium text-green-600 mb-2">Found match:</p>
+              <p className="text-sm font-medium text-green-600 mb-2">Found match in DataSet DS-{cidSearchResult.dataSetId.slice(-3).padStart(3, "0")}:</p>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <span className="text-gray-500">Piece CID:</span>{" "}
@@ -595,119 +654,26 @@ function PayerDetailView({ address }: { address: string }) {
           )}
         </div>
 
-        {/* My Data Table */}
+        {/* DataSet Cards */}
         {dataLoading ? (
-          <div className="py-6">
-            <div className="flex flex-col items-center gap-3">
-              <svg className="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <p className="text-sm text-gray-500">Fetching storage data&hellip;</p>
-            </div>
+          <div className="space-y-4">
+            <div className="h-24 bg-gray-100 rounded-lg animate-pulse" />
+            <div className="h-24 bg-gray-100 rounded-lg animate-pulse" />
           </div>
-        ) : pieceData.length === 0 ? (
+        ) : dataSetDisplay.length === 0 ? (
           <div className="bg-gray-50 border rounded-lg p-8 text-center text-gray-500">
             No data sets found for this payer
           </div>
         ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="font-medium">Piece CID</TableHead>
-                  <TableHead className="font-medium">IPFS CID</TableHead>
-                  <TableHead className="font-medium">Size</TableHead>
-                  <TableHead className="font-medium">Provider</TableHead>
-                  <TableHead className="font-medium">Data Set</TableHead>
-                  <TableHead className="font-medium">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pieceData.map((piece, index) => (
-                  <TableRow
-                    key={`${piece.dataSetId}-${piece.pieceId}`}
-                    className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                  >
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm" title={piece.pieceCID}>
-                          {truncateCID(piece.pieceCID)}
-                        </span>
-                        <button
-                          onClick={() => navigator.clipboard.writeText(piece.pieceCID)}
-                          className="text-gray-400 hover:text-gray-600"
-                          title="Copy Piece CID"
-                        >
-                          📋
-                        </button>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {piece.ipfsCID ? (
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm" title={piece.ipfsCID}>
-                            {truncateCID(piece.ipfsCID)}
-                          </span>
-                          <button
-                            onClick={() => navigator.clipboard.writeText(piece.ipfsCID!)}
-                            className="text-gray-400 hover:text-gray-600"
-                            title="Copy IPFS CID"
-                          >
-                            📋
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>{piece.size}</TableCell>
-                    <TableCell>
-                      {piece.provider ? (
-                        <Link
-                          href={`/payee-accounts?address=${piece.provider}`}
-                          className="text-blue-600 hover:underline font-mono text-sm"
-                          title={piece.provider}
-                        >
-                          {piece.providerFormatted}
-                        </Link>
-                      ) : (
-                        <span className="text-gray-400">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-blue-600 font-medium">DS-{piece.dataSetId.slice(-3).padStart(3, "0")}</span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            const url = piece.ipfsCID
-                              ? `https://dweb.link/ipfs/${piece.ipfsCID}`
-                              : `https://data.filecoin.io/piece/${piece.pieceCID}`;
-                            navigator.clipboard.writeText(url);
-                          }}
-                          className="text-blue-600 hover:underline text-sm"
-                          title="Copy retrieval URL"
-                        >
-                          Copy URL
-                        </button>
-                        {piece.ipfsCID && (
-                          <a
-                            href={`https://dweb.link/ipfs/${piece.ipfsCID}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:underline text-sm"
-                          >
-                            View
-                          </a>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+          <div className="space-y-3">
+            {dataSetDisplay.map((ds) => (
+              <DataSetCard
+                key={ds.setId}
+                dataSet={ds}
+                defaultExpanded={allExpanded}
+                onSearchMatch={matchingDataSetId === ds.setId}
+              />
+            ))}
           </div>
         )}
 
@@ -898,22 +864,30 @@ function PayerListView() {
         setMetrics(metricsData);
         setError(null);
 
-        // Progressively load PDP data
+        // Progressively load PDP and settled7d data
         setPdpLoading(true);
         try {
-          const enrichedWithPDP = await enrichPayersWithPDP(payersData);
+          const [enrichedWithPDP, enrichedWithSettled7d] = await Promise.all([
+            enrichPayersWithPDP(payersData),
+            enrichPayersWithSettled7d(payersData),
+          ]);
 
           // Merge enrichments while preserving any resolved ENS names
           // Note: We explicitly copy only PDP-specific fields to avoid overwriting ensName
+          // because spreading the whole object might have ensName: undefined which would overwrite
           setPayers((currentPayers) =>
             currentPayers.map((payer, i) => {
               const pdpData = enrichedWithPDP[i];
+              const settled7dData = enrichedWithSettled7d[i];
               return {
                 ...payer,
                 // Explicitly copy only PDP-specific fields
                 totalDataSizeGB: pdpData.totalDataSizeGB,
                 totalDataSizeFormatted: pdpData.totalDataSizeFormatted,
                 proofStatus: pdpData.proofStatus,
+                // Settled 7d data
+                settled7d: settled7dData.settled7d,
+                settled7dFormatted: settled7dData.settled7dFormatted,
               };
             })
           );
@@ -1083,6 +1057,11 @@ function PayerListView() {
             title="Total Settled (USDFC)"
             value="--"
           />
+          <HeroMetricCard
+            title="Settled (7d)"
+            value="--"
+            subtitle="USDFC settled in the last 7 days"
+          />
         </div>
 
         {/* Data source indicator */}
@@ -1132,6 +1111,11 @@ function PayerListView() {
             title="Total Settled (USDFC)"
             value={metrics.settledFormatted}
           />
+          <HeroMetricCard
+            title="Settled (7d)"
+            value={metrics.settled7dFormatted}
+            subtitle="USDFC settled in the last 7 days"
+          />
         </div>
       )}
 
@@ -1144,9 +1128,76 @@ function PayerListView() {
         onApply={handleApplyFilters}
       />
 
-      {/* Charts - dynamically loaded */}
+      {/* Charts */}
       {chartData.length > 0 && (
-        <PayerListCharts chartData={chartData} />
+        <div className="grid grid-cols-2 gap-6">
+          {/* Chart 1: Total Unique Payers */}
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-lg font-semibold mb-2">Total Unique Payers</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Cumulative count of unique payer wallets over time
+            </p>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={formatChartDate}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value) => [value ?? 0, "Total Payers"]}
+                    labelFormatter={(label) => `Date: ${label}`}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="payers"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Chart 2: Total USDFC Settled */}
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-lg font-semibold mb-2">Total USDFC Settled</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Cumulative settlement volume over time
+            </p>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={formatChartDate}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={formatChartCurrency}
+                  />
+                  <Tooltip
+                    formatter={(value) => [`$${(value as number)?.toFixed(2) ?? 0}`, "Total Settled"]}
+                    labelFormatter={(label) => `Date: ${label}`}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="settled"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Search and Register Button */}
@@ -1233,7 +1284,7 @@ function PayerListView() {
           <TableBody>
             {paginatedPayers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={10} className="text-center py-8 text-gray-500">
                   No payers found
                 </TableCell>
               </TableRow>

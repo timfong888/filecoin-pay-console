@@ -13,6 +13,8 @@ import {
   ALL_DAILY_TOKEN_METRICS_QUERY,
   TOTAL_LOCKED_QUERY,
   DAILY_TOKEN_METRICS_FOR_ARR_QUERY,
+  FIXED_LOCKUP_PENDING_QUERY,
+  FIL_TOKEN_METRICS_QUERY,
   GlobalMetricsResponse,
   TotalSettledResponse,
   ActiveRailsResponse,
@@ -20,6 +22,8 @@ import {
   DailyTokenMetricsResponse,
   TotalLockedResponse,
   DailyTokenMetricsForARRResponse,
+  FixedLockupPendingResponse,
+  FILTokenMetricsResponse,
 } from '../queries';
 import { weiToUSDC, formatCurrency, formatFIL, secondsToMs } from './utils';
 import { logError } from '../../errors';
@@ -93,6 +97,34 @@ export async function fetchTotalSettled() {
     last30Days: weiToUSDC(last30DaysSettled.toString()),
     totalFormatted: formatCurrency(weiToUSDC(totalSettled.toString())),
     last30DaysFormatted: formatCurrency(weiToUSDC(last30DaysSettled.toString())),
+  };
+}
+
+/**
+ * Fetch settled amount from the last 7 days using DailyTokenMetric.
+ */
+export async function fetchSettled7d() {
+  // Calculate timestamp for 7 days ago (in seconds for BigInt)
+  const sevenDaysAgo = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+
+  const data = await executeQuery<DailyTokenMetricsResponse>(
+    DAILY_TOKEN_METRICS_QUERY,
+    { first: 14, since: sevenDaysAgo.toString() },
+    { operation: 'fetchSettled7d' }
+  );
+
+  let totalSettled7d = BigInt(0);
+
+  for (const metric of data.dailyTokenMetrics) {
+    totalSettled7d += BigInt(metric.settledAmount);
+  }
+
+  const settled7dValue = weiToUSDC(totalSettled7d.toString());
+
+  return {
+    total: settled7dValue,
+    formatted: formatCurrency(settled7dValue),
+    settlementCount: data.dailyTokenMetrics.length,
   };
 }
 
@@ -285,5 +317,101 @@ export async function fetchARR(): Promise<ARRResult> {
     weeklyAverageFormatted: formatCurrency(weeklyAverage),
     weeklyBreakdown,
     weeksUsed,
+  };
+}
+
+/**
+ * FIL metrics result interface.
+ */
+export interface FILMetricsResult {
+  lockedFIL: { total: number; formatted: string };
+  settledFIL: { total: number; formatted: string };
+  filBurned: { total: number; formatted: string };
+}
+
+/**
+ * Fetch FIL-denominated metrics: Locked FIL, Settled FIL, FIL Burned.
+ * - Locked FIL = FIL token lockupCurrent
+ * - Settled FIL = FIL token (totalSettledAmount + totalOneTimePayment)
+ * - FIL Burned = PaymentsMetric.totalFilBurned
+ */
+export async function fetchFILMetrics(): Promise<FILMetricsResult> {
+  const data = await executeQuery<FILTokenMetricsResponse>(
+    FIL_TOKEN_METRICS_QUERY,
+    undefined,
+    { operation: 'fetchFILMetrics' }
+  );
+
+  const filToken = data.token;
+  const totalFilBurned = data.paymentsMetrics?.[0]?.totalFilBurned || '0';
+
+  // FIL uses 18 decimals, same as USDFC — weiToUSDC works for any 18-decimal token
+  const lockedFIL = filToken ? weiToUSDC(filToken.lockupCurrent) : 0;
+  const settledFIL = filToken
+    ? weiToUSDC(
+        (BigInt(filToken.totalSettledAmount) + BigInt(filToken.totalOneTimePayment)).toString()
+      )
+    : 0;
+  const filBurned = weiToUSDC(totalFilBurned);
+
+  const formatFIL = (val: number) => {
+    if (val === 0) return '0 FIL';
+    if (val < 0.01) return `${val.toFixed(6)} FIL`;
+    return `${val.toFixed(4)} FIL`;
+  };
+
+  return {
+    lockedFIL: { total: lockedFIL, formatted: formatFIL(lockedFIL) },
+    settledFIL: { total: settledFIL, formatted: formatFIL(settledFIL) },
+    filBurned: { total: filBurned, formatted: formatFIL(filBurned) },
+  };
+}
+
+/**
+ * Fixed Lockup Pending result interface.
+ */
+export interface FixedLockupPendingResult {
+  total: number;
+  formatted: string;
+  railCount: number;
+  settledCount: number;
+}
+
+/**
+ * Fetch fixed lockup pending from one-time payment rails.
+ * Fixed Lockup Pending = Σ(rail.lockupFixed - rail.totalSettledAmount) where paymentRate = 0
+ *
+ * One-time payment rails (ZERORATE) have paymentRate=0 and use lockupFixed
+ * for pre-allocated lump-sum payments executed via modifyRailPayment().
+ */
+export async function fetchFixedLockupPending(): Promise<FixedLockupPendingResult> {
+  const data = await executeQuery<FixedLockupPendingResponse>(
+    FIXED_LOCKUP_PENDING_QUERY,
+    undefined,
+    { operation: 'fetchFixedLockupPending' }
+  );
+
+  let totalPending = BigInt(0);
+  let settledCount = 0;
+
+  for (const rail of data.rails) {
+    const lockupFixed = BigInt(rail.lockupFixed);
+    const settled = BigInt(rail.totalSettledAmount);
+
+    // Pending = lockupFixed minus what's already settled
+    const pending = lockupFixed - settled;
+    if (pending > BigInt(0)) {
+      totalPending += pending;
+    }
+    if (settled > BigInt(0)) {
+      settledCount++;
+    }
+  }
+
+  return {
+    total: weiToUSDC(totalPending.toString()),
+    formatted: formatCurrency(weiToUSDC(totalPending.toString())),
+    railCount: data.rails.length,
+    settledCount,
   };
 }

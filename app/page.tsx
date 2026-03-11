@@ -1,45 +1,21 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import dynamic from "next/dynamic";
 import { TopPayersTable, mockPayers, Payer } from "@/components/dashboard/TopPayersTable";
 import { DataSourcePanel } from "@/components/dashboard/DataSourcePanel";
-import { fetchDashboardData, fetchChurnedWalletsCount } from "@/lib/graphql/fetchers";
+import { fetchDashboardData, fetchChurnedWalletsCount, formatChartDate, formatChartCurrency, FILMetricsResult } from "@/lib/graphql/fetchers";
 import { batchResolveENS } from "@/lib/ens";
 import { isGAMode, features } from "@/lib/config/mode";
-
-// Dynamic import for charts - only loads recharts bundle when needed (prototype mode)
-const DashboardCharts = dynamic(
-  () => import("@/components/dashboard/DashboardCharts").then(mod => mod.DashboardCharts),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="grid grid-cols-2 gap-6">
-        <div className="bg-gray-100 rounded-lg h-80 animate-pulse" />
-        <div className="bg-gray-100 rounded-lg h-80 animate-pulse" />
-      </div>
-    ),
-  }
-);
-
-// Dynamic import for auction stats charts
-const AuctionStatsCharts = dynamic(
-  () => import("@/components/dashboard/AuctionStatsCharts").then(mod => mod.AuctionStatsCharts),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="space-y-6">
-        <div className="h-8 w-48 bg-gray-100 rounded animate-pulse" />
-        <div className="grid grid-cols-2 gap-6">
-          <div className="bg-gray-100 rounded-lg h-80 animate-pulse" />
-          <div className="bg-gray-100 rounded-lg h-80 animate-pulse" />
-          <div className="bg-gray-100 rounded-lg h-80 animate-pulse" />
-          <div className="bg-gray-100 rounded-lg h-80 animate-pulse" />
-        </div>
-      </div>
-    ),
-  }
-);
+import { AuctionStatsCharts } from "@/components/dashboard/AuctionStatsCharts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
 interface DashboardData {
   globalMetrics: {
@@ -47,8 +23,6 @@ interface DashboardData {
     uniquePayees: number;
     totalTerminations: number;
     totalActiveRails: number;
-    totalFilBurned: string;
-    totalFilBurnedFormatted: string;
   };
   totalSettled: {
     total: number;
@@ -63,6 +37,11 @@ interface DashboardData {
     annualized: number;
     annualizedFormatted: string;
     activeRailsCount: number;
+  };
+  // Settled in last 7 days (actual fund flow)
+  settled7d: {
+    total: number;
+    formatted: string;
   };
   // Total locked USDFC across all accounts
   totalLockedUSDFC: {
@@ -83,6 +62,15 @@ interface DashboardData {
   activePayers: number;
   // Churned wallets (GA mode): payers where ALL rails are TERMINATED
   churnedWallets: number;
+  // Fixed Lockup Pending (one-time payment rails)
+  fixedLockupPending: {
+    total: number;
+    formatted: string;
+    railCount: number;
+    settledCount: number;
+  };
+  // FIL-denominated metrics
+  filMetrics: FILMetricsResult;
   // Cumulative chart data
   cumulativePayers: number[];
   cumulativeSettled: number[];
@@ -243,7 +231,7 @@ export default function Dashboard() {
 
   // Show loading state
   if (loading) {
-    const cardCount = isGAMode ? 5 : 6; // +1 for FIL Burned in both modes
+    const cardCount = 7; // Active Payers, Locked USDFC, USDFC Settled, Locked FIL, Settled FIL, FIL Burned, Churned Wallets
     return (
       <div className="space-y-6">
         <div className={`grid grid-cols-1 md:grid-cols-${cardCount} gap-4`}>
@@ -266,7 +254,7 @@ export default function Dashboard() {
             <p className="text-sm">{error}. Displaying sample data instead.</p>
           </div>
         )}
-        <div className="flex gap-6">
+        <div className="flex gap-6 flex-wrap">
           <HeroMetricCard
             title={isGAMode ? "Active Wallets" : "Active Payers"}
             value="--"
@@ -276,7 +264,7 @@ export default function Dashboard() {
           <HeroMetricCard
             title="Locked USDFC"
             value="--"
-            subtitle="Total locked across all accounts"
+            subtitle="Streaming + fixed lockup"
             definitionAnchor="locked-usdfc"
           />
           <HeroMetricCard
@@ -287,18 +275,14 @@ export default function Dashboard() {
           <HeroMetricCard
             title="Locked FIL"
             value="--"
-            subtitle="Not yet available (FIL is not a payment token)"
           />
           <HeroMetricCard
             title="Settled FIL"
             value="--"
-            subtitle="Not yet available (FIL is not a payment token)"
           />
           <HeroMetricCard
             title="FIL Burned"
             value="--"
-            subtitle="Cumulative FIL burned from settlements"
-            definitionAnchor="fil-burned"
           />
           <HeroMetricCard
             title="Churned Wallets"
@@ -307,6 +291,9 @@ export default function Dashboard() {
             definitionAnchor="churned-wallets"
           />
         </div>
+
+        {/* Auction Stats Charts - Placeholder mockups (both modes) */}
+        {features.showAuctionStats && <AuctionStatsCharts />}
 
         {/* Top Payers Section - Prototype mode only */}
         {features.showTop10Tables && (
@@ -343,9 +330,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Auction Stats Charts - Placeholder mockups (both modes) */}
-        {features.showAuctionStats && <AuctionStatsCharts />}
-
         {/* Data source indicator */}
         <DataSourcePanel hostname={hostname} />
       </div>
@@ -353,14 +337,14 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { globalMetrics, totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC } = data;
+  const { totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC, arr, fixedLockupPending, filMetrics } = data;
 
   return (
     <div className="space-y-6">
       {/* Hero Metric Cards */}
-      <div className="flex gap-6">
+      <div className="flex gap-6 flex-wrap">
         <HeroMetricCard
-          title="Active Payers"
+          title={isGAMode ? "Active Wallets" : "Active Payers"}
           value={activePayers.toLocaleString()}
           subtitle="At least 1 ACTIVE rail AND lockup rate > 0"
           definitionAnchor={isGAMode ? "active-wallets" : "unique-payers"}
@@ -368,7 +352,7 @@ export default function Dashboard() {
         <HeroMetricCard
           title="Locked USDFC"
           value={totalLockedUSDFC.formatted}
-          subtitle="Total locked across all accounts"
+          subtitle="Streaming + fixed lockup"
           definitionAnchor="locked-usdfc"
         />
         <HeroMetricCard
@@ -378,19 +362,15 @@ export default function Dashboard() {
         />
         <HeroMetricCard
           title="Locked FIL"
-          value="--"
-          subtitle="Not yet available (FIL is not a payment token)"
+          value={filMetrics.lockedFIL.formatted}
         />
         <HeroMetricCard
           title="Settled FIL"
-          value="--"
-          subtitle="Not yet available (FIL is not a payment token)"
+          value={filMetrics.settledFIL.formatted}
         />
         <HeroMetricCard
           title="FIL Burned"
-          value={globalMetrics.totalFilBurnedFormatted}
-          subtitle="Cumulative FIL burned from settlements"
-          definitionAnchor="fil-burned"
+          value={filMetrics.filBurned.formatted}
         />
         <HeroMetricCard
           title="Churned Wallets"
@@ -400,9 +380,79 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Cumulative Line Charts - Prototype mode only, dynamically loaded */}
+      {/* Auction Stats Charts - Placeholder mockups (both modes) */}
+      {features.showAuctionStats && <AuctionStatsCharts />}
+
+      {/* Cumulative Line Charts - Prototype mode only */}
       {features.showCharts && chartData.length > 0 && (
-        <DashboardCharts chartData={chartData} />
+        <div className="grid grid-cols-2 gap-6">
+          {/* Chart 1: Total Active Payers */}
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-lg font-semibold mb-2">Total Active Payers</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Cumulative count of active payer wallets (ACTIVE rail AND lockup rate &gt; 0)
+            </p>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={formatChartDate}
+                  />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip
+                    formatter={(value) => [value ?? 0, "Active Payers"]}
+                    labelFormatter={(label) => `Date: ${label}`}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="payers"
+                    stroke="#3b82f6"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Chart 2: Total USDFC Settled */}
+          <div className="bg-white border rounded-lg p-4">
+            <h3 className="text-lg font-semibold mb-2">Total USDFC Settled</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Cumulative settlement volume over time
+            </p>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={formatChartDate}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={formatChartCurrency}
+                  />
+                  <Tooltip
+                    formatter={(value) => [`$${(value as number)?.toFixed(2) ?? 0}`, "Total Settled"]}
+                    labelFormatter={(label) => `Date: ${label}`}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="settled"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Top Payers Section - Prototype mode only */}
@@ -441,9 +491,6 @@ export default function Dashboard() {
           <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} />
         </div>
       )}
-
-      {/* Auction Stats Charts - Placeholder mockups (both modes) */}
-      {features.showAuctionStats && <AuctionStatsCharts />}
 
       {/* Data source indicator */}
       <DataSourcePanel hostname={hostname} />
