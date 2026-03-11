@@ -401,6 +401,36 @@ export interface DailyTokenMetricsForARRResponse {
   dailyTokenMetrics: DailyTokenMetricForARR[];
 }
 
+// FIL token metrics query (for Locked FIL, Settled FIL hero cards)
+// Queries both the FIL token entity and totalFilBurned from PaymentsMetric
+export const FIL_TOKEN_METRICS_QUERY = gql`
+  query FILTokenMetrics {
+    token(id: "0x0000000000000000000000000000000000000000") {
+      symbol
+      totalSettledAmount
+      totalOneTimePayment
+      lockupCurrent
+      decimals
+    }
+    paymentsMetrics(first: 1) {
+      totalFilBurned
+    }
+  }
+`;
+
+export interface FILTokenMetricsResponse {
+  token: {
+    symbol: string;
+    totalSettledAmount: string;
+    totalOneTimePayment: string;
+    lockupCurrent: string;
+    decimals: string;
+  } | null;
+  paymentsMetrics: Array<{
+    totalFilBurned: string;
+  }>;
+}
+
 // Fixed lockup pending query (for one-time payment rails)
 // Fetches rails with paymentRate=0 and lockupFixed>0 to sum pending one-time payments
 export const FIXED_LOCKUP_PENDING_QUERY = gql`

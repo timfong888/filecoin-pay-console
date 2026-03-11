@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { TopPayersTable, mockPayers, Payer } from "@/components/dashboard/TopPayersTable";
 import { DataSourcePanel } from "@/components/dashboard/DataSourcePanel";
-import { fetchDashboardData, fetchChurnedWalletsCount, formatChartDate, formatChartCurrency } from "@/lib/graphql/fetchers";
+import { fetchDashboardData, fetchChurnedWalletsCount, formatChartDate, formatChartCurrency, FILMetricsResult } from "@/lib/graphql/fetchers";
 import { batchResolveENS } from "@/lib/ens";
 import { isGAMode, features } from "@/lib/config/mode";
 import { AuctionStatsCharts } from "@/components/dashboard/AuctionStatsCharts";
@@ -69,6 +69,8 @@ interface DashboardData {
     railCount: number;
     settledCount: number;
   };
+  // FIL-denominated metrics
+  filMetrics: FILMetricsResult;
   // Cumulative chart data
   cumulativePayers: number[];
   cumulativeSettled: number[];
@@ -229,7 +231,7 @@ export default function Dashboard() {
 
   // Show loading state
   if (loading) {
-    const cardCount = isGAMode ? 5 : 6; // +1 for FIL Burned in both modes
+    const cardCount = 7; // Active Payers, Locked USDFC, USDFC Settled, Locked FIL, Settled FIL, FIL Burned, Churned Wallets
     return (
       <div className="space-y-6">
         <div className={`grid grid-cols-1 md:grid-cols-${cardCount} gap-4`}>
@@ -252,7 +254,7 @@ export default function Dashboard() {
             <p className="text-sm">{error}. Displaying sample data instead.</p>
           </div>
         )}
-        <div className="flex gap-6">
+        <div className="flex gap-6 flex-wrap">
           <HeroMetricCard
             title={isGAMode ? "Active Wallets" : "Active Payers"}
             value="--"
@@ -271,10 +273,16 @@ export default function Dashboard() {
             definitionAnchor={isGAMode ? "usdfc-settled-cumulative" : "total-settled-usdfc"}
           />
           <HeroMetricCard
-            title="ARR"
+            title="Locked FIL"
             value="--"
-            subtitle="4-week avg: --/wk"
-            definitionAnchor="arr-annualized-run-rate"
+          />
+          <HeroMetricCard
+            title="Settled FIL"
+            value="--"
+          />
+          <HeroMetricCard
+            title="FIL Burned"
+            value="--"
           />
           <HeroMetricCard
             title="Churned Wallets"
@@ -329,12 +337,12 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC, arr, fixedLockupPending } = data;
+  const { totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC, arr, fixedLockupPending, filMetrics } = data;
 
   return (
     <div className="space-y-6">
       {/* Hero Metric Cards */}
-      <div className="flex gap-6">
+      <div className="flex gap-6 flex-wrap">
         <HeroMetricCard
           title={isGAMode ? "Active Wallets" : "Active Payers"}
           value={activePayers.toLocaleString()}
@@ -353,10 +361,16 @@ export default function Dashboard() {
           definitionAnchor={isGAMode ? "usdfc-settled-cumulative" : "total-settled-usdfc"}
         />
         <HeroMetricCard
-          title="ARR"
-          value={arr.annualizedFormatted}
-          subtitle={`4-week avg: ${arr.weeklyAverageFormatted}/wk`}
-          definitionAnchor="arr-annualized-run-rate"
+          title="Locked FIL"
+          value={filMetrics.lockedFIL.formatted}
+        />
+        <HeroMetricCard
+          title="Settled FIL"
+          value={filMetrics.settledFIL.formatted}
+        />
+        <HeroMetricCard
+          title="FIL Burned"
+          value={filMetrics.filBurned.formatted}
         />
         <HeroMetricCard
           title="Churned Wallets"

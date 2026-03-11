@@ -14,6 +14,7 @@ import {
   TOTAL_LOCKED_QUERY,
   DAILY_TOKEN_METRICS_FOR_ARR_QUERY,
   FIXED_LOCKUP_PENDING_QUERY,
+  FIL_TOKEN_METRICS_QUERY,
   GlobalMetricsResponse,
   TotalSettledResponse,
   ActiveRailsResponse,
@@ -22,6 +23,7 @@ import {
   TotalLockedResponse,
   DailyTokenMetricsForARRResponse,
   FixedLockupPendingResponse,
+  FILTokenMetricsResponse,
 } from '../queries';
 import { weiToUSDC, formatCurrency, secondsToMs } from './utils';
 import { logError } from '../../errors';
@@ -311,6 +313,53 @@ export async function fetchARR(): Promise<ARRResult> {
     weeklyAverageFormatted: formatCurrency(weeklyAverage),
     weeklyBreakdown,
     weeksUsed,
+  };
+}
+
+/**
+ * FIL metrics result interface.
+ */
+export interface FILMetricsResult {
+  lockedFIL: { total: number; formatted: string };
+  settledFIL: { total: number; formatted: string };
+  filBurned: { total: number; formatted: string };
+}
+
+/**
+ * Fetch FIL-denominated metrics: Locked FIL, Settled FIL, FIL Burned.
+ * - Locked FIL = FIL token lockupCurrent
+ * - Settled FIL = FIL token (totalSettledAmount + totalOneTimePayment)
+ * - FIL Burned = PaymentsMetric.totalFilBurned
+ */
+export async function fetchFILMetrics(): Promise<FILMetricsResult> {
+  const data = await executeQuery<FILTokenMetricsResponse>(
+    FIL_TOKEN_METRICS_QUERY,
+    undefined,
+    { operation: 'fetchFILMetrics' }
+  );
+
+  const filToken = data.token;
+  const totalFilBurned = data.paymentsMetrics?.[0]?.totalFilBurned || '0';
+
+  // FIL uses 18 decimals, same as USDFC — weiToUSDC works for any 18-decimal token
+  const lockedFIL = filToken ? weiToUSDC(filToken.lockupCurrent) : 0;
+  const settledFIL = filToken
+    ? weiToUSDC(
+        (BigInt(filToken.totalSettledAmount) + BigInt(filToken.totalOneTimePayment)).toString()
+      )
+    : 0;
+  const filBurned = weiToUSDC(totalFilBurned);
+
+  const formatFIL = (val: number) => {
+    if (val === 0) return '0 FIL';
+    if (val < 0.01) return `${val.toFixed(6)} FIL`;
+    return `${val.toFixed(4)} FIL`;
+  };
+
+  return {
+    lockedFIL: { total: lockedFIL, formatted: formatFIL(lockedFIL) },
+    settledFIL: { total: settledFIL, formatted: formatFIL(settledFIL) },
+    filBurned: { total: filBurned, formatted: formatFIL(filBurned) },
   };
 }
 
