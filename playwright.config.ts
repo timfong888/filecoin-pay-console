@@ -84,7 +84,7 @@ export default defineConfig({
   },
   // For local testing, start dev server automatically
   webServer: isLocal ? {
-    command: `NEXT_PUBLIC_CONSOLE_MODE=${process.env.CONSOLE_MODE || 'ga'} npm run dev`,
+    command: 'npm run dev',
     url: LOCAL_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,

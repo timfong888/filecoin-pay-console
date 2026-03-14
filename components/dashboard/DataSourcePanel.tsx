@@ -6,7 +6,6 @@ import {
   NETWORK,
   DASHBOARD_VERSION,
 } from '@/lib/graphql/client';
-import { CONSOLE_MODE, isGAMode } from '@/lib/config/mode';
 
 interface DataSourcePanelProps {
   hostname?: string;
@@ -94,21 +93,9 @@ export function DataSourcePanel({
             <dl className="space-y-1 text-gray-600">
               <DataSourceRow
                 label="Version:"
-                value={`v${DASHBOARD_VERSION}-${CONSOLE_MODE}`}
+                value={`v${DASHBOARD_VERSION}`}
                 className="font-semibold"
               />
-              <div className="flex gap-2">
-                <dt className="w-32 flex-shrink-0">Mode:</dt>
-                <dd className="font-mono">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    isGAMode
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-purple-100 text-purple-700'
-                  }`}>
-                    {CONSOLE_MODE.toUpperCase()}
-                  </span>
-                </dd>
-              </div>
               <DataSourceRow
                 label="Site URL:"
                 value={hostname || 'Loading...'}

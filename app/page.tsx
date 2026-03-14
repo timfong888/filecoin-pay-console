@@ -5,7 +5,6 @@ import { TopPayersTable, mockPayers, Payer } from "@/components/dashboard/TopPay
 import { DataSourcePanel } from "@/components/dashboard/DataSourcePanel";
 import { fetchDashboardData, fetchChurnedWalletsCount, formatChartDate, formatChartCurrency, FILMetricsResult } from "@/lib/graphql/fetchers";
 import { batchResolveENS } from "@/lib/ens";
-import { isGAMode, features } from "@/lib/config/mode";
 import { AuctionStatsCharts } from "@/components/dashboard/AuctionStatsCharts";
 import {
   LineChart,
@@ -256,10 +255,10 @@ export default function Dashboard() {
         )}
         <div className="flex gap-6 flex-wrap">
           <HeroMetricCard
-            title={isGAMode ? "Active Wallets" : "Active Payers"}
+            title={"Active Payers"}
             value="--"
             subtitle="At least 1 ACTIVE rail AND lockup rate > 0"
-            definitionAnchor={isGAMode ? "active-wallets" : "unique-payers"}
+            definitionAnchor={"unique-payers"}
           />
           <HeroMetricCard
             title="Locked USDFC"
@@ -270,7 +269,7 @@ export default function Dashboard() {
           <HeroMetricCard
             title="USDFC Settled"
             value="--"
-            definitionAnchor={isGAMode ? "usdfc-settled-cumulative" : "total-settled-usdfc"}
+            definitionAnchor={"total-settled-usdfc"}
           />
           <HeroMetricCard
             title="Locked FIL"
@@ -293,42 +292,40 @@ export default function Dashboard() {
         </div>
 
         {/* Auction Stats Charts - Placeholder mockups (both modes) */}
-        {features.showAuctionStats && <AuctionStatsCharts />}
+        <AuctionStatsCharts />
 
-        {/* Top Payers Section - Prototype mode only */}
-        {features.showTop10Tables && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold">Top 10 Payers</h2>
-              <div className="flex items-center gap-4">
+        {/* Top Payers Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Top 10 Payers</h2>
+            <div className="flex items-center gap-4">
+              <input
+                type="text"
+                placeholder="🔍 search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="px-3 py-1.5 text-sm border rounded-md w-48"
+              />
+              <div className="flex items-center gap-2 text-sm">
+                <span>From Date:</span>
                 <input
-                  type="text"
-                  placeholder="🔍 search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="px-3 py-1.5 text-sm border rounded-md w-48"
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="px-2 py-1 border rounded-md text-sm"
                 />
-                <div className="flex items-center gap-2 text-sm">
-                  <span>From Date:</span>
-                  <input
-                    type="date"
-                    value={fromDate}
-                    onChange={(e) => setFromDate(e.target.value)}
-                    className="px-2 py-1 border rounded-md text-sm"
-                  />
-                  <span>To Date:</span>
-                  <input
-                    type="date"
-                    value={toDate}
-                    onChange={(e) => setToDate(e.target.value)}
-                    className="px-2 py-1 border rounded-md text-sm"
-                  />
-                </div>
+                <span>To Date:</span>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="px-2 py-1 border rounded-md text-sm"
+                />
               </div>
             </div>
-            <TopPayersTable payers={filterPayers(mockPayers)} />
           </div>
-        )}
+          <TopPayersTable payers={filterPayers(mockPayers)} />
+        </div>
 
         {/* Data source indicator */}
         <DataSourcePanel hostname={hostname} />
@@ -344,10 +341,10 @@ export default function Dashboard() {
       {/* Hero Metric Cards */}
       <div className="flex gap-6 flex-wrap">
         <HeroMetricCard
-          title={isGAMode ? "Active Wallets" : "Active Payers"}
+          title={"Active Payers"}
           value={activePayers.toLocaleString()}
           subtitle="At least 1 ACTIVE rail AND lockup rate > 0"
-          definitionAnchor={isGAMode ? "active-wallets" : "unique-payers"}
+          definitionAnchor={"unique-payers"}
         />
         <HeroMetricCard
           title="Locked USDFC"
@@ -358,7 +355,7 @@ export default function Dashboard() {
         <HeroMetricCard
           title="USDFC Settled"
           value={totalSettled.totalFormatted}
-          definitionAnchor={isGAMode ? "usdfc-settled-cumulative" : "total-settled-usdfc"}
+          definitionAnchor={"total-settled-usdfc"}
         />
         <HeroMetricCard
           title="Locked FIL"
@@ -381,10 +378,10 @@ export default function Dashboard() {
       </div>
 
       {/* Auction Stats Charts - Placeholder mockups (both modes) */}
-      {features.showAuctionStats && <AuctionStatsCharts />}
+      <AuctionStatsCharts />
 
-      {/* Cumulative Line Charts - Prototype mode only */}
-      {features.showCharts && chartData.length > 0 && (
+      {/* Cumulative Line Charts */}
+      {chartData.length > 0 && (
         <div className="grid grid-cols-2 gap-6">
           {/* Chart 1: Total Active Payers */}
           <div className="bg-white border rounded-lg p-4">
@@ -455,42 +452,40 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Top Payers Section - Prototype mode only */}
-      {features.showTop10Tables && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Top 10 Payers</h2>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="🔍 search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="px-3 py-1.5 text-sm border rounded-md w-48"
-                />
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <span>From Date:</span>
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(e) => setFromDate(e.target.value)}
-                  className="px-2 py-1 border rounded-md text-sm"
-                />
-                <span>To Date:</span>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(e) => setToDate(e.target.value)}
-                  className="px-2 py-1 border rounded-md text-sm"
-                />
-              </div>
+      {/* Top Payers Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Top 10 Payers</h2>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="🔍 search"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="px-3 py-1.5 text-sm border rounded-md w-48"
+              />
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <span>From Date:</span>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+                className="px-2 py-1 border rounded-md text-sm"
+              />
+              <span>To Date:</span>
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+                className="px-2 py-1 border rounded-md text-sm"
+              />
             </div>
           </div>
-          <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} />
         </div>
-      )}
+        <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} />
+      </div>
 
       {/* Data source indicator */}
       <DataSourcePanel hostname={hostname} />
