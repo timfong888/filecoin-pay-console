@@ -13,7 +13,7 @@ const NETWORKS = {
     chain: filecoin,
     rpc: 'https://api.node.glif.io/rpc/v1',
     subgraphs: {
-      FILECOIN_PAY: { name: 'filecoin-pay-mainnet-tim', version: '1.2.0' },
+      FILECOIN_PAY: { name: 'filecoin-pay-mainnet', version: '1.0.6' },
       FWSS: { name: 'fwss-mainnet-tim', version: '1.1.0' },
     },
     contracts: {
@@ -27,7 +27,7 @@ const NETWORKS = {
     chain: filecoinCalibration,
     rpc: 'https://api.calibration.node.glif.io/rpc/v1',
     subgraphs: {
-      FILECOIN_PAY: { name: 'filecoin-pay-calibration-tim', version: '1.2.0' },
+      FILECOIN_PAY: { name: 'filecoin-pay-calibration', version: '1.0.6' },
       FWSS: { name: 'fwss-calibration-tim', version: '1.0.0' },
     },
     contracts: {
