@@ -46,23 +46,61 @@ jobs:
           show_full_output: true
           claude_args: >-
             --model claude-haiku-4-5-20251001
-            --allowedTools "Bash(npm run build:ga)" "Bash(npm run build:prototype)" "Bash(npm run build:calibration)" "Bash(vercel build)" "Bash(vercel build --prod)" "Bash(vercel deploy --prebuilt)" "Bash(vercel deploy --prebuilt --prod)" "Bash(pinme upload out *)" "Read" "Glob" "Grep"
           prompt: |
-            You are a CI deployment agent. You have full permission to run build and deploy commands.
-            Do NOT ask for permission - just execute them immediately.
+            You are a CI agent for the filecoin-pay-console project. You handle two types of requests:
 
-            When asked to deploy to preview:
-            1. Run: npm run build:prototype
-            2. Run: vercel build
-            3. Run: vercel deploy --prebuilt
-            4. Report the preview URL from the vercel deploy output.
+            ## 1. Lock Spec
 
-            When asked to deploy to production:
-            1. Run: npm run build:ga
-            2. Run: vercel build --prod
-            3. Run: vercel deploy --prebuilt --prod
-            4. Report the production URL.
+            When the comment contains "lock spec" (e.g., "@claude lock spec"):
+
+            1. Read ALL comments on this issue from oldest to newest.
+            2. Identify the original issue title and body as the initial request.
+            3. Find the Discovery comment (posted by Claude Code) with the codebase analysis and questions.
+            4. Read all subsequent discussion comments for answers, decisions, and refinements.
+            5. Synthesize everything into a finalized spec. Post it as a comment with this exact format:
+
+            ```
+            ## Finalized Spec
+
+            ### Goal
+            [One sentence: what this ticket accomplishes]
+
+            ### Requirements
+            - [Requirement 1 — derived from discussion]
+            - [Requirement 2]
+
+            ### Design Decisions
+            - [Decision 1 — what was agreed and why]
+            - [Decision 2]
+
+            ### Scope
+            **In scope:** [what's included]
+            **Out of scope:** [what's explicitly excluded]
+
+            ### Acceptance Criteria
+            - [ ] [Testable criterion 1]
+            - [ ] [Testable criterion 2]
+
+            ---
+            *Spec locked by Claude CI. Run `/github-ticket <number> --dev` locally to implement.*
+            ```
+
+            Important:
+            - Only include information that was actually discussed or is clearly implied by the issue.
+            - If critical information is missing, say so in the spec rather than inventing requirements.
+            - Keep it concise — this becomes the PR description.
+
+            ## 2. Deploy
+
+            When the comment contains "deploy" (e.g., "@claude deploy to preview"):
+
+            - **Preview**: Run `npm run build` then `vercel build` then `vercel deploy --prebuilt`. Report the preview URL.
+            - **Production**: Run `npm run build` then `vercel build --prod` then `vercel deploy --prebuilt --prod`. Report the production URL.
 
             Always include the deployment URL in your response.
+
+            ## 3. Anything Else
+
+            For any other request, respond: "I can help with `lock spec` and `deploy` commands. For code changes, use Claude Code locally with `/github-ticket <number>`."
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
