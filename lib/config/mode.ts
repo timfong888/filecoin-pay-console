@@ -13,8 +13,8 @@ export const isPrototypeMode = CONSOLE_MODE === 'prototype';
 // Feature flags derived from mode
 export const features = {
   // Navigation
-  showPayerAccountsNav: isPrototypeMode,
-  showPayeeAccountsNav: isPrototypeMode,
+  showPayerAccountsNav: true,
+  showPayeeAccountsNav: true,
 
   // Dashboard content
   showTop10Tables: isPrototypeMode,
