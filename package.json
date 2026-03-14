@@ -4,24 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:ga": "NEXT_PUBLIC_CONSOLE_MODE=ga next dev",
-    "dev:prototype": "NEXT_PUBLIC_CONSOLE_MODE=prototype next dev",
+    "dev:calibration": "NEXT_PUBLIC_NETWORK=calibration next dev",
     "build": "next build",
-    "build:ga": "NEXT_PUBLIC_CONSOLE_MODE=ga next build",
-    "build:prototype": "NEXT_PUBLIC_CONSOLE_MODE=prototype next build",
-    "dev:calibration": "NEXT_PUBLIC_NETWORK=calibration NEXT_PUBLIC_CONSOLE_MODE=prototype next dev",
-    "build:calibration": "NEXT_PUBLIC_NETWORK=calibration NEXT_PUBLIC_CONSOLE_MODE=prototype next build",
+    "build:calibration": "NEXT_PUBLIC_NETWORK=calibration next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test --project=chromium",
-    "test:e2e:ga:local": "CONSOLE_MODE=ga playwright test --project=chromium",
-    "test:e2e:prototype:local": "CONSOLE_MODE=prototype playwright test --project=chromium",
-    "test:e2e:ga:deployed": "TEST_DEPLOYED=ga playwright test --project=chromium",
-    "test:e2e:prototype:deployed": "TEST_DEPLOYED=prototype playwright test --project=chromium",
-    "test:e2e:all": "npm run test:e2e:ga:local && npm run test:e2e:prototype:local"
+    "test:e2e:deployed": "TEST_DEPLOYED=true playwright test --project=chromium"
   },
   "dependencies": {
     "@filecoin-foundation/ui-filecoin": "^0.7.1",

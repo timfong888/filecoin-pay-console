@@ -3,25 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { features, isGAMode } from "@/lib/config/mode";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { useState } from "react";
 
-// Build navigation items based on mode
-const getNavItems = () => {
-  const items = [{ href: "/", label: "Dashboard" }];
-
-  if (features.showPayerAccountsNav) {
-    items.push({ href: "/payer-accounts", label: "Payer Accounts" });
-  }
-  if (features.showPayeeAccountsNav) {
-    items.push({ href: "/payee-accounts", label: "Payee Accounts" });
-  }
-
-  return items;
-};
-
-const navItems = getNavItems();
+const navItems = [
+  { href: "/", label: "Dashboard" },
+  { href: "/payer-accounts", label: "Payer Accounts" },
+  { href: "/payee-accounts", label: "Payee Accounts" },
+];
 
 function formatAddress(address: string) {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -47,11 +36,6 @@ export function Header() {
       <div className="container mx-auto px-4">
         <div className="flex h-14 items-center justify-between">
           <nav className="flex items-center space-x-6">
-            {isGAMode && (
-              <span className="text-sm font-medium text-muted-foreground cursor-not-allowed">
-                Console
-              </span>
-            )}
             {navItems.map((item) => (
               <Link
                 key={item.href}
