@@ -79,8 +79,6 @@ export interface AccountDetail {
 function transformRailToDisplay(rail: Rail, isPayer: boolean, accountAddress: string): RailDisplay {
   const counterparty = isPayer ? rail.payee?.address : rail.payer?.address;
   const settledValue = weiToUSDC(rail.totalSettledAmount);
-  const netPayeeValue = rail.totalNetPayeeAmount ? weiToUSDC(rail.totalNetPayeeAmount) : settledValue;
-  const commissionValue = rail.totalCommission ? weiToUSDC(rail.totalCommission) : 0;
   const rateValue = rail.paymentRate ? weiToUSDC(rail.paymentRate) : 0;
   const createdAtMs = secondsToMs(rail.createdAt);
 
@@ -111,10 +109,10 @@ function transformRailToDisplay(rail: Rail, isPayer: boolean, accountAddress: st
     payeeAddress,
     settled: formatCurrency(settledValue),
     settledRaw: settledValue,
-    netPayeeAmount: formatCurrency(netPayeeValue),
-    netPayeeAmountRaw: netPayeeValue,
-    commission: formatCurrency(commissionValue),
-    commissionRaw: commissionValue,
+    netPayeeAmount: formatCurrency(settledValue),
+    netPayeeAmountRaw: settledValue,
+    commission: formatCurrency(0),
+    commissionRaw: 0,
     rate: rateValue > 0 ? `${formatCurrency(rateValue)}/epoch` : '-',
     rateRaw: rateValue,
     state: stateLabel,
