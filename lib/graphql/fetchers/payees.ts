@@ -43,15 +43,12 @@ export interface PayeeDisplay {
  */
 function transformAccountToPayee(account: Account, pdpData?: PDPEnrichment | null): PayeeDisplay {
   // Sum up received from all payee rails
-  // Use totalNetPayeeAmount (net after fees) for accurate payee totals
   let totalReceived = BigInt(0);
   let earliestDate = Date.now();
   const uniquePayers = new Set<string>();
 
   for (const rail of account.payeeRails || []) {
-    // Prefer totalNetPayeeAmount (net to payee after fees)
-    // Fall back to totalSettledAmount if not available
-    const amount = rail.totalNetPayeeAmount || rail.totalSettledAmount;
+    const amount = rail.totalSettledAmount;
     totalReceived += BigInt(amount);
     const createdAt = secondsToMs(rail.createdAt);
     if (createdAt < earliestDate) {

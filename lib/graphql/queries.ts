@@ -127,8 +127,6 @@ export const TOP_PAYEES_QUERY = gql`
         id
         railId
         totalSettledAmount
-        totalNetPayeeAmount
-        totalCommission
         settledUpto
         createdAt
         state
@@ -167,8 +165,6 @@ export const ACCOUNT_DETAIL_QUERY = gql`
         id
         railId
         totalSettledAmount
-        totalNetPayeeAmount
-        totalCommission
         settledUpto
         paymentRate
         state
@@ -185,8 +181,6 @@ export const ACCOUNT_DETAIL_QUERY = gql`
         id
         railId
         totalSettledAmount
-        totalNetPayeeAmount
-        totalCommission
         settledUpto
         paymentRate
         state
@@ -229,8 +223,6 @@ export interface Rail {
   id: string;
   railId?: string;
   totalSettledAmount: string;
-  totalNetPayeeAmount?: string;
-  totalCommission?: string;
   settledUpto?: string;
   createdAt: string;
   state: number | string;
