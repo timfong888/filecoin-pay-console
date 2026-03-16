@@ -47,4 +47,6 @@ next-env.d.ts
 .claude/
 .specify/
 specs/
-scripts/
+
+# generated files
+/lib/generated/
