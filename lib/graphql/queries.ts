@@ -446,3 +446,60 @@ export interface FixedLockupPendingResponse {
     totalSettledAmount: string;
   }>;
 }
+
+// Operators query - all operators with their token stats and rails for payer counting
+export const OPERATORS_QUERY = gql`
+  query Operators {
+    operators(first: 100, orderBy: totalRails, orderDirection: desc, subgraphError: allow) {
+      id
+      address
+      totalRails
+      totalApprovals
+      operatorTokens {
+        settledAmount
+        commissionEarned
+        volume
+        token {
+          symbol
+          decimals
+        }
+      }
+      rails(first: 1000) {
+        state
+        payer {
+          address
+        }
+      }
+    }
+  }
+`;
+
+export interface OperatorToken {
+  settledAmount: string;
+  commissionEarned: string;
+  volume: string;
+  token: {
+    symbol: string;
+    decimals: string;
+  };
+}
+
+export interface OperatorRail {
+  state: string | number;
+  payer: {
+    address: string;
+  };
+}
+
+export interface Operator {
+  id: string;
+  address: string;
+  totalRails: string;
+  totalApprovals: string;
+  operatorTokens: OperatorToken[];
+  rails: OperatorRail[];
+}
+
+export interface OperatorsResponse {
+  operators: Operator[];
+}
