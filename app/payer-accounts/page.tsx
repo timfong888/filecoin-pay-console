@@ -26,20 +26,13 @@ import {
 } from "@/lib/graphql/client";
 import { batchResolveENS, resolveENS } from "@/lib/ens";
 import {
-  fetchDataSetsWithRootsByCorrelation,
-  calculateStorageSummary,
-  formatBytesSize,
-  transformDataSetsToDisplay,
   calculateDataSetsSummary,
-  RailInfoForDataSet,
 } from "@/lib/pdp/fetchers";
-import { RailDataSetCorrelation, DataSetDisplayData } from "@/lib/pdp/types";
-import { PDPDataSetWithRoots, PieceDisplayData } from "@/lib/pdp/types";
+import { DataSetDisplayData, PieceDisplayData } from "@/lib/pdp/types";
 import {
-  fetchPieceMetadata,
-  hexCidToBase32,
   truncateCID,
 } from "@/lib/stateview/client";
+import { fetchFWSSDataSetsForPayer } from "@/lib/fwss/fetchers";
 import {
   Table,
   TableBody,
@@ -210,7 +203,6 @@ function PayerDetailView({ address }: { address: string }) {
   };
 
   // My Data state
-  const [dataSets, setDataSets] = useState<PDPDataSetWithRoots[]>([]);
   const [pieceData, setPieceData] = useState<PieceDisplayData[]>([]);
   const [dataSetDisplay, setDataSetDisplay] = useState<DataSetDisplayData[]>([]);
   const [dataLoading, setDataLoading] = useState(false);
@@ -307,40 +299,17 @@ function PayerDetailView({ address }: { address: string }) {
     if (!address || !account || loading) return;
 
     async function loadMyData() {
-      // Re-check account since it could change during async execution
       if (!account) return;
 
       try {
         setDataLoading(true);
 
-        // Build rail correlations from account's payer rails
-        // DataSets are owned by SPs (payees), so we correlate by payee + timestamp
-        const railCorrelations: RailDataSetCorrelation[] = account.payerRails.map(rail => ({
-          payeeAddress: rail.counterpartyAddress,
-          railCreatedAt: Math.floor(rail.createdAtTimestamp / 1000).toString(), // Convert ms to seconds
-        }));
-
-        // Build rail info for payment calculations
-        const railsInfo: RailInfoForDataSet[] = account.payerRails.map(rail => ({
-          railId: rail.railId,
-          payeeAddress: rail.counterpartyAddress,
-          createdAtTimestamp: rail.createdAtTimestamp,
-          paymentRateWei: rail.paymentRate,
-        }));
-
-        // Fetch DataSets with roots using rail correlations
-        const fetchedDataSets = await fetchDataSetsWithRootsByCorrelation(railCorrelations);
-        setDataSets(fetchedDataSets);
-
-        // Transform to DataSetDisplayData using the new function
-        const displayData = transformDataSetsToDisplay(
-          fetchedDataSets,
-          railsInfo,
-          hexCidToBase32
-        );
+        // Fetch datasets from FWSS subgraph (has direct payer field + pieces with CIDs)
+        // Automatically joins with Filecoin Pay rails via pdpRailId for cost data
+        const displayData = await fetchFWSSDataSetsForPayer(address);
         setDataSetDisplay(displayData);
 
-        // Extract all pieces for legacy pieceData (used by CID search)
+        // Extract all pieces for CID search
         const allPieces: PieceDisplayData[] = displayData.flatMap(ds => ds.pieces);
         setPieceData(allPieces);
 
@@ -350,44 +319,11 @@ function PayerDetailView({ address }: { address: string }) {
           const ensNames = await batchResolveENS(providerAddresses);
           setProviderEnsNames(ensNames);
 
-          // Update dataSetDisplay with ENS names
           setDataSetDisplay(prev => prev.map(ds => ({
             ...ds,
             providerENS: ensNames.get(ds.providerAddress.toLowerCase()) || null,
           })));
         }
-
-        // Fetch IPFS CIDs from StateView (in background, may be slow)
-        const enrichedPieces = await Promise.all(
-          allPieces.map(async (piece) => {
-            try {
-              const metadata = await fetchPieceMetadata(piece.dataSetId, piece.pieceId);
-              return {
-                ...piece,
-                ipfsCID: metadata.ipfsRootCID,
-              };
-            } catch {
-              return piece;
-            }
-          })
-        );
-
-        setPieceData(enrichedPieces);
-
-        // Also update pieces in dataSetDisplay with IPFS CIDs
-        const pieceCidMap = new Map<string, string>();
-        for (const p of enrichedPieces) {
-          if (p.ipfsCID) {
-            pieceCidMap.set(`${p.dataSetId}-${p.pieceId}`, p.ipfsCID);
-          }
-        }
-        setDataSetDisplay(prev => prev.map(ds => ({
-          ...ds,
-          pieces: ds.pieces.map(p => ({
-            ...p,
-            ipfsCID: pieceCidMap.get(`${p.dataSetId}-${p.pieceId}`) || p.ipfsCID,
-          })),
-        })));
 
       } catch (err) {
         console.error("Failed to load My Data:", err);
@@ -408,12 +344,11 @@ function PayerDetailView({ address }: { address: string }) {
 
     const query = cidSearchQuery.trim().toLowerCase();
 
-    // Search in pieceData
+    // Search in pieceData by Piece CID (commP)
     const found = pieceData.find(
       (p) =>
         p.pieceCID.toLowerCase().includes(query) ||
-        p.pieceCIDHex.toLowerCase().includes(query) ||
-        (p.ipfsCID && p.ipfsCID.toLowerCase().includes(query))
+        p.pieceCIDHex.toLowerCase().includes(query)
     );
 
     if (found) {
@@ -428,8 +363,28 @@ function PayerDetailView({ address }: { address: string }) {
 
   // Calculate storage summary
   const storageSummary = useMemo(() => {
-    return calculateStorageSummary(dataSets);
-  }, [dataSets]);
+    // Derive storage summary from FWSS display data
+    let totalStorageBytes = BigInt(0);
+    let totalPieces = 0;
+    for (const ds of dataSetDisplay) {
+      totalStorageBytes += ds.totalSizeBytes;
+      totalPieces += ds.pieceCount;
+    }
+    const totalStorageGB = Number(totalStorageBytes) / (1024 ** 3);
+    return {
+      totalStorageBytes,
+      totalStorageFormatted: totalStorageGB >= 1024
+        ? `${(totalStorageGB / 1024).toFixed(2)} TB`
+        : totalStorageGB >= 1
+        ? `${totalStorageGB.toFixed(2)} GB`
+        : totalStorageGB > 0
+        ? `${(totalStorageGB * 1024).toFixed(2)} MB`
+        : '-',
+      totalPieces,
+      totalDataSets: dataSetDisplay.length,
+      runwayDays: null as number | null,
+    };
+  }, [dataSetDisplay]);
 
   // Calculate DataSets summary with payment info
   const dataSetsSummary = useMemo(() => {
@@ -605,7 +560,7 @@ function PayerDetailView({ address }: { address: string }) {
           <div className="flex items-center gap-4">
             <input
               type="text"
-              placeholder="Enter IPFS CID or Piece CID to lookup..."
+              placeholder="Enter Piece CID to lookup..."
               value={cidSearchQuery}
               onChange={(e) => {
                 setCidSearchQuery(e.target.value);
@@ -626,7 +581,7 @@ function PayerDetailView({ address }: { address: string }) {
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
-            Supports bidirectional lookup: IPFS CID → Piece CID or Piece CID → IPFS CID
+            Search by Piece CID (commP) across all DataSets
           </p>
 
           {/* Search Result */}
@@ -639,11 +594,11 @@ function PayerDetailView({ address }: { address: string }) {
                   <span className="font-mono">{truncateCID(cidSearchResult.pieceCID)}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">IPFS CID:</span>{" "}
-                  <span className="font-mono">{cidSearchResult.ipfsCID ? truncateCID(cidSearchResult.ipfsCID) : "—"}</span>
+                  <span className="text-gray-500">Size:</span> {cidSearchResult.size}
                 </div>
                 <div>
-                  <span className="text-gray-500">Size:</span> {cidSearchResult.size}
+                  <span className="text-gray-500">Cost/mo:</span>{" "}
+                  <span className="font-medium">{cidSearchResult.costPerMonth !== null ? `$${cidSearchResult.costPerMonth.toFixed(4)}` : "—"}</span>
                 </div>
                 <div>
                   <span className="text-gray-500">Provider:</span>{" "}
@@ -677,9 +632,9 @@ function PayerDetailView({ address }: { address: string }) {
           </div>
         )}
 
-        {/* Note about IPFS CID */}
+        {/* Note about cost calculation */}
         <p className="text-xs text-gray-400">
-          Note: IPFS CID shows &quot;—&quot; when not set (Synapse SDK users). Piece CID is always available.
+          Per-piece costs are size-weighted from the rail payment rate. Total settled reflects on-chain settlement amounts.
         </p>
       </div>
 

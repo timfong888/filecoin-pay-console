@@ -713,6 +713,8 @@ export function transformDataSetsToDisplay(
         provider: providerAddress,
         providerFormatted: formatAddress(providerAddress),
         isActive: ds.isActive,
+        costPerMonth: null,
+        totalSettled: null,
       };
     });
 
