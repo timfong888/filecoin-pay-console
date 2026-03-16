@@ -26,10 +26,14 @@ import {
 } from "@/lib/graphql/client";
 import { batchResolveENS, resolveENS } from "@/lib/ens";
 import {
+  fetchDataSetsWithRootsByCorrelation,
+  transformDataSetsToDisplay,
   calculateDataSetsSummary,
+  RailInfoForDataSet,
 } from "@/lib/pdp/fetchers";
-import { DataSetDisplayData, PieceDisplayData } from "@/lib/pdp/types";
+import { RailDataSetCorrelation, DataSetDisplayData, PieceDisplayData } from "@/lib/pdp/types";
 import {
+  hexCidToBase32,
   truncateCID,
 } from "@/lib/stateview/client";
 import { fetchFWSSDataSetsForPayer } from "@/lib/fwss/fetchers";
@@ -304,9 +308,26 @@ function PayerDetailView({ address }: { address: string }) {
       try {
         setDataLoading(true);
 
-        // Fetch datasets from FWSS subgraph (has direct payer field + pieces with CIDs)
-        // Automatically joins with Filecoin Pay rails via pdpRailId for cost data
-        const displayData = await fetchFWSSDataSetsForPayer(address);
+        // Try FWSS first (has native pieceCID + size, enables per-piece cost)
+        // Falls back to PDP if payer has no FWSS datasets (e.g., Storacha)
+        let displayData = await fetchFWSSDataSetsForPayer(address);
+
+        if (displayData.length === 0) {
+          // Fallback: PDP path (correlate by payee address + timestamp)
+          const railCorrelations: RailDataSetCorrelation[] = account.payerRails.map(rail => ({
+            payeeAddress: rail.counterpartyAddress,
+            railCreatedAt: Math.floor(rail.createdAtTimestamp / 1000).toString(),
+          }));
+          const railsInfo: RailInfoForDataSet[] = account.payerRails.map(rail => ({
+            railId: rail.railId,
+            payeeAddress: rail.counterpartyAddress,
+            createdAtTimestamp: rail.createdAtTimestamp,
+            paymentRateWei: rail.paymentRate,
+          }));
+          const fetchedDataSets = await fetchDataSetsWithRootsByCorrelation(railCorrelations);
+          displayData = transformDataSetsToDisplay(fetchedDataSets, railsInfo, hexCidToBase32);
+        }
+
         setDataSetDisplay(displayData);
 
         // Extract all pieces for CID search

@@ -1,11 +1,16 @@
 /**
  * FWSS (Filecoin Warm Storage Service) subgraph client.
  *
- * Queries FWSS for datasets and pieces by payer address, then joins with
- * Filecoin Pay rails via pdpRailId for payment/cost data.
+ * Correlates a payer's Filecoin Pay rails with FWSS datasets via pdpRailId
+ * to show per-piece CIDs with size-weighted cost calculations.
  *
- * Unlike PDP (which owns datasets by SP address), FWSS has a direct
- * `payer` field on DataSet, enabling straightforward payer-filtered queries.
+ * Flow:
+ * 1. Get payer's rails from Filecoin Pay (by payer wallet address)
+ * 2. Query FWSS for datasets matching those rail IDs (pdpRailId_in)
+ * 3. Join rail payment data with FWSS piece data for cost-per-piece
+ *
+ * Note: FWSS `payer` field is the operator/contract address, NOT the
+ * Filecoin Pay wallet. That's why we join via rail IDs, not payer address.
  */
 
 import { SUBGRAPHS } from '../graphql/client';
@@ -14,7 +19,7 @@ import {
   DataSetDisplayData,
   PieceDisplayData,
 } from '../pdp/types';
-import { formatBytesSize, formatTimeAgo } from '../pdp/fetchers';
+import { formatBytesSize } from '../pdp/fetchers';
 
 // FWSS subgraph endpoint
 const FWSS_ENDPOINT = SUBGRAPHS.FWSS.endpoint;
@@ -33,8 +38,6 @@ interface FWSSDataSet {
   totalPieces: number;
   totalSize: string;     // Bytes as string
   pdpRailId: string;     // Join key to Filecoin Pay
-  cacheMissRailId: string | null;
-  cdnRailId: string | null;
   status: string;        // "Active" | "Terminated"
   pieces: FWSSPiece[];
 }
@@ -68,35 +71,14 @@ const SECONDS_PER_MONTH = 30 * 24 * 60 * 60;
 
 // ── GraphQL queries ──────────────────────────────────────────────────
 
-const FWSS_DATASETS_BY_PAYER = `
-  query DataSetsByPayer($payerAddress: String!, $first: Int!, $skip: Int!) {
-    dataSets(
+/** Get all rails for a payer from Filecoin Pay */
+const FILPAY_RAILS_BY_PAYER = `
+  query RailsByPayer($payerAddress: String!, $first: Int!, $skip: Int!) {
+    rails(
       where: { payer: $payerAddress }
       first: $first
       skip: $skip
-      orderBy: dataSetId
-      orderDirection: desc
     ) {
-      dataSetId
-      payer { id }
-      payee { id }
-      totalPieces
-      totalSize
-      pdpRailId
-      cacheMissRailId
-      cdnRailId
-      status
-      pieces(first: 1000) {
-        pieceCID
-        size
-      }
-    }
-  }
-`;
-
-const FILPAY_RAILS_BY_IDS = `
-  query RailsByIds($railIds: [String!]!) {
-    rails(where: { railId_in: $railIds }) {
       id
       railId
       paymentRate
@@ -110,65 +92,102 @@ const FILPAY_RAILS_BY_IDS = `
   }
 `;
 
+/** Get FWSS datasets by matching pdpRailId to Filecoin Pay rail IDs */
+const FWSS_DATASETS_BY_RAIL_IDS = `
+  query DataSetsByRailIds($railIds: [String!]!, $first: Int!, $skip: Int!) {
+    dataSets(
+      where: { pdpRailId_in: $railIds }
+      first: $first
+      skip: $skip
+      orderBy: dataSetId
+      orderDirection: desc
+    ) {
+      dataSetId
+      payer { id }
+      payee { id }
+      totalPieces
+      totalSize
+      pdpRailId
+      status
+      pieces(first: 1000) {
+        pieceCID
+        size
+      }
+    }
+  }
+`;
+
 // ── Fetch helpers ────────────────────────────────────────────────────
 
-async function queryFWSS<T>(query: string, variables: Record<string, unknown>): Promise<T> {
-  const response = await fetch(FWSS_ENDPOINT, {
+async function querySubgraph<T>(endpoint: string, query: string, variables: Record<string, unknown>): Promise<T> {
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables }),
   });
 
   if (!response.ok) {
-    throw new Error(`FWSS query failed: HTTP ${response.status}`);
+    throw new Error(`Subgraph query failed: HTTP ${response.status}`);
   }
 
   const json = await response.json();
   if (json.data) return json.data as T;
 
-  const msg = json.errors?.map((e: { message: string }) => e.message).join('; ') || 'Unknown FWSS error';
-  throw new Error(msg);
-}
-
-async function queryFilPay<T>(query: string, variables: Record<string, unknown>): Promise<T> {
-  const response = await fetch(GOLDSKY_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, variables }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`FilPay query failed: HTTP ${response.status}`);
-  }
-
-  const json = await response.json();
-  if (json.data) return json.data as T;
-
-  const msg = json.errors?.map((e: { message: string }) => e.message).join('; ') || 'Unknown FilPay error';
+  const msg = json.errors?.map((e: { message: string }) => e.message).join('; ') || 'Unknown subgraph error';
   throw new Error(msg);
 }
 
 // ── Main fetcher ─────────────────────────────────────────────────────
 
 /**
- * Fetch FWSS datasets for a payer address, joined with Filecoin Pay
- * rail data for cost calculations.
+ * Fetch FWSS datasets for a payer, joined with Filecoin Pay rail data.
+ *
+ * Strategy: Filecoin Pay rails (by payer wallet) → rail IDs → FWSS datasets (by pdpRailId).
+ * This works because FWSS `payer` is the operator contract, not the wallet address.
  *
  * Returns DataSetDisplayData[] with per-piece cost fields populated.
+ * Returns empty array if the payer has no FWSS datasets (e.g., non-FWSS payers like Storacha).
  */
 export async function fetchFWSSDataSetsForPayer(
   payerAddress: string
 ): Promise<DataSetDisplayData[]> {
   const normalizedPayer = payerAddress.toLowerCase();
 
-  // 1. Fetch all datasets from FWSS for this payer
-  let allDataSets: FWSSDataSet[] = [];
+  // 1. Get payer's rails from Filecoin Pay
+  let allRails: FilPayRail[] = [];
   let skip = 0;
   const PAGE_SIZE = 100;
 
   while (true) {
-    const data = await queryFWSS<FWSSDataSetsResponse>(FWSS_DATASETS_BY_PAYER, {
+    const data = await querySubgraph<FilPayRailsResponse>(GOLDSKY_ENDPOINT, FILPAY_RAILS_BY_PAYER, {
       payerAddress: normalizedPayer,
+      first: PAGE_SIZE,
+      skip,
+    });
+
+    if (!data.rails || data.rails.length === 0) break;
+    allRails = allRails.concat(data.rails);
+    if (data.rails.length < PAGE_SIZE) break;
+    skip += PAGE_SIZE;
+  }
+
+  if (allRails.length === 0) return [];
+
+  // Build rail lookup by railId
+  const railMap = new Map<string, FilPayRail>();
+  const railIds: string[] = [];
+  for (const rail of allRails) {
+    railMap.set(rail.railId, rail);
+    railIds.push(rail.railId);
+  }
+
+  // 2. Query FWSS for datasets matching those rail IDs
+  let allDataSets: FWSSDataSet[] = [];
+  skip = 0;
+
+  while (true) {
+    const data = await querySubgraph<FWSSDataSetsResponse>(FWSS_ENDPOINT, FWSS_DATASETS_BY_RAIL_IDS, {
+      railIds,
       first: PAGE_SIZE,
       skip,
     });
@@ -181,46 +200,21 @@ export async function fetchFWSSDataSetsForPayer(
 
   if (allDataSets.length === 0) return [];
 
-  // 2. Collect unique rail IDs for Filecoin Pay lookup
-  const railIds = new Set<string>();
-  for (const ds of allDataSets) {
-    if (ds.pdpRailId) railIds.add(ds.pdpRailId);
-    if (ds.cacheMissRailId) railIds.add(ds.cacheMissRailId);
-    if (ds.cdnRailId) railIds.add(ds.cdnRailId);
-  }
-
-  // 3. Fetch rail data from Filecoin Pay
-  const railMap = new Map<string, FilPayRail>();
-  if (railIds.size > 0) {
-    try {
-      const railData = await queryFilPay<FilPayRailsResponse>(FILPAY_RAILS_BY_IDS, {
-        railIds: Array.from(railIds),
-      });
-      for (const rail of railData.rails || []) {
-        railMap.set(rail.railId, rail);
-      }
-    } catch (error) {
-      console.error('Failed to fetch Filecoin Pay rails for FWSS join:', error);
-    }
-  }
-
   const now = Date.now();
 
-  // 4. Transform to DataSetDisplayData
+  // 3. Transform to DataSetDisplayData with per-piece costs
   return allDataSets.map((ds) => {
     const providerAddress = ds.payee.id;
     const totalSizeBytes = BigInt(ds.totalSize);
     const totalSizeNum = Number(totalSizeBytes);
 
-    // Get primary rail (pdpRailId) for cost calculations
+    // Get the matching rail for cost calculations
     const rail = ds.pdpRailId ? railMap.get(ds.pdpRailId) : undefined;
 
     let totalPaidUSDFC = 0;
     let costPerGBMonth: number | null = null;
     let paymentRatePerSecond = BigInt(0);
     let railCreatedAtMs = 0;
-
-    // Also accumulate totalSettledAmount from rail
     let railTotalSettled = 0;
 
     if (rail) {
@@ -256,12 +250,9 @@ export async function fetchFWSSDataSetsForPayer(
       let totalSettled: number | null = null;
 
       if (rail && paymentRatePerSecond > BigInt(0)) {
-        // Size-weighted monthly cost
         const monthlyWei = paymentRatePerSecond * BigInt(SECONDS_PER_MONTH);
         const monthlyUSDFC = Number(monthlyWei) / 1e18;
         costPerMonth = Math.round(monthlyUSDFC * sizeWeight * 10000) / 10000;
-
-        // Size-weighted total settled
         totalSettled = Math.round(railTotalSettled * sizeWeight * 10000) / 10000;
       }
 
@@ -269,7 +260,7 @@ export async function fetchFWSSDataSetsForPayer(
         dataSetId: ds.dataSetId,
         pieceId: String(index),
         pieceCID: piece.pieceCID,
-        pieceCIDHex: '',  // FWSS provides base32 natively
+        pieceCIDHex: '',
         ipfsCID: null,
         size: formatBytesSize(sizeBytes),
         sizeBytes,
@@ -290,7 +281,7 @@ export async function fetchFWSSDataSetsForPayer(
       totalSizeFormatted: formatBytesSize(totalSizeBytes),
       pieceCount: ds.totalPieces,
       isActive: ds.status === 'Active',
-      lastProvenEpoch: null,  // FWSS doesn't track proving
+      lastProvenEpoch: null,
       lastProvenFormatted: null,
       hasFaults: false,
       faultedPeriods: 0,
