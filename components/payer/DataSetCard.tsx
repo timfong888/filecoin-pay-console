@@ -204,8 +204,9 @@ export function DataSetCard({
                 <TableHeader>
                   <TableRow className="bg-gray-50">
                     <TableHead className="font-medium">Piece CID</TableHead>
-                    <TableHead className="font-medium">IPFS CID</TableHead>
                     <TableHead className="font-medium">Size</TableHead>
+                    <TableHead className="font-medium text-right">Cost/mo</TableHead>
+                    <TableHead className="font-medium text-right">Total Settled</TableHead>
                     <TableHead className="font-medium">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -243,50 +244,28 @@ function PieceRow({ piece, index }: { piece: PieceDisplayData; index: number }) 
           </button>
         </div>
       </TableCell>
-      <TableCell>
-        {piece.ipfsCID ? (
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-sm" title={piece.ipfsCID}>
-              {truncateCID(piece.ipfsCID)}
-            </span>
-            <button
-              onClick={() => navigator.clipboard.writeText(piece.ipfsCID!)}
-              className="text-gray-400 hover:text-gray-600"
-              title="Copy IPFS CID"
-            >
-              📋
-            </button>
-          </div>
-        ) : (
-          <span className="text-gray-400">—</span>
-        )}
-      </TableCell>
       <TableCell>{piece.size}</TableCell>
+      <TableCell className="text-right">
+        {piece.costPerMonth !== null && piece.costPerMonth !== undefined
+          ? formatCurrency(piece.costPerMonth)
+          : <span className="text-gray-400">—</span>}
+      </TableCell>
+      <TableCell className="text-right">
+        {piece.totalSettled !== null && piece.totalSettled !== undefined
+          ? formatCurrency(piece.totalSettled)
+          : <span className="text-gray-400">—</span>}
+      </TableCell>
       <TableCell>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              const url = piece.ipfsCID
-                ? `https://dweb.link/ipfs/${piece.ipfsCID}`
-                : `https://data.filecoin.io/piece/${piece.pieceCID}`;
-              navigator.clipboard.writeText(url);
-            }}
-            className="text-blue-600 hover:underline text-sm"
-            title="Copy retrieval URL"
-          >
-            Copy URL
-          </button>
-          {piece.ipfsCID && (
-            <a
-              href={`https://dweb.link/ipfs/${piece.ipfsCID}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline text-sm"
-            >
-              View
-            </a>
-          )}
-        </div>
+        <button
+          onClick={() => {
+            const url = `https://data.filecoin.io/piece/${piece.pieceCID}`;
+            navigator.clipboard.writeText(url);
+          }}
+          className="text-blue-600 hover:underline text-sm"
+          title="Copy retrieval URL"
+        >
+          Copy URL
+        </button>
       </TableCell>
     </TableRow>
   );

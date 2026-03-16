@@ -125,6 +125,8 @@ export interface PieceDisplayData {
   provider: string;         // SP address
   providerFormatted: string; // Truncated or ENS
   isActive: boolean;
+  costPerMonth: number | null;   // Size-weighted monthly cost in USDFC
+  totalSettled: number | null;   // Size-weighted total settled in USDFC
 }
 
 /**
