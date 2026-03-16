@@ -8,8 +8,6 @@ import { useState } from "react";
 
 const navItems = [
   { href: "/", label: "Dashboard" },
-  { href: "/payer-accounts", label: "Payer Accounts" },
-  { href: "/payee-accounts", label: "Payee Accounts" },
 ];
 
 function formatAddress(address: string) {
