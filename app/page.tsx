@@ -123,8 +123,6 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [hostname, setHostname] = useState("");
-
   // Filter payers by search and date range
   const filterPayers = (payers: Payer[]) => {
     return payers.filter(p => {
@@ -175,11 +173,6 @@ export default function Dashboard() {
     }
 
     loadData();
-  }, []);
-
-  // Set hostname on client side
-  useEffect(() => {
-    setHostname(window.location.hostname);
   }, []);
 
   // Prepare chart data with cumulative values - MUST be before any early returns (Rules of Hooks)
@@ -332,7 +325,7 @@ export default function Dashboard() {
         </div>
 
         {/* Data source indicator */}
-        <DataSourcePanel hostname={hostname} />
+        <DataSourcePanel />
       </div>
     );
   }
@@ -463,7 +456,7 @@ export default function Dashboard() {
       </div>
 
       {/* Data source indicator */}
-      <DataSourcePanel hostname={hostname} />
+      <DataSourcePanel />
     </div>
   );
 }
