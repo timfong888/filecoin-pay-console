@@ -119,13 +119,6 @@ export function OperatorBreakdownTable({ operators }: OperatorBreakdownTableProp
               <TableCell>{op.settledFIL}</TableCell>
             </TableRow>
           ))}
-          {sortedOperators.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center text-gray-500 py-4">
-                No operators found
-              </TableCell>
-            </TableRow>
-          )}
         </TableBody>
       </Table>
     </div>

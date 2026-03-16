@@ -12,7 +12,6 @@ import {
   weiToUSDC,
   formatCurrency,
   formatAddress,
-  formatFIL,
 } from './utils';
 
 /**
@@ -28,6 +27,27 @@ export interface OperatorDisplay {
   settledUSDFCRaw: number;
   settledFIL: string;
   settledFILRaw: number;
+}
+
+/**
+ * Check if a rail state represents ACTIVE.
+ * Subgraph returns state as string 'ACTIVE' or numeric 0 depending on query context.
+ */
+function isRailActive(state: string | number): boolean {
+  return state === 'ACTIVE' || state === 0;
+}
+
+/**
+ * Convert wei (18 decimals) to a human-readable number.
+ * Both USDFC and FIL use 18 decimals; weiToUSDC is a generic converter.
+ */
+const weiToDecimal = weiToUSDC;
+
+/**
+ * Format a FIL amount for display from a numeric value.
+ */
+function formatFILValue(value: number): string {
+  return `${value.toFixed(2)} FIL`;
 }
 
 /**
@@ -51,14 +71,14 @@ function transformOperator(operator: Operator): OperatorDisplay {
   const payerAddresses = new Set<string>();
 
   for (const rail of operator.rails) {
-    if (rail.state === 'ACTIVE' || rail.state === 0) {
+    if (isRailActive(rail.state)) {
       activeRails++;
     }
     payerAddresses.add(rail.payer.address.toLowerCase());
   }
 
-  const settledUSDFCRaw = weiToUSDC(settledUSDFC.toString());
-  const settledFILRaw = weiToUSDC(settledFIL.toString());
+  const settledUSDFCRaw = weiToDecimal(settledUSDFC.toString());
+  const settledFILRaw = weiToDecimal(settledFIL.toString());
 
   return {
     address: formatAddress(operator.address),
@@ -68,7 +88,7 @@ function transformOperator(operator: Operator): OperatorDisplay {
     uniquePayers: payerAddresses.size,
     settledUSDFC: formatCurrency(settledUSDFCRaw),
     settledUSDFCRaw,
-    settledFIL: settledFILRaw > 0 ? formatFIL(settledFIL.toString()) : '-',
+    settledFIL: settledFILRaw > 0 ? formatFILValue(settledFILRaw) : '-',
     settledFILRaw,
   };
 }
