@@ -6,6 +6,7 @@ import { DataSourcePanel } from "@/components/dashboard/DataSourcePanel";
 import { fetchDashboardData, fetchChurnedWalletsCount, formatChartDate, formatChartCurrency, FILMetricsResult } from "@/lib/graphql/fetchers";
 import { batchResolveENS } from "@/lib/ens";
 import { AuctionStatsCharts } from "@/components/dashboard/AuctionStatsCharts";
+import { AccountSearch } from "@/components/dashboard/AccountSearch";
 import {
   LineChart,
   Line,
@@ -253,6 +254,9 @@ export default function Dashboard() {
             <p className="text-sm">{error}. Displaying sample data instead.</p>
           </div>
         )}
+        {/* Find My Account */}
+        <AccountSearch />
+
         <div className="flex gap-6 flex-wrap">
           <HeroMetricCard
             title={"Active Payers"}
@@ -338,6 +342,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Find My Account */}
+      <AccountSearch />
+
       {/* Hero Metric Cards */}
       <div className="flex gap-6 flex-wrap">
         <HeroMetricCard
