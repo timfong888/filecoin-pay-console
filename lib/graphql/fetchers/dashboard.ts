@@ -20,13 +20,14 @@ import {
   fetchActivePayersCount,
   fetchActivePayersByDate,
 } from './payers';
+import { fetchOperators } from './operators';
 
 /**
  * Fetch all dashboard data at once (including cumulative chart data).
  */
 export async function fetchDashboardData() {
   // Use fetchActivePayersByDate() for chart to match hero metric definition
-  const [globalMetrics, totalSettled, settled7d, topPayers, runRate, activePayersByDate, dailySettledMap, activePayersData, totalLockedUSDFC, arr, fixedLockupPending, filMetrics] = await Promise.all([
+  const [globalMetrics, totalSettled, settled7d, topPayers, runRate, activePayersByDate, dailySettledMap, activePayersData, totalLockedUSDFC, arr, fixedLockupPending, filMetrics, operators] = await Promise.all([
     fetchGlobalMetrics(),
     fetchTotalSettled(),
     fetchSettled7d(),
@@ -39,6 +40,7 @@ export async function fetchDashboardData() {
     fetchARR(),
     fetchFixedLockupPending(),
     fetchFILMetrics(),
+    fetchOperators(),
   ]);
 
   // Generate chart dates (last 30 days)
@@ -94,6 +96,8 @@ export async function fetchDashboardData() {
     fixedLockupPending,
     // FIL-denominated metrics (Locked FIL, Settled FIL, FIL Burned)
     filMetrics,
+    // Operator breakdown
+    operators,
     // Cumulative chart data
     cumulativePayers,
     cumulativeSettled,

@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { TopPayersTable, mockPayers, Payer } from "@/components/dashboard/TopPayersTable";
+import { OperatorBreakdownTable } from "@/components/dashboard/OperatorBreakdownTable";
 import { DataSourcePanel } from "@/components/dashboard/DataSourcePanel";
 import { fetchDashboardData, fetchChurnedWalletsCount, formatChartDate, formatChartCurrency, FILMetricsResult } from "@/lib/graphql/fetchers";
+import { OperatorDisplay } from "@/lib/graphql/fetchers/operators";
 import { batchResolveENS } from "@/lib/ens";
 import { AuctionStatsCharts } from "@/components/dashboard/AuctionStatsCharts";
 import { AccountSearch } from "@/components/dashboard/AccountSearch";
@@ -71,6 +73,8 @@ interface DashboardData {
   };
   // FIL-denominated metrics
   filMetrics: FILMetricsResult;
+  // Operator breakdown
+  operators: OperatorDisplay[];
   // Cumulative chart data
   cumulativePayers: number[];
   cumulativeSettled: number[];
@@ -331,7 +335,7 @@ export default function Dashboard() {
   }
 
   // Render with real data
-  const { totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC, arr, fixedLockupPending, filMetrics } = data;
+  const { totalSettled, topPayers, activePayers, churnedWallets, totalLockedUSDFC, arr, fixedLockupPending, filMetrics, operators } = data;
 
   return (
     <div className="space-y-6">
@@ -454,6 +458,14 @@ export default function Dashboard() {
         </div>
         <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} />
       </div>
+
+      {/* Operator Breakdown */}
+      {operators.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold">Payment Volume by Operator</h2>
+          <OperatorBreakdownTable operators={operators} />
+        </div>
+      )}
 
       {/* Data source indicator */}
       <DataSourcePanel />

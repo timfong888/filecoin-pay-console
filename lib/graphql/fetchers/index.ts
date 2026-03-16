@@ -61,6 +61,12 @@ export {
 } from './accounts';
 export type { RailDisplay, AccountDetail } from './accounts';
 
+// Operator functions
+export {
+  fetchOperators,
+} from './operators';
+export type { OperatorDisplay } from './operators';
+
 // Dashboard functions
 export {
   fetchDashboardData,
