@@ -45,10 +45,6 @@ export const CONTRACTS = {
 export const EPOCH_DURATION_SECONDS = 30;
 export const EPOCHS_PER_DAY = (24 * 60 * 60) / EPOCH_DURATION_SECONDS; // 2880 epochs per day
 
-// Dashboard deployment metadata (PinMe/IPFS)
-// Note: CID and URL cannot be pre-baked (chicken-and-egg problem)
-// URL is determined dynamically at runtime via window.location.hostname
-export const DASHBOARD_VERSION = '0.37.0';
 
 /**
  * Execute a raw GraphQL request via fetch, tolerating partial errors.

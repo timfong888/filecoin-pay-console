@@ -1,6 +1,6 @@
 "use client";
 
-import { GOLDSKY_ENDPOINT, DASHBOARD_VERSION, NETWORK } from "@/lib/graphql/client";
+import { GOLDSKY_ENDPOINT, NETWORK } from "@/lib/graphql/client";
 
 const REPO_URL = "https://github.com/timfong888/filecoin-pay-console";
 
@@ -9,11 +9,7 @@ export function Footer() {
     <footer className="border-t bg-gray-50 mt-auto">
       <div className="container mx-auto px-4 py-4">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
-          <div className="flex items-center gap-4">
-            <span>v{DASHBOARD_VERSION}</span>
-            <span className="hidden sm:inline">|</span>
-            <span>{NETWORK}</span>
-          </div>
+          <span>{NETWORK}</span>
           <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4">
             <div className="flex items-center gap-1">
               <span className="text-gray-500">Subgraph:</span>
@@ -21,10 +17,9 @@ export function Footer() {
                 href={GOLDSKY_ENDPOINT}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800 hover:underline truncate max-w-[300px]"
-                title={GOLDSKY_ENDPOINT}
+                className="text-blue-600 hover:text-blue-800 hover:underline font-mono text-xs break-all"
               >
-                {GOLDSKY_ENDPOINT.replace('https://api.goldsky.com/api/public/', '').slice(0, 50)}...
+                {GOLDSKY_ENDPOINT}
               </a>
             </div>
             <span className="hidden sm:inline">|</span>
