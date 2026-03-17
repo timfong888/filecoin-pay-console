@@ -552,7 +552,12 @@ function PayeeListView() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-purple-900">Payee Accounts</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-purple-900">Payee Accounts</h1>
+          {resolvingNames && (
+            <span className="text-sm text-gray-400 animate-pulse">· Resolving names…</span>
+          )}
+        </div>
       </div>
 
       {/* Hero Metrics */}
@@ -645,7 +650,7 @@ function PayeeListView() {
                         {payee.ensName ? (
                           <span className="text-purple-600 font-medium">{payee.ensName}</span>
                         ) : (
-                          <span className={`font-mono text-sm text-purple-600 ${resolvingNames ? "animate-pulse" : ""}`}>{payee.address}</span>
+                          <span className="font-mono text-sm text-purple-600">{payee.address}</span>
                         )}
                       </Link>
                       {payee.isStorageProvider && (

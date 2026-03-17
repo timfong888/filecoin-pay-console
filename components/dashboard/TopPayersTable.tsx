@@ -27,7 +27,6 @@ export interface Payer {
 
 interface TopPayersTableProps {
   payers: Payer[];
-  resolvingNames?: boolean;
 }
 
 // Mock data for initial development
@@ -69,7 +68,7 @@ type SortField = "locked" | "settled" | "runway" | "start";
 
 const ITEMS_PER_PAGE = 10;
 
-export function TopPayersTable({ payers, resolvingNames = false }: TopPayersTableProps) {
+export function TopPayersTable({ payers }: TopPayersTableProps) {
   const [sortField, setSortField] = useState<SortField | null>("settled");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -173,7 +172,7 @@ export function TopPayersTable({ payers, resolvingNames = false }: TopPayersTabl
                     {payer.ensName ? (
                       <span className="text-blue-600 font-medium">{payer.ensName}</span>
                     ) : (
-                      <span className={`font-mono text-sm text-blue-600 ${resolvingNames ? "animate-pulse" : ""}`}>{payer.address}</span>
+                      <span className="font-mono text-sm text-blue-600">{payer.address}</span>
                     )}
                   </Link>
                 </TableCell>

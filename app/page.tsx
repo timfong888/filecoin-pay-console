@@ -434,7 +434,12 @@ export default function Dashboard() {
       {/* Top Payers Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Payers</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">Payers</h2>
+            {resolvingNames && (
+              <span className="text-sm text-gray-400 animate-pulse">· Resolving names…</span>
+            )}
+          </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <input
@@ -463,7 +468,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} resolvingNames={resolvingNames} />
+        <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} />
         <div className="flex justify-end">
           <Link href="/payer-accounts" className="text-sm text-blue-600 hover:underline">
             View All Payers →

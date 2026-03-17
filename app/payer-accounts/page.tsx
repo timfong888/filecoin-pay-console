@@ -1017,7 +1017,12 @@ function PayerListView() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Payer Accounts</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">Payer Accounts</h1>
+          {resolvingNames && (
+            <span className="text-sm text-gray-400 animate-pulse">· Resolving names…</span>
+          )}
+        </div>
       </div>
 
       {/* Hero Metrics Bar (3 cards) */}
@@ -1227,7 +1232,7 @@ function PayerListView() {
                       {payer.ensName ? (
                         <span className="text-blue-600 font-medium">{payer.ensName}</span>
                       ) : (
-                        <span className={`font-mono text-sm text-blue-600 ${resolvingNames ? "animate-pulse" : ""}`}>{payer.address}</span>
+                        <span className="font-mono text-sm text-blue-600">{payer.address}</span>
                       )}
                     </Link>
                   </TableCell>
