@@ -453,7 +453,7 @@ function PayerDetailView({ address }: { address: string }) {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-6 gap-4">
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500 flex items-center gap-1">
             Available Funds
@@ -477,6 +477,18 @@ function PayerDetailView({ address }: { address: string }) {
             </span>
           </p>
           <p className="text-2xl font-bold">{account.totalLocked}</p>
+        </div>
+        <div className="bg-white border rounded-lg p-4">
+          <p className="text-sm text-gray-500 flex items-center gap-1">
+            Total Settled
+            <span
+              className="text-gray-400 cursor-help"
+              title="Total amount settled to service providers across all payment rails."
+            >
+              ⓘ
+            </span>
+          </p>
+          <p className="text-2xl font-bold">{account.totalSettled}</p>
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500">Total Storage</p>
