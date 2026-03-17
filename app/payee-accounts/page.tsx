@@ -49,6 +49,7 @@ function PayeeDetailView({ address }: { address: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ensName, setEnsName] = useState<string | null>(null);
+  const [resolvingName, setResolvingName] = useState(true);
   const [counterpartyEnsNames, setCounterpartyEnsNames] = useState<Map<string, string | null>>(new Map());
 
   // Settle dialog state
@@ -113,6 +114,7 @@ function PayeeDetailView({ address }: { address: string }) {
   useEffect(() => {
     if (!address) return;
 
+    setResolvingName(true);
     async function resolveAccountENS() {
       try {
         const name = await resolveENS(address);
@@ -121,6 +123,8 @@ function PayeeDetailView({ address }: { address: string }) {
         }
       } catch (err) {
         console.error("Failed to resolve ENS:", err);
+      } finally {
+        setResolvingName(false);
       }
     }
 
@@ -214,7 +218,7 @@ function PayeeDetailView({ address }: { address: string }) {
                 <span className="text-gray-400 text-sm font-mono">({account.address})</span>
               </>
             ) : (
-              <span className="font-mono text-lg">{account.address}</span>
+              <span className={`font-mono text-lg ${resolvingName ? "animate-pulse" : ""}`}>{account.address}</span>
             )}
           </div>
         </div>
@@ -385,6 +389,7 @@ function PayeeListView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sortField, setSortField] = useState<"received" | "payers" | "start" | "dataSize">("received");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [resolvingNames, setResolvingNames] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -417,6 +422,7 @@ function PayeeListView() {
 
       if (addresses.length === 0) return;
 
+      setResolvingNames(true);
       try {
         const ensNames = await batchResolveENS(addresses);
 
@@ -431,6 +437,8 @@ function PayeeListView() {
         );
       } catch (err) {
         console.error("Failed to resolve ENS names:", err);
+      } finally {
+        setResolvingNames(false);
       }
     }
 
@@ -658,7 +666,7 @@ function PayeeListView() {
                         {payee.ensName ? (
                           <span className="text-purple-600 font-medium">{payee.ensName}</span>
                         ) : (
-                          <span className="font-mono text-sm text-purple-600">{payee.address}</span>
+                          <span className={`font-mono text-sm text-purple-600 ${resolvingNames ? "animate-pulse" : ""}`}>{payee.address}</span>
                         )}
                       </Link>
                       {payee.isStorageProvider && (

@@ -125,6 +125,7 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [resolvingNames, setResolvingNames] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -204,6 +205,7 @@ export default function Dashboard() {
 
       if (addresses.length === 0) return;
 
+      setResolvingNames(true);
       try {
         const ensNames = await batchResolveENS(addresses);
 
@@ -223,6 +225,8 @@ export default function Dashboard() {
         });
       } catch (err) {
         console.error('Failed to resolve ENS names:', err);
+      } finally {
+        setResolvingNames(false);
       }
     }
 
@@ -459,7 +463,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-        <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} />
+        <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} resolvingNames={resolvingNames} />
         <div className="flex justify-end">
           <Link href="/payer-accounts" className="text-sm text-blue-600 hover:underline">
             View All Payers →

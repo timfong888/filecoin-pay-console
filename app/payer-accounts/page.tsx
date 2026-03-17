@@ -171,6 +171,7 @@ function PayerDetailView({ address }: { address: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ensName, setEnsName] = useState<string | null>(null);
+  const [resolvingName, setResolvingName] = useState(true);
   const [counterpartyEnsNames, setCounterpartyEnsNames] = useState<Map<string, string | null>>(new Map());
 
   // Settle dialog state
@@ -248,6 +249,7 @@ function PayerDetailView({ address }: { address: string }) {
   useEffect(() => {
     if (!address) return;
 
+    setResolvingName(true);
     async function resolveAccountENS() {
       try {
         const name = await resolveENS(address);
@@ -256,6 +258,8 @@ function PayerDetailView({ address }: { address: string }) {
         }
       } catch (err) {
         console.error("Failed to resolve ENS:", err);
+      } finally {
+        setResolvingName(false);
       }
     }
 
@@ -426,7 +430,7 @@ function PayerDetailView({ address }: { address: string }) {
                 <span className="text-gray-400 text-sm font-mono">({account.address})</span>
               </>
             ) : (
-              <span className="font-mono text-lg">{account.address}</span>
+              <span className={`font-mono text-lg ${resolvingName ? "animate-pulse" : ""}`}>{account.address}</span>
             )}
           </div>
         </div>
@@ -785,6 +789,7 @@ function PayerListView() {
   const [sortField, setSortField] = useState<"settled" | "claimable" | "dataSize" | "locked" | "rails" | "runway" | "start">("settled");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [pdpLoading, setPdpLoading] = useState(false);
+  const [resolvingNames, setResolvingNames] = useState(false);
   const [fromDate, setFromDate] = useState(defaultDates.fromDate);
   const [toDate, setToDate] = useState(defaultDates.toDate);
   const [currentPage, setCurrentPage] = useState(1);
@@ -856,6 +861,7 @@ function PayerListView() {
 
       if (addresses.length === 0) return;
 
+      setResolvingNames(true);
       try {
         const ensNames = await batchResolveENS(addresses);
 
@@ -870,6 +876,8 @@ function PayerListView() {
         );
       } catch (err) {
         console.error("Failed to resolve ENS names:", err);
+      } finally {
+        setResolvingNames(false);
       }
     }
 
@@ -1240,7 +1248,7 @@ function PayerListView() {
                       {payer.ensName ? (
                         <span className="text-blue-600 font-medium">{payer.ensName}</span>
                       ) : (
-                        <span className="font-mono text-sm text-blue-600">{payer.address}</span>
+                        <span className={`font-mono text-sm text-blue-600 ${resolvingNames ? "animate-pulse" : ""}`}>{payer.address}</span>
                       )}
                     </Link>
                   </TableCell>
