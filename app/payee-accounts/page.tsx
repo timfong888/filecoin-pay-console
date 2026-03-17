@@ -4,7 +4,8 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { PayeeDisplay, fetchAllPayees, fetchAccountDetail, AccountDetail, formatDataSize, formatCurrency, RailDisplay } from "@/lib/graphql/fetchers";
-import { batchResolveENS, resolveENS } from "@/lib/ens";
+import { batchResolveENS } from "@/lib/ens";
+import { useEnsName } from "@/lib/hooks/useEnsResolution";
 import { useSPRegistry } from "@/lib/sp-registry/hooks";
 import { SPHero } from "@/components/sp-registry";
 import {
@@ -48,8 +49,7 @@ function PayeeDetailView({ address }: { address: string }) {
   const [account, setAccount] = useState<AccountDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [ensName, setEnsName] = useState<string | null>(null);
-  const [resolvingName, setResolvingName] = useState(true);
+  const { ensName, resolving: resolvingName } = useEnsName(address);
   const [counterpartyEnsNames, setCounterpartyEnsNames] = useState<Map<string, string | null>>(new Map());
 
   // Settle dialog state
@@ -108,27 +108,6 @@ function PayeeDetailView({ address }: { address: string }) {
     }
 
     loadData();
-  }, [address]);
-
-  // Resolve ENS name
-  useEffect(() => {
-    if (!address) return;
-
-    setResolvingName(true);
-    async function resolveAccountENS() {
-      try {
-        const name = await resolveENS(address);
-        if (name) {
-          setEnsName(name);
-        }
-      } catch (err) {
-        console.error("Failed to resolve ENS:", err);
-      } finally {
-        setResolvingName(false);
-      }
-    }
-
-    resolveAccountENS();
   }, [address]);
 
   // Resolve ENS names for counterparties in rail tables
