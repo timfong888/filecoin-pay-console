@@ -34,6 +34,7 @@ export interface RailDisplay {
   counterpartyAddress: string;
   counterpartyFormatted: string;
   counterpartyEnsName?: string;
+  operatorAddress: string;
   payerAddress: string;
   payeeAddress: string;
   settled: string;
@@ -105,6 +106,7 @@ function transformRailToDisplay(rail: Rail, isPayer: boolean, accountAddress: st
     railId: rail.railId || '0',
     counterpartyAddress: counterparty || 'Unknown',
     counterpartyFormatted: counterparty ? formatAddress(counterparty) : 'Unknown',
+    operatorAddress: rail.operator?.address || '',
     payerAddress,
     payeeAddress,
     settled: formatCurrency(settledValue),

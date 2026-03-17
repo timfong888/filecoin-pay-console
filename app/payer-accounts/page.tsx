@@ -42,6 +42,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { DataSetCard } from "@/components/payer/DataSetCard";
+import { OperatorGroupedRails } from "@/components/payer/OperatorGroupedRails";
 import {
   LineChart,
   Line,
@@ -621,127 +622,25 @@ function PayerDetailView({ address }: { address: string }) {
         </p>
       </div>
 
-      {/* Payment Rails (as Payer) */}
+      {/* Payment Rails grouped by Operator */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Payment Rails (Paying To)</h2>
-        {account.payerRails.length === 0 ? (
-          <div className="bg-gray-50 border rounded-lg p-8 text-center text-gray-500">
-            No payment rails found
-          </div>
-        ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="font-medium">Payee</TableHead>
-                  <TableHead className="font-medium">Settled</TableHead>
-                  <TableHead className="font-medium">Rate</TableHead>
-                  <TableHead className="font-medium">Status</TableHead>
-                  <TableHead className="font-medium">Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {account.payerRails.map((rail, index) => (
-                  <TableRow
-                    key={rail.id}
-                    className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                  >
-                    <TableCell>
-                      <Link
-                        href={`/payee-accounts?address=${rail.counterpartyAddress}`}
-                        className="hover:underline"
-                      >
-                        {counterpartyEnsNames.get(rail.counterpartyAddress?.toLowerCase()) ? (
-                          <span className="text-blue-600 font-medium">
-                            {counterpartyEnsNames.get(rail.counterpartyAddress?.toLowerCase())}
-                          </span>
-                        ) : (
-                          <span className="font-mono text-sm text-blue-600">
-                            {rail.counterpartyFormatted}
-                          </span>
-                        )}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{rail.settled}</TableCell>
-                    <TableCell>{rail.rate}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          rail.stateCode === 0
-                            ? "bg-green-100 text-green-800"
-                            : rail.stateCode === 1
-                            ? "bg-gray-100 text-gray-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {rail.state}
-                      </span>
-                    </TableCell>
-                    <TableCell>{rail.createdAt}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+        <h2 className="text-xl font-semibold">Payments by Operator</h2>
+        <OperatorGroupedRails
+          rails={account.payerRails}
+          counterpartyEnsNames={counterpartyEnsNames}
+          perspective="payer"
+        />
       </div>
 
-      {/* Incoming Rails (as Payee) */}
+      {/* Incoming Rails grouped by Operator */}
       {account.payeeRails.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-xl font-semibold">Incoming Rails (Receiving From)</h2>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-gray-50">
-                  <TableHead className="font-medium">Payer</TableHead>
-                  <TableHead className="font-medium">Received</TableHead>
-                  <TableHead className="font-medium">Status</TableHead>
-                  <TableHead className="font-medium">Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {account.payeeRails.map((rail, index) => (
-                  <TableRow
-                    key={rail.id}
-                    className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                  >
-                    <TableCell>
-                      <Link
-                        href={`/payer-accounts?address=${rail.counterpartyAddress}`}
-                        className="hover:underline"
-                      >
-                        {counterpartyEnsNames.get(rail.counterpartyAddress?.toLowerCase()) ? (
-                          <span className="text-blue-600 font-medium">
-                            {counterpartyEnsNames.get(rail.counterpartyAddress?.toLowerCase())}
-                          </span>
-                        ) : (
-                          <span className="font-mono text-sm text-blue-600">
-                            {rail.counterpartyFormatted}
-                          </span>
-                        )}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{rail.settled}</TableCell>
-                    <TableCell>
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          rail.stateCode === 0
-                            ? "bg-green-100 text-green-800"
-                            : rail.stateCode === 1
-                            ? "bg-gray-100 text-gray-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {rail.state}
-                      </span>
-                    </TableCell>
-                    <TableCell>{rail.createdAt}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <h2 className="text-xl font-semibold">Incoming Payments by Operator</h2>
+          <OperatorGroupedRails
+            rails={account.payeeRails}
+            counterpartyEnsNames={counterpartyEnsNames}
+            perspective="payee"
+          />
         </div>
       )}
 
