@@ -27,8 +27,10 @@ interface OperatorGroup {
 function groupRailsByOperator(rails: RailDisplay[]): OperatorGroup[] {
   const groups = new Map<string, RailDisplay[]>();
 
+  const UNKNOWN_OPERATOR = "__unknown__";
+
   for (const rail of rails) {
-    const key = rail.operatorAddress.toLowerCase() || "unknown";
+    const key = rail.operatorAddress ? rail.operatorAddress.toLowerCase() : UNKNOWN_OPERATOR;
     const existing = groups.get(key);
     if (existing) {
       existing.push(rail);
@@ -55,7 +57,9 @@ function groupRailsByOperator(rails: RailDisplay[]): OperatorGroup[] {
     result.push({
       operatorAddress: addr,
       operatorName:
-        getKnownWalletName(addr) || formatAddress(addr),
+        addr === UNKNOWN_OPERATOR
+          ? "Unknown Operator"
+          : getKnownWalletName(addr) || formatAddress(addr),
       totalSettledRaw,
       totalSettled,
       activeRailCount: activeCount,
@@ -120,6 +124,7 @@ export function OperatorGroupedRails({
             <TableHead className="font-medium">Operator</TableHead>
             <TableHead className="font-medium">Active Rails</TableHead>
             <TableHead className="font-medium">Total Settled</TableHead>
+            <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -186,6 +191,7 @@ function GroupRow({
           </span>
         </TableCell>
         <TableCell className="font-medium">{group.totalSettled}</TableCell>
+        <TableCell></TableCell>
       </TableRow>
 
       {/* Expanded detail rows */}
@@ -202,6 +208,9 @@ function GroupRow({
             </TableCell>
             <TableCell className="text-xs font-medium text-gray-500 uppercase">
               Settled
+            </TableCell>
+            <TableCell className="text-xs font-medium text-gray-500 uppercase">
+              Created
             </TableCell>
           </TableRow>
           {group.rails.map((rail, index) => (
@@ -246,6 +255,7 @@ function GroupRow({
                 </span>
               </TableCell>
               <TableCell>{rail.settled}</TableCell>
+              <TableCell className="text-sm text-gray-500">{rail.createdAt}</TableCell>
             </TableRow>
           ))}
         </>
