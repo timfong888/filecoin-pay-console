@@ -172,6 +172,9 @@ export const ACCOUNT_DETAIL_QUERY = gql`
         payee {
           address
         }
+        operator {
+          address
+        }
         token {
           symbol
           decimals
@@ -186,6 +189,9 @@ export const ACCOUNT_DETAIL_QUERY = gql`
         state
         createdAt
         payer {
+          address
+        }
+        operator {
           address
         }
         token {
@@ -229,6 +235,7 @@ export interface Rail {
   paymentRate?: string;
   payee?: { address: string };
   payer?: { address: string };
+  operator?: { address: string };
   token?: { symbol: string; decimals: string };
 }
 
