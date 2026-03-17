@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { TopPayersTable, mockPayers, Payer } from "@/components/dashboard/TopPayersTable";
 import { OperatorBreakdownTable } from "@/components/dashboard/OperatorBreakdownTable";
 import { DataSourcePanel } from "@/components/dashboard/DataSourcePanel";
@@ -457,6 +458,11 @@ export default function Dashboard() {
           </div>
         </div>
         <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} />
+        <div className="flex justify-end">
+          <Link href="/payer-accounts" className="text-sm text-blue-600 hover:underline">
+            View All Payers →
+          </Link>
+        </div>
       </div>
 
       {/* Operator Breakdown */}

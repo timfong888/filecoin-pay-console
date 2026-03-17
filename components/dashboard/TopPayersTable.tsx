@@ -67,7 +67,7 @@ function parseRunway(value: string): number {
 type SortField = "locked" | "settled" | "runway" | "start";
 
 export function TopPayersTable({ payers }: TopPayersTableProps) {
-  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortField, setSortField] = useState<SortField | null>("settled");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   const handleSort = (field: SortField) => {

@@ -156,11 +156,6 @@ function PayeeDetailView({ address }: { address: string }) {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-2">
-          <Link href="/payee-accounts" className="text-purple-600 hover:underline">
-            ← Back to Payees
-          </Link>
-        </div>
         <h1 className="text-2xl font-bold text-purple-900">Payee Details</h1>
         <div className="h-96 bg-purple-100 rounded-lg animate-pulse" />
       </div>
@@ -170,11 +165,6 @@ function PayeeDetailView({ address }: { address: string }) {
   if (error || !account) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center gap-2">
-          <Link href="/payee-accounts" className="text-purple-600 hover:underline">
-            ← Back to Payees
-          </Link>
-        </div>
         <h1 className="text-2xl font-bold text-purple-900">Payee Details</h1>
         <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-lg">
           <p className="font-medium">Error loading data</p>
@@ -213,13 +203,6 @@ function PayeeDetailView({ address }: { address: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Navigation */}
-      <div className="flex items-center gap-2">
-        <Link href="/payee-accounts" className="text-purple-600 hover:underline">
-          ← Back to Payees
-        </Link>
-      </div>
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
