@@ -31,7 +31,7 @@ export async function fetchDashboardData() {
     fetchGlobalMetrics(),
     fetchTotalSettled(),
     fetchSettled7d(),
-    fetchTopPayers(10),
+    fetchTopPayers(100),
     fetchMonthlyRunRate(),
     fetchActivePayersByDate(),
     fetchDailySettled(),

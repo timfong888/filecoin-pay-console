@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Table,
@@ -66,9 +66,17 @@ function parseRunway(value: string): number {
 
 type SortField = "locked" | "settled" | "runway" | "start";
 
+const ITEMS_PER_PAGE = 10;
+
 export function TopPayersTable({ payers }: TopPayersTableProps) {
-  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortField, setSortField] = useState<SortField | null>("settled");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset to page 1 when the filtered payer list changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [payers.length]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -77,6 +85,7 @@ export function TopPayersTable({ payers }: TopPayersTableProps) {
       setSortField(field);
       setSortDirection("desc");
     }
+    setCurrentPage(1);
   };
 
   const sortedPayers = [...payers].sort((a, b) => {
@@ -108,66 +117,118 @@ export function TopPayersTable({ payers }: TopPayersTableProps) {
     return sortDirection === "desc" ? bVal - aVal : aVal - bVal;
   });
 
+  const totalPages = Math.ceil(sortedPayers.length / ITEMS_PER_PAGE);
+  const paginatedPayers = sortedPayers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
   const getSortIndicator = (field: SortField) => {
     if (sortField !== field) return "";
     return sortDirection === "desc" ? " ↓" : " ↑";
   };
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-gray-50">
-            <TableHead className="font-medium">Address</TableHead>
-            <TableHead
-              className="font-medium cursor-pointer hover:bg-gray-100"
-              onClick={() => handleSort("locked")}
-            >
-              Locked{getSortIndicator("locked")}
-            </TableHead>
-            <TableHead
-              className="font-medium cursor-pointer hover:bg-gray-100"
-              onClick={() => handleSort("settled")}
-            >
-              Settled{getSortIndicator("settled")}
-            </TableHead>
-            <TableHead
-              className="font-medium cursor-pointer hover:bg-gray-100"
-              onClick={() => handleSort("runway")}
-            >
-              Runway{getSortIndicator("runway")}
-            </TableHead>
-            <TableHead
-              className="font-medium cursor-pointer hover:bg-gray-100"
-              onClick={() => handleSort("start")}
-            >
-              Start{getSortIndicator("start")}
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sortedPayers.map((payer, index) => (
-            <TableRow key={payer.fullAddress || index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-              <TableCell>
-                <Link
-                  href={`/payer-accounts?address=${payer.fullAddress}`}
-                  className="hover:underline"
-                >
-                  {payer.ensName ? (
-                    <span className="text-blue-600 font-medium">{payer.ensName}</span>
-                  ) : (
-                    <span className="font-mono text-sm text-blue-600">{payer.address}</span>
-                  )}
-                </Link>
-              </TableCell>
-              <TableCell>{payer.locked}</TableCell>
-              <TableCell>{payer.settled}</TableCell>
-              <TableCell>{payer.runway}</TableCell>
-              <TableCell>{payer.start}</TableCell>
+    <div>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-gray-50">
+              <TableHead className="font-medium">Address</TableHead>
+              <TableHead
+                className="font-medium cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("locked")}
+              >
+                Locked{getSortIndicator("locked")}
+              </TableHead>
+              <TableHead
+                className="font-medium cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("settled")}
+              >
+                Settled{getSortIndicator("settled")}
+              </TableHead>
+              <TableHead
+                className="font-medium cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("runway")}
+              >
+                Runway{getSortIndicator("runway")}
+              </TableHead>
+              <TableHead
+                className="font-medium cursor-pointer hover:bg-gray-100"
+                onClick={() => handleSort("start")}
+              >
+                Start{getSortIndicator("start")}
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {paginatedPayers.map((payer, index) => (
+              <TableRow key={payer.fullAddress || index} className={index % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                <TableCell>
+                  <Link
+                    href={`/payer-accounts?address=${payer.fullAddress}`}
+                    className="hover:underline"
+                  >
+                    {payer.ensName ? (
+                      <span className="text-blue-600 font-medium">{payer.ensName}</span>
+                    ) : (
+                      <span className="font-mono text-sm text-blue-600">{payer.address}</span>
+                    )}
+                  </Link>
+                </TableCell>
+                <TableCell>{payer.locked}</TableCell>
+                <TableCell>{payer.settled}</TableCell>
+                <TableCell>{payer.runway}</TableCell>
+                <TableCell>{payer.start}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-3 text-sm text-gray-600">
+          <span>
+            Showing {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, sortedPayers.length)} of {sortedPayers.length}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-100"
+            >
+              ←
+            </button>
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+              let page: number;
+              if (totalPages <= 5) {
+                page = i + 1;
+              } else if (currentPage <= 3) {
+                page = i + 1;
+              } else if (currentPage >= totalPages - 2) {
+                page = totalPages - 4 + i;
+              } else {
+                page = currentPage - 2 + i;
+              }
+              return (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`px-2 py-1 rounded border ${currentPage === page ? "bg-blue-600 text-white" : "hover:bg-gray-100"}`}
+                >
+                  {page}
+                </button>
+              );
+            })}
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-2 py-1 rounded border disabled:opacity-40 hover:bg-gray-100"
+            >
+              →
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

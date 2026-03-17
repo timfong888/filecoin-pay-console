@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { TopPayersTable, mockPayers, Payer } from "@/components/dashboard/TopPayersTable";
 import { OperatorBreakdownTable } from "@/components/dashboard/OperatorBreakdownTable";
 import { DataSourcePanel } from "@/components/dashboard/DataSourcePanel";
@@ -131,9 +132,11 @@ export default function Dashboard() {
   const filterPayers = (payers: Payer[]) => {
     return payers.filter(p => {
       // Search filter
+      const q = searchQuery.toLowerCase();
       const matchesSearch =
-        p.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (p.ensName && p.ensName.toLowerCase().includes(searchQuery.toLowerCase()));
+        p.address.toLowerCase().includes(q) ||
+        p.fullAddress.toLowerCase().includes(q) ||
+        (p.ensName && p.ensName.toLowerCase().includes(q));
 
       if (!matchesSearch) return false;
 
@@ -298,11 +301,11 @@ export default function Dashboard() {
         {/* Top Payers Section */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Top 10 Payers</h2>
+            <h2 className="text-lg font-semibold">Payers</h2>
             <div className="flex items-center gap-4">
               <input
                 type="text"
-                placeholder="🔍 search"
+                placeholder="🔍 filter"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="px-3 py-1.5 text-sm border rounded-md w-48"
@@ -427,12 +430,12 @@ export default function Dashboard() {
       {/* Top Payers Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Top 10 Payers</h2>
+          <h2 className="text-lg font-semibold">Payers</h2>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="🔍 search"
+                placeholder="🔍 filter"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="px-3 py-1.5 text-sm border rounded-md w-48"
@@ -457,6 +460,11 @@ export default function Dashboard() {
           </div>
         </div>
         <TopPayersTable payers={filterPayers(topPayers.length > 0 ? topPayers : mockPayers)} />
+        <div className="flex justify-end">
+          <Link href="/payer-accounts" className="text-sm text-blue-600 hover:underline">
+            View All Payers →
+          </Link>
+        </div>
       </div>
 
       {/* Operator Breakdown */}
