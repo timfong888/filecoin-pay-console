@@ -1,16 +1,22 @@
 import { useState, useEffect } from "react";
 import { resolveENS } from "@/lib/ens";
+import { getKnownWalletName } from "@/lib/wallet-registry";
 
 /**
  * Resolve a single address to its ENS/wallet-map name.
- * Returns the resolved name and whether resolution is in progress.
+ * Wallet-map names resolve synchronously (no flash).
+ * Only unknown addresses trigger async ENS resolution.
  */
 export function useEnsName(address: string | null | undefined) {
-  const [ensName, setEnsName] = useState<string | null>(null);
-  const [resolving, setResolving] = useState(false);
+  // Check wallet registry synchronously — instant for known addresses
+  const knownName = address ? getKnownWalletName(address) : undefined;
+
+  const [ensName, setEnsName] = useState<string | null>(knownName ?? null);
+  const [resolving, setResolving] = useState(!knownName && !!address);
 
   useEffect(() => {
-    if (!address) return;
+    // Skip async resolution if already resolved from wallet registry
+    if (!address || knownName) return;
 
     setResolving(true);
     resolveENS(address)
@@ -19,7 +25,7 @@ export function useEnsName(address: string | null | undefined) {
       })
       .catch((err) => console.error("Failed to resolve ENS:", err))
       .finally(() => setResolving(false));
-  }, [address]);
+  }, [address, knownName]);
 
-  return { ensName, resolving };
+  return { ensName: ensName ?? knownName ?? null, resolving };
 }

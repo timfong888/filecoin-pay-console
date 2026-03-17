@@ -25,6 +25,7 @@ import {
   NETWORK,
 } from "@/lib/graphql/client";
 import { batchResolveENS } from "@/lib/ens";
+import { getKnownWalletName } from "@/lib/wallet-registry";
 import { useEnsName } from "@/lib/hooks/useEnsResolution";
 import {
   calculateDataSetsSummary,
@@ -401,7 +402,12 @@ function PayerDetailView({ address }: { address: string }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Payer Details</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">Payer Details</h1>
+            {resolvingName && (
+              <span className="text-sm text-gray-400 animate-pulse">· Resolving names…</span>
+            )}
+          </div>
           <div className="flex items-center gap-2 mt-1">
             {ensName ? (
               <>
@@ -829,38 +835,46 @@ function PayerListView() {
     loadData();
   }, []);
 
-  // Resolve ENS names after data loads
+  // Resolve wallet names: known names sync, unknown via async ENS
   useEffect(() => {
     if (payers.length === 0) return;
 
-    async function resolveNames() {
-      const addresses = payers
-        .filter((p) => p.fullAddress && !p.ensName)
-        .map((p) => p.fullAddress);
+    const needsAsync: string[] = [];
+    const knownUpdates = new Map<string, string>();
 
-      if (addresses.length === 0) return;
-
-      setResolvingNames(true);
-      try {
-        const ensNames = await batchResolveENS(addresses);
-
-        setPayers((prevPayers) =>
-          prevPayers.map((payer) => {
-            const ensName = ensNames.get(payer.fullAddress?.toLowerCase());
-            if (ensName && !payer.ensName) {
-              return { ...payer, ensName };
-            }
-            return payer;
-          })
-        );
-      } catch (err) {
-        console.error("Failed to resolve ENS names:", err);
-      } finally {
-        setResolvingNames(false);
+    for (const payer of payers) {
+      if (payer.ensName || !payer.fullAddress) continue;
+      const known = getKnownWalletName(payer.fullAddress);
+      if (known) {
+        knownUpdates.set(payer.fullAddress.toLowerCase(), known);
+      } else {
+        needsAsync.push(payer.fullAddress);
       }
     }
 
-    resolveNames();
+    if (knownUpdates.size > 0) {
+      setPayers((prev) =>
+        prev.map((p) => {
+          const name = knownUpdates.get(p.fullAddress?.toLowerCase());
+          return name && !p.ensName ? { ...p, ensName: name } : p;
+        })
+      );
+    }
+
+    if (needsAsync.length === 0) return;
+
+    setResolvingNames(true);
+    batchResolveENS(needsAsync)
+      .then((ensNames) => {
+        setPayers((prev) =>
+          prev.map((p) => {
+            const name = ensNames.get(p.fullAddress?.toLowerCase());
+            return name && !p.ensName ? { ...p, ensName: name } : p;
+          })
+        );
+      })
+      .catch((err) => console.error("Failed to resolve ENS names:", err))
+      .finally(() => setResolvingNames(false));
   }, [payers.length]);
 
   // Prepare chart data with cumulative values (total at each point in time)
