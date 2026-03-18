@@ -445,7 +445,7 @@ function PayerDetailView({ address }: { address: string }) {
       <div className="grid grid-cols-6 gap-4">
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500 flex items-center gap-1">
-            Available Funds
+            Available
             <span
               className="text-gray-400 cursor-help"
               title="Funds that can be withdrawn. Total deposited minus locked amount."
@@ -457,7 +457,7 @@ function PayerDetailView({ address }: { address: string }) {
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500 flex items-center gap-1">
-            Locked Funds
+            Locked
             <span
               className="text-gray-400 cursor-help"
               title="Funds committed to payment rails. Reserved for future settlements to SPs."
@@ -469,7 +469,7 @@ function PayerDetailView({ address }: { address: string }) {
         </div>
         <div className="bg-white border rounded-lg p-4">
           <p className="text-sm text-gray-500 flex items-center gap-1">
-            Total Settled
+            Settled
             <span
               className="text-gray-400 cursor-help"
               title="Total amount settled to service providers across all payment rails."
@@ -517,7 +517,7 @@ function PayerDetailView({ address }: { address: string }) {
             <h2 className="text-xl font-semibold">My Data</h2>
             {dataSetsSummary.totalDataSets > 0 && (
               <p className="text-sm text-gray-500 mt-1">
-                {dataSetsSummary.totalDataSets} DataSet{dataSetsSummary.totalDataSets !== 1 ? "s" : ""} · {dataSetsSummary.totalPieces.toLocaleString()} pieces · {dataSetsSummary.totalSizeFormatted} · ${dataSetsSummary.totalPaidUSDFC.toFixed(2)} total paid
+                {dataSetsSummary.totalDataSets} DataSet{dataSetsSummary.totalDataSets !== 1 ? "s" : ""} · {dataSetsSummary.totalPieces.toLocaleString()} pieces · {dataSetsSummary.totalSizeFormatted}
               </p>
             )}
           </div>

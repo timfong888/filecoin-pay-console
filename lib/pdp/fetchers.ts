@@ -635,6 +635,7 @@ export interface RailInfoForDataSet {
   payeeAddress: string;
   createdAtTimestamp: number; // Unix ms
   paymentRateWei: string;     // Wei per second as string
+  totalSettledAmount: string; // Wei total settled on-chain
 }
 
 /**
@@ -674,6 +675,7 @@ export function transformDataSetsToDisplay(
 
     // Calculate payment metrics if rail found
     let totalPaidUSDFC = 0;
+    let railTotalSettled = 0;
     let costPerGBMonth: number | null = null;
     let paymentRatePerSecond = BigInt(0);
     let railCreatedAtMs = 0;
@@ -688,6 +690,9 @@ export function transformDataSetsToDisplay(
         const totalPaidWei = paymentRatePerSecond * BigInt(durationSeconds);
         totalPaidUSDFC = Number(totalPaidWei) / 1e18;
       }
+
+      // Total settled from subgraph (actual on-chain settlements)
+      railTotalSettled = Number(BigInt(rail.totalSettledAmount)) / 1e18;
 
       // Calculate cost per GB per month
       const sizeGB = Number(totalSizeBytes) / BYTES_PER_GB;
@@ -736,6 +741,7 @@ export function transformDataSetsToDisplay(
       paymentRatePerSecond,
       railCreatedAtMs,
       totalPaidUSDFC: Math.round(totalPaidUSDFC * 100) / 100,
+      totalSettledUSDFC: Math.round(railTotalSettled * 100) / 100,
       costPerGBMonth,
       pieces,
     };
@@ -747,21 +753,18 @@ export function transformDataSetsToDisplay(
  */
 export function calculateDataSetsSummary(
   dataSets: DataSetDisplayData[]
-): { totalDataSets: number; totalPieces: number; totalPaidUSDFC: number; totalSizeFormatted: string } {
+): { totalDataSets: number; totalPieces: number; totalSizeFormatted: string } {
   let totalPieces = 0;
-  let totalPaidUSDFC = 0;
   let totalSizeBytes = BigInt(0);
 
   for (const ds of dataSets) {
     totalPieces += ds.pieceCount;
-    totalPaidUSDFC += ds.totalPaidUSDFC;
     totalSizeBytes += ds.totalSizeBytes;
   }
 
   return {
     totalDataSets: dataSets.length,
     totalPieces,
-    totalPaidUSDFC: Math.round(totalPaidUSDFC * 100) / 100,
     totalSizeFormatted: formatBytesSize(totalSizeBytes),
   };
 }
