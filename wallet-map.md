@@ -7,6 +7,7 @@ This file maps wallet addresses to human-readable names. Edit this table to add 
 | 0x3c1ae7a70a2b51458fcb7927fd77aae408a1b857 | Storacha |
 | 0x3E4E5f067cfdA2F16Aade21912B8324c3D9624F8 | Tippy |
 | 0xd19d84c77bbb901971e460830e310933a210dbaa | PinMe |
+| 0xa5F90bc2AA73a2E0Bad4D7092a932644d5dD5d71 | DealBot |
 | 0xa51ac6A08cf17208a3092f6CE8a92700bf716d58 | akave-node0 |
 | 0x4F50270454Be59148fa561828d8719De7677829A | akave-node1 |
 | 0xC795A476bf837b6761E0E2ef82157C26Edf0eFc2 | akave-node2 |
