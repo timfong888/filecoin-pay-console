@@ -24,7 +24,9 @@ import {
   SUBGRAPH_VERSION,
   NETWORK,
 } from "@/lib/graphql/client";
-import { batchResolveENS, resolveENS } from "@/lib/ens";
+import { batchResolveENS } from "@/lib/ens";
+import { getKnownWalletName } from "@/lib/wallet-registry";
+import { useEnsName } from "@/lib/hooks/useEnsResolution";
 import {
   calculateDataSetsSummary,
 } from "@/lib/pdp/fetchers";
@@ -171,7 +173,7 @@ function PayerDetailView({ address }: { address: string }) {
   const [account, setAccount] = useState<AccountDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [ensName, setEnsName] = useState<string | null>(null);
+  const { ensName, resolving: resolvingName } = useEnsName(address);
   const [counterpartyEnsNames, setCounterpartyEnsNames] = useState<Map<string, string | null>>(new Map());
 
   // Settle dialog state
@@ -243,24 +245,6 @@ function PayerDetailView({ address }: { address: string }) {
     }
 
     loadData();
-  }, [address]);
-
-  // Resolve ENS name
-  useEffect(() => {
-    if (!address) return;
-
-    async function resolveAccountENS() {
-      try {
-        const name = await resolveENS(address);
-        if (name) {
-          setEnsName(name);
-        }
-      } catch (err) {
-        console.error("Failed to resolve ENS:", err);
-      }
-    }
-
-    resolveAccountENS();
   }, [address]);
 
   // Resolve ENS names for counterparties in rail tables
@@ -419,7 +403,12 @@ function PayerDetailView({ address }: { address: string }) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Payer Details</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">Payer Details</h1>
+            {resolvingName && (
+              <span className="text-sm text-gray-400 animate-pulse">· Resolving names…</span>
+            )}
+          </div>
           <div className="flex items-center gap-2 mt-1">
             {ensName ? (
               <>
@@ -427,7 +416,7 @@ function PayerDetailView({ address }: { address: string }) {
                 <span className="text-gray-400 text-sm font-mono">({account.address})</span>
               </>
             ) : (
-              <span className="font-mono text-lg">{account.address}</span>
+              <span className={`font-mono text-lg ${resolvingName ? "animate-pulse" : ""}`}>{account.address}</span>
             )}
           </div>
         </div>
@@ -696,6 +685,7 @@ function PayerListView() {
   const [sortField, setSortField] = useState<"settled" | "claimable" | "dataSize" | "locked" | "rails" | "runway" | "start">("settled");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [pdpLoading, setPdpLoading] = useState(false);
+  const [resolvingNames, setResolvingNames] = useState(false);
   const [fromDate, setFromDate] = useState(defaultDates.fromDate);
   const [toDate, setToDate] = useState(defaultDates.toDate);
   const [currentPage, setCurrentPage] = useState(1);
@@ -756,35 +746,46 @@ function PayerListView() {
     loadData();
   }, []);
 
-  // Resolve ENS names after data loads
+  // Resolve wallet names: known names sync, unknown via async ENS
   useEffect(() => {
     if (payers.length === 0) return;
 
-    async function resolveNames() {
-      const addresses = payers
-        .filter((p) => p.fullAddress && !p.ensName)
-        .map((p) => p.fullAddress);
+    const needsAsync: string[] = [];
+    const knownUpdates = new Map<string, string>();
 
-      if (addresses.length === 0) return;
-
-      try {
-        const ensNames = await batchResolveENS(addresses);
-
-        setPayers((prevPayers) =>
-          prevPayers.map((payer) => {
-            const ensName = ensNames.get(payer.fullAddress?.toLowerCase());
-            if (ensName && !payer.ensName) {
-              return { ...payer, ensName };
-            }
-            return payer;
-          })
-        );
-      } catch (err) {
-        console.error("Failed to resolve ENS names:", err);
+    for (const payer of payers) {
+      if (payer.ensName || !payer.fullAddress) continue;
+      const known = getKnownWalletName(payer.fullAddress);
+      if (known) {
+        knownUpdates.set(payer.fullAddress.toLowerCase(), known);
+      } else {
+        needsAsync.push(payer.fullAddress);
       }
     }
 
-    resolveNames();
+    if (knownUpdates.size > 0) {
+      setPayers((prev) =>
+        prev.map((p) => {
+          const name = knownUpdates.get(p.fullAddress?.toLowerCase());
+          return name && !p.ensName ? { ...p, ensName: name } : p;
+        })
+      );
+    }
+
+    if (needsAsync.length === 0) return;
+
+    setResolvingNames(true);
+    batchResolveENS(needsAsync)
+      .then((ensNames) => {
+        setPayers((prev) =>
+          prev.map((p) => {
+            const name = ensNames.get(p.fullAddress?.toLowerCase());
+            return name && !p.ensName ? { ...p, ensName: name } : p;
+          })
+        );
+      })
+      .catch((err) => console.error("Failed to resolve ENS names:", err))
+      .finally(() => setResolvingNames(false));
   }, [payers.length]);
 
   // Prepare chart data with cumulative values (total at each point in time)
@@ -941,7 +942,12 @@ function PayerListView() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Payer Accounts</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold">Payer Accounts</h1>
+          {resolvingNames && (
+            <span className="text-sm text-gray-400 animate-pulse">· Resolving names…</span>
+          )}
+        </div>
       </div>
 
       {/* Hero Metrics Bar (3 cards) */}

@@ -8,6 +8,7 @@ import { DataSourcePanel } from "@/components/dashboard/DataSourcePanel";
 import { fetchDashboardData, fetchChurnedWalletsCount, formatChartDate, formatChartCurrency, FILMetricsResult } from "@/lib/graphql/fetchers";
 import { OperatorDisplay } from "@/lib/graphql/fetchers/operators";
 import { batchResolveENS } from "@/lib/ens";
+import { getKnownWalletName } from "@/lib/wallet-registry";
 import { AuctionStatsCharts } from "@/components/dashboard/AuctionStatsCharts";
 import { AccountSearch } from "@/components/dashboard/AccountSearch";
 import {
@@ -125,6 +126,7 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [resolvingNames, setResolvingNames] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
@@ -193,40 +195,53 @@ export default function Dashboard() {
     }));
   }, [data]);
 
-  // Resolve ENS names after data loads
+  // Resolve wallet names: known names sync, unknown via async ENS
   useEffect(() => {
     if (!data || data.topPayers.length === 0) return;
 
-    async function resolveNames() {
-      const addresses = data!.topPayers
-        .filter(p => p.fullAddress && !p.ensName)
-        .map(p => p.fullAddress);
+    // First pass: instantly apply known wallet-map names
+    const needsAsync: string[] = [];
+    const knownUpdates = new Map<string, string>();
 
-      if (addresses.length === 0) return;
-
-      try {
-        const ensNames = await batchResolveENS(addresses);
-
-        // Update payers with resolved ENS names
-        setData(prevData => {
-          if (!prevData) return prevData;
-
-          const updatedPayers = prevData.topPayers.map(payer => {
-            const ensName = ensNames.get(payer.fullAddress?.toLowerCase());
-            if (ensName && !payer.ensName) {
-              return { ...payer, ensName };
-            }
-            return payer;
-          });
-
-          return { ...prevData, topPayers: updatedPayers };
-        });
-      } catch (err) {
-        console.error('Failed to resolve ENS names:', err);
+    for (const payer of data.topPayers) {
+      if (payer.ensName || !payer.fullAddress) continue;
+      const known = getKnownWalletName(payer.fullAddress);
+      if (known) {
+        knownUpdates.set(payer.fullAddress.toLowerCase(), known);
+      } else {
+        needsAsync.push(payer.fullAddress);
       }
     }
 
-    resolveNames();
+    // Apply known names immediately (no flash)
+    if (knownUpdates.size > 0) {
+      setData(prevData => {
+        if (!prevData) return prevData;
+        const updatedPayers = prevData.topPayers.map(payer => {
+          const name = knownUpdates.get(payer.fullAddress?.toLowerCase());
+          return name && !payer.ensName ? { ...payer, ensName: name } : payer;
+        });
+        return { ...prevData, topPayers: updatedPayers };
+      });
+    }
+
+    // Second pass: async ENS for unknown addresses only
+    if (needsAsync.length === 0) return;
+
+    setResolvingNames(true);
+    batchResolveENS(needsAsync)
+      .then(ensNames => {
+        setData(prevData => {
+          if (!prevData) return prevData;
+          const updatedPayers = prevData.topPayers.map(payer => {
+            const ensName = ensNames.get(payer.fullAddress?.toLowerCase());
+            return ensName && !payer.ensName ? { ...payer, ensName } : payer;
+          });
+          return { ...prevData, topPayers: updatedPayers };
+        });
+      })
+      .catch(err => console.error('Failed to resolve ENS names:', err))
+      .finally(() => setResolvingNames(false));
   }, [data?.topPayers.length]);
 
   // Show loading state
@@ -430,7 +445,12 @@ export default function Dashboard() {
       {/* Top Payers Section */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Payers</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">Payers</h2>
+            {resolvingNames && (
+              <span className="text-sm text-gray-400 animate-pulse">· Resolving names…</span>
+            )}
+          </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <input
