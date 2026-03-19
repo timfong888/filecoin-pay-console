@@ -151,11 +151,11 @@ export function DataSetCard({
               <span className="font-medium">{dataSet.pieceCount}</span>
             </div>
 
-            {/* Cost Paid */}
+            {/* Settled (on-chain) */}
             <div className="flex items-center gap-1">
-              <span className="text-gray-400">Paid:</span>
+              <span className="text-gray-400">Settled:</span>
               <span className="font-medium text-green-600">
-                {formatCurrency(dataSet.totalPaidUSDFC)}
+                {formatCurrency(dataSet.totalSettledUSDFC)}
               </span>
             </div>
 
@@ -205,8 +205,6 @@ export function DataSetCard({
                   <TableRow className="bg-gray-50">
                     <TableHead className="font-medium">Piece CID</TableHead>
                     <TableHead className="font-medium">Size</TableHead>
-                    <TableHead className="font-medium text-right">Cost/mo</TableHead>
-                    <TableHead className="font-medium text-right">Total Settled</TableHead>
                     <TableHead className="font-medium">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -245,16 +243,6 @@ function PieceRow({ piece, index }: { piece: PieceDisplayData; index: number }) 
         </div>
       </TableCell>
       <TableCell>{piece.size}</TableCell>
-      <TableCell className="text-right">
-        {piece.costPerMonth !== null && piece.costPerMonth !== undefined
-          ? formatCurrency(piece.costPerMonth)
-          : <span className="text-gray-400">—</span>}
-      </TableCell>
-      <TableCell className="text-right">
-        {piece.totalSettled !== null && piece.totalSettled !== undefined
-          ? formatCurrency(piece.totalSettled)
-          : <span className="text-gray-400">—</span>}
-      </TableCell>
       <TableCell>
         <button
           onClick={() => {

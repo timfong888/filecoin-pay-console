@@ -167,8 +167,10 @@ export interface DataSetDisplayData {
   paymentRatePerSecond: bigint;
   /** Rail creation timestamp (Unix ms) */
   railCreatedAtMs: number;
-  /** Total amount paid since rail creation (in USDFC) */
+  /** Total amount paid since rail creation (in USDFC) — calculated estimate, not on-chain */
   totalPaidUSDFC: number;
+  /** Total on-chain settled amount for this dataset's rail (in USDFC) */
+  totalSettledUSDFC: number;
   /** Cost per GB per month (in USDFC) */
   costPerGBMonth: number | null;
   /** Pieces belonging to this DataSet */

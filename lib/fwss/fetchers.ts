@@ -299,6 +299,7 @@ export async function fetchFWSSDataSetsForPayer(
       paymentRatePerSecond,
       railCreatedAtMs,
       totalPaidUSDFC: Math.round(totalPaidUSDFC * 100) / 100,
+      totalSettledUSDFC: Math.round(railTotalSettled * 100) / 100,
       costPerGBMonth,
       pieces,
     };
