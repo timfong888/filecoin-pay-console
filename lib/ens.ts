@@ -1,81 +1,83 @@
-import { createPublicClient, http } from 'viem';
-import { mainnet } from 'viem/chains';
 import { getKnownWalletName } from './wallet-registry';
 
-// Create a public client for Ethereum mainnet (for ENS resolution)
-const publicClient = createPublicClient({
-  chain: mainnet,
-  transport: http('https://eth.llamarpc.com'), // Free public RPC
-});
+const RESOLVIO_BASE = 'https://api.resolvio.xyz';
+const RESOLVIO_BATCH_SIZE = 20;
 
-// Cache for ENS names to avoid repeated lookups
+// Cache for ENS names to avoid repeated lookups within the session
 const ensCache = new Map<string, string | null>();
 
 /**
- * Resolve ENS name for an Ethereum address
- * First checks the wallet registry for known names, then falls back to ENS resolution.
- * Returns the name if found, null otherwise
+ * Resolve ENS name for an Ethereum address via Resolvio.
+ * Checks wallet registry first, then cache, then Resolvio reverse lookup.
  */
 export async function resolveENS(address: string): Promise<string | null> {
-  // Check wallet registry first (instant, no network call)
   const knownName = getKnownWalletName(address);
-  if (knownName) {
-    return knownName;
-  }
+  if (knownName) return knownName;
 
-  // Check cache next
-  if (ensCache.has(address.toLowerCase())) {
-    return ensCache.get(address.toLowerCase()) || null;
-  }
+  const key = address.toLowerCase();
+  if (ensCache.has(key)) return ensCache.get(key) ?? null;
 
   try {
-    const ensName = await publicClient.getEnsName({
-      address: address as `0x${string}`,
-    });
-
-    // Cache the result (including null for addresses without ENS)
-    ensCache.set(address.toLowerCase(), ensName);
-    return ensName;
-  } catch (error) {
-    console.error(`Error resolving ENS for ${address}:`, error);
-    // Cache null to avoid repeated failed lookups
-    ensCache.set(address.toLowerCase(), null);
+    const res = await fetch(`${RESOLVIO_BASE}/ens/v2/reverse/${address}`);
+    if (!res.ok) {
+      ensCache.set(key, null);
+      return null;
+    }
+    const data = await res.json();
+    const name = data.hasReverseRecord ? (data.name ?? null) : null;
+    ensCache.set(key, name);
+    return name;
+  } catch {
+    ensCache.set(key, null);
     return null;
   }
 }
 
 /**
- * Batch resolve ENS names for multiple addresses
- * More efficient than resolving one at a time
+ * Batch resolve ENS names for multiple addresses using Resolvio bulk reverse lookup.
+ * Max 20 addresses per request; larger sets are chunked automatically.
  */
 export async function batchResolveENS(
   addresses: string[]
 ): Promise<Map<string, string | null>> {
   const results = new Map<string, string | null>();
 
-  // Filter out addresses already in cache
-  const uncachedAddresses = addresses.filter(addr => {
-    const cached = ensCache.get(addr.toLowerCase());
+  const uncached = addresses.filter(addr => {
+    const key = addr.toLowerCase();
+    const cached = ensCache.get(key);
     if (cached !== undefined) {
-      results.set(addr.toLowerCase(), cached);
+      results.set(key, cached);
       return false;
     }
     return true;
   });
 
-  // Resolve uncached addresses in parallel (with concurrency limit)
-  const BATCH_SIZE = 5;
-  for (let i = 0; i < uncachedAddresses.length; i += BATCH_SIZE) {
-    const batch = uncachedAddresses.slice(i, i + BATCH_SIZE);
-    const batchResults = await Promise.all(
-      batch.map(async (address) => {
-        const ensName = await resolveENS(address);
-        return { address: address.toLowerCase(), ensName };
-      })
-    );
-
-    for (const { address, ensName } of batchResults) {
-      results.set(address, ensName);
+  for (let i = 0; i < uncached.length; i += RESOLVIO_BATCH_SIZE) {
+    const chunk = uncached.slice(i, i + RESOLVIO_BATCH_SIZE);
+    try {
+      const params = chunk.join(',');
+      const res = await fetch(
+        `${RESOLVIO_BASE}/ens/v2/reverse/bulk?addresses=${encodeURIComponent(params)}`
+      );
+      if (!res.ok) {
+        chunk.forEach(addr => {
+          ensCache.set(addr.toLowerCase(), null);
+          results.set(addr.toLowerCase(), null);
+        });
+        continue;
+      }
+      const data = await res.json();
+      for (const entry of data.addresses ?? []) {
+        const name = entry.hasReverseRecord ? (entry.name ?? null) : null;
+        const key = entry.address.toLowerCase();
+        ensCache.set(key, name);
+        results.set(key, name);
+      }
+    } catch {
+      chunk.forEach(addr => {
+        ensCache.set(addr.toLowerCase(), null);
+        results.set(addr.toLowerCase(), null);
+      });
     }
   }
 

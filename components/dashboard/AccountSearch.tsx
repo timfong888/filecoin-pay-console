@@ -3,8 +3,31 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+const RESOLVIO_BASE = "https://api.resolvio.xyz";
+
 function isValidAddress(input: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(input);
+}
+
+function looksLikeEns(input: string): boolean {
+  return input.includes(".") && !input.startsWith("0x");
+}
+
+async function resolveEnsToAddress(name: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${RESOLVIO_BASE}/ens/v2/addresses/${encodeURIComponent(name)}?chains=eth`
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const eth = (data.addresses ?? []).find(
+      (a: { chain: string; exists: boolean; value?: string }) =>
+        a.chain === "eth" && a.exists
+    );
+    return eth?.value ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export function AccountSearch() {
@@ -12,20 +35,40 @@ export function AccountSearch() {
   const [address, setAddress] = useState("");
   const [role, setRole] = useState<"payer" | "payee">("payer");
   const [error, setError] = useState("");
+  const [resolving, setResolving] = useState(false);
 
-  const handleFind = () => {
+  const handleFind = async () => {
     const trimmed = address.trim();
     if (!trimmed) {
-      setError("Please enter a wallet address");
+      setError("Please enter a wallet address or ENS name");
       return;
     }
-    if (!isValidAddress(trimmed)) {
+
+    let resolved = trimmed;
+
+    if (looksLikeEns(trimmed)) {
+      setResolving(true);
+      setError("");
+      try {
+        const addr = await resolveEnsToAddress(trimmed);
+        if (!addr) {
+          setError(`Could not resolve "${trimmed}" to an address`);
+          return;
+        }
+        resolved = addr;
+      } finally {
+        setResolving(false);
+      }
+    }
+
+    if (!isValidAddress(resolved)) {
       setError("Invalid address — expected 0x followed by 40 hex characters");
       return;
     }
+
     setError("");
     const path = role === "payer" ? "/payer-accounts" : "/payee-accounts";
-    router.push(`${path}?address=${encodeURIComponent(trimmed)}`);
+    router.push(`${path}?address=${encodeURIComponent(resolved)}`);
   };
 
   return (
@@ -66,10 +109,10 @@ export function AccountSearch() {
           </button>
         </div>
 
-        {/* Address input */}
+        {/* Address / ENS input */}
         <input
           type="text"
-          placeholder="0x... wallet address"
+          placeholder="0x… address or name.eth"
           aria-labelledby="account-search-label"
           value={address}
           onChange={(e) => {
@@ -82,9 +125,10 @@ export function AccountSearch() {
         {/* Find button */}
         <button
           type="submit"
-          className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 shrink-0"
+          disabled={resolving}
+          className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 shrink-0 disabled:opacity-60"
         >
-          Find
+          {resolving ? "Resolving…" : "Find"}
         </button>
       </form>
       {error && (
